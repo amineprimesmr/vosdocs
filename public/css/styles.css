@@ -151,6 +151,11 @@ img { max-width: 100%; height: auto; }
   letter-spacing: 0.04em;
   transition: opacity var(--transition);
 }
+.logo img {
+  height: 40px;
+  width: auto;
+  display: block;
+}
 .logo:hover { opacity: 0.95; text-decoration: none; }
 .header-dark .logo { color: var(--white); }
 .header-light .logo { color: var(--primary); }
