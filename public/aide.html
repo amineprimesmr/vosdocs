@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aide et Assistance | VosDocs</title>
+    <meta name="description" content="FAQ et assistance VosDocs. Réponses à vos questions sur le certificat de non-gage.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.vosdocs.com/aide.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .faq-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+        .faq-question { padding: 20px 24px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--white); transition: background var(--transition); }
+        .faq-question:hover { background: var(--bg-light); }
+        .faq-question::after { content: '+'; font-size: 1.5rem; color: var(--primary); }
+        .faq-item.open .faq-question::after { content: '−'; }
+        .faq-answer { padding: 0 24px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .faq-item.open .faq-answer { max-height: 500px; padding: 0 24px 20px; }
+        .faq-answer p { margin: 0; padding-top: 12px; line-height: 1.7; color: var(--text-light); }
+    </style>
+</head>
+<body>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">VOSDOCS.</a>
+            <nav class="nav-main">
+                <a href="index.html" class="nav-link">Certificat de non-gage</a>
+            </nav>
+            <a href="contact.html" class="btn btn-contact">Contact</a>
+        </div>
+    </header>
+
+    <main class="content-section" style="padding: 60px 0;">
+        <div class="container" style="max-width: 800px;">
+            <nav class="breadcrumb" style="margin-bottom: 32px;">
+                <a href="index.html">Accueil</a> &gt; <span>Aide</span>
+            </nav>
+            <h1 style="margin-bottom: 8px;">Aide et Assistance</h1>
+            <p class="section-subtitle" style="margin-bottom: 40px;">Trouvez rapidement des réponses à vos questions</p>
+
+            <div class="faq-list">
+                <div class="faq-item">
+                    <div class="faq-question">Qu'est-ce qu'un certificat de non-gage ?</div>
+                    <div class="faq-answer"><p>Le Certificat de Situation Administrative (CSA) est un document officiel obligatoire lors de la vente d'un véhicule d'occasion. Il doit dater de moins de 15 jours et atteste de l'absence de gage ou d'opposition sur le véhicule.</p></div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Quel est le délai de traitement ?</div>
+                    <div class="faq-answer"><p>Votre certificat de non-gage est traité sous 12h maximum. Il vous sera envoyé par email au format PDF dès la finalisation de votre dossier.</p></div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">J'ai perdu ma carte grise, puis-je obtenir un certificat ?</div>
+                    <div class="faq-answer"><p>Vous pouvez faire une demande de certificat en renseignant les informations de votre véhicule (immatriculation, date de première immatriculation, etc.). En cas de situation particulière, contactez notre service client.</p></div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Comment contacter le service client ?</div>
+                    <div class="faq-answer"><p>Notre centre d'appels est disponible du lundi au vendredi de 9h30 à 12h30 et de 13h30 à 18h au 0 892 882 300. Vous pouvez aussi nous écrire à contact@starkx.com ou via notre <a href="contact.html">formulaire de contact</a>.</p></div>
+                </div>
+            </div>
+
+            <div style="margin-top: 48px; padding: 32px; background: var(--bg-light); border-radius: var(--radius-lg); text-align: center;">
+                <h3 style="margin-bottom: 16px;">Besoin d'aide personnalisée ?</h3>
+                <p style="margin-bottom: 24px;">Nos opératrices vous accompagnent à chaque étape de votre dossier.</p>
+                <a href="contact.html" class="btn btn-primary btn-lg">Nous contacter</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <div class="footer-copyright">
+                    <p>Copyright © VosDocs.com 2026</p>
+                    <span class="ssl-badge">🔒</span>
+                </div>
+                <nav class="footer-links">
+                    <a href="aide.html">Aide</a>
+                    <span>•</span>
+                    <a href="contact.html">Contact</a>
+                    <span>•</span>
+                    <a href="mentions-legales.html">Mentions légales</a>
+                </nav>
+            </div>
+        </div>
+        <div class="footer-disclaimer">
+            <div class="container">Le Site et les Services sont proposés à titre privé et ne constituent en aucun cas une mission de service public déléguée par une administration ou une collectivité territoriale. Il est possible d'effectuer vos démarches gratuitement sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelectorAll('.faq-question').forEach(function(q) {
+            q.addEventListener('click', function() {
+                var item = this.parentElement;
+                item.classList.toggle('open');
+            });
+        });
+    </script>
+</body>
+</html>

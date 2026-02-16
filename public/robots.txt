@@ -1,0 +1,13 @@
+# VosDocs - robots.txt
+# Certificat de non-gage - https://www.vosdocs.com
+
+User-agent: *
+Allow: /
+
+# Les pages checkout/recap ont meta noindex - pas besoin de Disallow
+
+# Sitemap
+Sitemap: https://www.vosdocs.com/sitemap.xml
+
+# Crawl-delay (optionnel, certains bots l'ignorent)
+# Crawl-delay: 1

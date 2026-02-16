@@ -87,7 +87,8 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+// Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // API Départements
 app.get('/api/departements', (req, res) => {
@@ -155,12 +156,16 @@ app.post('/api/update-payment-metadata', async (req, res) => {
 
 // Page d'accueil
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`VosDocs démarré sur http://localhost:${PORT}`);
-  if (!process.env.STRIPE_SECRET_KEY) {
-    console.warn('⚠️  STRIPE_SECRET_KEY manquant dans .env - les paiements ne fonctionneront pas');
-  }
-});
+// Export pour Vercel (serverless) ; listen uniquement en local
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`VosDocs démarré sur http://localhost:${PORT}`);
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.warn('⚠️  STRIPE_SECRET_KEY manquant dans .env - les paiements ne fonctionneront pas');
+    }
+  });
+}
+module.exports = app;

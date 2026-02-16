@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Récapitulatif - Certificat de non-gage | VosDocs</title>
+    <meta name="description" content="Récapitulatif de votre demande de certificat de non-gage. Vérifiez les informations de votre véhicule avant de finaliser votre commande.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://www.vosdocs.com/recapitulatif.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">VOSDOCS.</a>
+            <a href="contact.html" class="btn btn-contact">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Contact
+            </a>
+        </div>
+    </header>
+
+    <main class="recap-main">
+        <div class="container recap-container">
+            <div class="recap-content">
+                <div class="recap-header">
+                    <h1 class="recap-title">Récapitulatif de votre démarche</h1>
+                </div>
+
+                <div class="recap-card">
+                    <div class="recap-info">
+                        <div class="recap-row">
+                            <span class="recap-label">Démarche</span>
+                            <span class="recap-value" id="recap-demarche">Certificat de situation administrative détaillée (NON GAGE)</span>
+                        </div>
+                        <div class="recap-row">
+                            <span class="recap-label">Département</span>
+                            <span class="recap-value" id="recap-departement">—</span>
+                        </div>
+                        <div class="recap-row">
+                            <span class="recap-label">Immatriculation</span>
+                            <span class="recap-value"><strong id="recap-immatriculation">—</strong></span>
+                        </div>
+                    </div>
+
+                    <form id="recapForm" class="recap-form" novalidate>
+                        <div class="form-group">
+                            <label for="recap-date-immat"><span class="label-full">Date de 1<sup>ère</sup> immatriculation (B)</span><span class="label-short">Date 1<sup>ère</sup> immat.</span></label>
+                            <input type="text" id="recap-date-immat" name="miseCirculation" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="recap-date-cert"><span class="label-full">Date du certificat (I)</span><span class="label-short">Date certificat</span></label>
+                            <input type="text" id="recap-date-cert" name="dateCertificat" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label><span class="label-full">Type de personne (C.1)</span><span class="label-short">Type</span></label>
+                            <div class="radio-group">
+                                <label class="radio-label"><input type="radio" name="typePersonne" value="particulier" checked> Particulier</label>
+                                <label class="radio-label"><input type="radio" name="typePersonne" value="professionnel"> Professionnel</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="recap-titulaire"><span class="label-full">Nom et prénom du titulaire (C.1)</span><span class="label-short">Titulaire</span></label>
+                            <input type="text" id="recap-titulaire" name="titulaire" placeholder="NOM Prénom">
+                        </div>
+                        <div class="form-group">
+                            <label for="recap-email">Email</label>
+                            <input type="email" id="recap-email" name="email" placeholder="votre@email.fr">
+                        </div>
+                        <div id="recapFormError" class="form-error"></div>
+                        <div class="recap-form-actions">
+                            <a href="index.html" class="btn btn-outline">Changer le véhicule</a>
+                            <button type="submit" class="btn btn-primary btn-lg">Continuer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <aside class="recap-sidebar">
+                <div class="sidebar-trustpilot">
+                    <h3 id="recap-avis-title">+ 32 000 clients satisfaits</h3>
+                    <div class="sidebar-avis-list">
+                        <div class="sidebar-avis-card">
+                            <div class="sidebar-avis-stars">★★★★★</div>
+                            <p class="sidebar-avis-text">Demande simple et certificat reçu par email en quelques heures. Très bien.</p>
+                            <span class="sidebar-avis-author">Cliente</span>
+                        </div>
+                        <div class="sidebar-avis-card">
+                            <div class="sidebar-avis-stars">★★★★★</div>
+                            <p class="sidebar-avis-text">Efficacité et rapidité ! Document reçu en quelques heures.</p>
+                            <span class="sidebar-avis-author">Driant pascal</span>
+                        </div>
+                    </div>
+                    <a href="https://www.trustpilot.com" target="_blank" rel="noopener" class="sidebar-tp-link">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#00b67a"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6-6.3 4.6 2.3-7-6-4.6h7.6z"/></svg>
+                        Trustpilot — 4,5/5
+                    </a>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-main">
+            <div class="container footer-grid">
+                <div class="footer-col">
+                    <h4>Centre de traitement habilité</h4>
+                    <p>Habilitation Préfecture N°9744</p>
+                    <p>Agrément Trésor Public N°14871</p>
+                </div>
+                <div class="footer-col">
+                    <div class="franceconnect-logo"></div>
+                    <p>Partenaire du système d'authentification FranceConnect depuis 2019</p>
+                </div>
+                <div class="footer-col footer-contact">
+                    <h4>Besoin d'aide ? Contactez nous</h4>
+                    <p class="footer-phone">0 892 882 300</p>
+                    <p class="footer-hours">Du lundi au vendredi 9h30-12h30 / 13h30-18h00</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <div class="footer-copyright">
+                    <p>Copyright © VosDocs.com 2026</p>
+                    <span class="ssl-badge">🔒</span>
+                </div>
+                <nav class="footer-links">
+                    <a href="index.html#quest-ce">Aide</a>
+                    <span>•</span>
+                    <a href="mentions-legales.html">Mentions légales</a>
+                    <span>•</span>
+                    <a href="conditions-generales-vente.html">CGV</a>
+                    <span>•</span>
+                    <a href="conditions-generales-utilisation.html">CGU</a>
+                    <span>•</span>
+                    <a href="politique-confidentialite.html">Confidentialité</a>
+                </nav>
+            </div>
+        </div>
+        <div class="footer-disclaimer">
+            <div class="container">Le Site et les Services sont proposés à titre privé et ne constituent en aucun cas une mission de service public déléguée par une administration ou une collectivité territoriale. Il est possible d'effectuer vos démarches gratuitement sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
+        </div>
+    </footer>
+
+    <button class="scroll-top" aria-label="Retour en haut">↑</button>
+
+    <script src="js/vehicle-service.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/recap-handler.js"></script>
+</body>
+</html>
