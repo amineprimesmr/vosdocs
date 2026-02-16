@@ -1286,6 +1286,8 @@ img { max-width: 100%; height: auto; }
   font-size: 15px;
 }
 .summary-price { color: var(--primary); font-weight: 600; }
+.summary-inclus { font-size: 13px; }
+.summary-inclus .summary-inclus-price { color: var(--btn-green); font-weight: 600; font-size: 12px; }
 .summary-total {
   display: flex;
   justify-content: space-between;
