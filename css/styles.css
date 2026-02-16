@@ -24,7 +24,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 140px; }
 body {
   font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
@@ -171,6 +171,38 @@ img { max-width: 100%; height: auto; }
 }
 .nav-link:hover { opacity: 0.9; text-decoration: none; }
 .nav-link svg { opacity: 0.7; }
+
+/* ===== Menu navigation sections (page d'accueil) ===== */
+.page-nav {
+  background: var(--bg-light);
+  padding: 12px 0;
+  position: sticky;
+  top: 58px;
+  z-index: 99;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.page-nav-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  justify-content: center;
+  align-items: center;
+}
+.page-nav-link {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition), border-color var(--transition);
+}
+.page-nav-link:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  text-decoration: none;
+}
 
 /* ===== Action Bar ===== */
 .action-bar {
@@ -1156,8 +1188,20 @@ img { max-width: 100%; height: auto; }
   font-size: 26px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
+/* Checkout form compact */
+.checkout-form .form-group { margin-bottom: 14px; }
+.checkout-form .form-group label { margin-bottom: 5px; }
+.checkout-form .form-row { gap: 16px; }
+.checkout-form .section-title-form {
+  margin: 20px 0 12px;
+  padding-top: 16px;
+}
+.checkout-form .payment-element-wrapper { padding: 10px 0; }
+.checkout-form .checkbox-group { margin: 14px 0; }
+.checkout-form .stripe-mention { margin: 12px 0 18px; padding: 10px 14px; }
+.checkout-form .form-group input { padding: 10px 14px; }
 .badge-checkout { position: absolute; top: 40px; right: 20px; }
 .checkout-option {
   background: var(--white);
@@ -1430,6 +1474,9 @@ img { max-width: 100%; height: auto; }
   .recap-title { font-size: 24px; }
   .nav-main { display: none; }
   .action-bar { top: 56px; }
+  .page-nav { top: 56px; padding: 10px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .page-nav-inner { justify-content: flex-start; flex-wrap: nowrap; padding: 0 20px; gap: 16px; }
+  .page-nav-link { font-size: 13px; }
   .stats-grid { grid-template-columns: 1fr; }
   .vehicles-grid { grid-template-columns: 1fr; }
   .recap-info { grid-template-columns: minmax(100px, auto) 1fr; }
