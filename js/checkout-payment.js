@@ -84,8 +84,6 @@
       var prenom = (form.prenom && form.prenom.value || '').trim();
       var phone = (form.phone && form.phone.value || '').trim();
       var email = (form.email && form.email.value || '').trim();
-      var cp = (form.cp && form.cp.value || '').trim();
-      var ville = (form.ville && form.ville.value || '').trim();
 
       if (!nom || !prenom || !phone || !email) {
         showError('Veuillez remplir nom, prénom, téléphone et email.');
@@ -102,8 +100,6 @@
         prenom: prenom,
         phone: phone,
         email: email,
-        cp: cp,
-        ville: ville,
         immatriculation: data.immatriculation || '',
         departement: data.departement || '',
         titulaire: data.titulaire || '',
