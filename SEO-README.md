@@ -44,7 +44,7 @@ Toutes les optimisations SEO ont été implémentées sur le site. Ce document r
 ## 📋 À personnaliser avant mise en ligne
 
 ### 1. URLs et domaine
-Remplacer `https://www.vosdocs.com` par votre domaine réel dans :
+Remplacer `https://www.vosdocs.fr` par votre domaine réel dans :
 - Tous les `<link rel="canonical">`
 - sitemap.xml
 - robots.txt
