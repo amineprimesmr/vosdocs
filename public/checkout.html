@@ -49,11 +49,11 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Code postal</label>
+                            <label>Code postal <span class="label-optional">(optionnel)</span></label>
                             <input type="text" name="cp" maxlength="5" placeholder="35000">
                         </div>
                         <div class="form-group">
-                            <label>Ville</label>
+                            <label>Ville <span class="label-optional">(optionnel)</span></label>
                             <input type="text" name="ville" placeholder="Rennes">
                         </div>
                     </div>
@@ -138,11 +138,21 @@
     <script>
       (function(){
         var d = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
-        if (d) {
+        var form = document.getElementById('checkoutPaymentForm');
+        if (d && form) {
           var ref = document.getElementById('checkout-ref');
           if (ref) ref.textContent = d.immatriculation || '—';
           var tot = document.getElementById('checkout-total');
           if (tot) tot.textContent = (d.prix !== undefined ? d.prix : 19.90).toFixed(2).replace('.',',') + ' €';
+          if (d.titulaire) {
+            var parts = d.titulaire.trim().split(/\s+/);
+            if (parts.length >= 2) {
+              form.nom && (form.nom.value = parts[0]);
+              form.prenom && (form.prenom.value = parts.slice(1).join(' '));
+            } else if (parts.length === 1) {
+              form.nom && (form.nom.value = parts[0]);
+            }
+          }
         }
       })();
     </script>

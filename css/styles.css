@@ -1208,9 +1208,11 @@ img { max-width: 100%; height: auto; }
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--text);
-  font-size: 14px;
+}
+.label-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.9em;
 }
 .form-group input,
 .form-group select {
