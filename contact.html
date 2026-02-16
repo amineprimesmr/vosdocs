@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact | VosDocs - Certificat de non-gage</title>
+    <meta name="description" content="Contactez le service client VosDocs. Assistance pour votre certificat de non-gage. Du lundi au vendredi 9h30-18h.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.vosdocs.com/contact.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .contact-grid { display: grid; grid-template-columns: 1fr 400px; gap: 48px; align-items: start; }
+        .contact-info { background: var(--bg-light); padding: 32px; border-radius: var(--radius-lg); }
+        .contact-info h3 { margin-bottom: 20px; font-size: 1.25rem; }
+        .contact-phone { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin: 16px 0; display: flex; align-items: center; gap: 12px; }
+        .contact-hours { font-size: 0.9rem; color: var(--text-muted); }
+        .contact-form .form-group { margin-bottom: 20px; }
+        .contact-form label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .contact-form input, .contact-form textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; }
+        .contact-form textarea { min-height: 120px; resize: vertical; }
+        .contact-success { display: none; background: #e8f5e9; color: #2e7d32; padding: 16px; border-radius: var(--radius); margin-bottom: 20px; }
+        @media (max-width: 768px) { .contact-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">VOSDOCS.</a>
+            <nav class="nav-main">
+                <a href="aide.html" class="nav-link">Aide</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="content-section" style="padding: 60px 0;">
+        <div class="container">
+            <nav class="breadcrumb" style="margin-bottom: 32px;">
+                <a href="index.html">Accueil</a> &gt; <span>Contact</span>
+            </nav>
+            <h1 style="margin-bottom: 8px;">Contact</h1>
+            <p class="section-subtitle" style="margin-bottom: 40px;">Notre équipe est à votre disposition pour vous accompagner</p>
+
+            <div class="contact-grid">
+                <div>
+                    <div id="contactSuccess" class="contact-success">
+                        Merci pour votre message. Nous vous répondrons dans les plus brefs délais.
+                    </div>
+                    <form class="contact-form" id="contactForm">
+                        <div class="form-group">
+                            <label>Nom complet *</label>
+                            <input type="text" name="nom" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="tel" name="phone">
+                        </div>
+                        <div class="form-group">
+                            <label>Sujet *</label>
+                            <select name="sujet" required>
+                                <option value="">Sélectionnez</option>
+                                <option>Certificat de non-gage</option>
+                                <option>Commande en cours</option>
+                                <option>Question générale</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Message *</label>
+                            <textarea name="message" required placeholder="Décrivez votre demande..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">Envoyer</button>
+                    </form>
+                </div>
+                <div class="contact-info">
+                    <h3>Besoin d'aide ?</h3>
+                    <p>Nos opératrices vous accompagnent à chaque étape de votre dossier.</p>
+                    <a href="tel:0892882300" class="contact-phone">
+                        📞 0 892 882 300
+                    </a>
+                    <p class="contact-hours">Du lundi au vendredi 9h30-12h30 / 13h30-18h00</p>
+                    <div style="margin-top: 24px;">
+                        <a href="mailto:contact@starkx.com">contact@starkx.com</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-main">
+            <div class="container footer-grid">
+                <div class="footer-col">
+                    <h4>Centre de traitement habilité</h4>
+                    <p>Habilitation Préfecture N°9744</p>
+                    <p>Agrément Trésor Public N°14871</p>
+                </div>
+                <div class="footer-col footer-contact">
+                    <h4>Contact</h4>
+                    <p class="footer-phone">0 892 882 300</p>
+                    <p class="footer-hours">Du lundi au vendredi 9h30-12h30 / 13h30-18h00</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <div class="footer-copyright">
+                    <p>Copyright © VosDocs.com 2026</p>
+                    <span class="ssl-badge">🔒</span>
+                </div>
+                <nav class="footer-links">
+                    <a href="aide.html">Aide</a>
+                    <span>•</span>
+                    <a href="mentions-legales.html">Mentions légales</a>
+                    <span>•</span>
+                    <a href="conditions-generales-vente.html">CGV</a>
+                </nav>
+            </div>
+        </div>
+        <div class="footer-disclaimer">
+            <div class="container">Le Site et les Services sont proposés à titre privé et ne constituent en aucun cas une mission de service public déléguée par une administration ou une collectivité territoriale. Il est possible d'effectuer vos démarches gratuitement sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('contactSuccess').style.display = 'block';
+            this.reset();
+            document.getElementById('contactSuccess').scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>

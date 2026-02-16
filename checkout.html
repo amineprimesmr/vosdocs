@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement - Certificat de non-gage 19,90€ | VosDocs</title>
+    <meta name="description" content="Finalisez votre commande de certificat de non-gage. Paiement sécurisé en 2 minutes.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://www.vosdocs.com/checkout.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">VOSDOCS.</a>
+            <a href="contact.html" class="btn btn-contact">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Contact
+            </a>
+        </div>
+    </header>
+
+    <main class="checkout-main">
+        <div class="container checkout-container">
+            <div class="checkout-content" style="position: relative;">
+                <h1 class="checkout-title">Vos informations et paiement</h1>
+
+                <div id="paymentFormError" class="form-error" style="display:none;"></div>
+                <form class="checkout-form" id="checkoutPaymentForm" novalidate>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nom</label>
+                            <input type="text" name="nom" required placeholder="Dupont">
+                        </div>
+                        <div class="form-group">
+                            <label>Prénom</label>
+                            <input type="text" name="prenom" required placeholder="Jean">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="tel" name="phone" required placeholder="06 12 34 56 78">
+                    </div>
+                    <div class="form-group">
+                        <label>Email (réception du certificat)</label>
+                        <input type="email" name="email" required placeholder="jean@email.com">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Code postal</label>
+                            <input type="text" name="cp" maxlength="5" placeholder="35000">
+                        </div>
+                        <div class="form-group">
+                            <label>Ville</label>
+                            <input type="text" name="ville" placeholder="Rennes">
+                        </div>
+                    </div>
+
+                    <h2 class="section-title-form">Paiement</h2>
+                    <div id="payment-element-container" class="payment-element-wrapper"></div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="cgv">
+                            J'accepte les <a href="conditions-generales-vente.html" target="_blank" rel="noopener">CGV</a> et la <a href="politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.
+                        </label>
+                    </div>
+
+                    <p class="stripe-mention">🔐 Paiement sécurisé par Stripe. Aucun compte à créer.</p>
+
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitPaymentBtn">Payer 19,90 €</button>
+                </form>
+            </div>
+
+            <aside class="checkout-sidebar">
+                <div class="sidebar-summary">
+                    <h3>Certificat de situation administrative détaillée (NON GAGE)</h3>
+                    <p class="sidebar-ref" id="checkout-ref">—</p>
+                    <hr>
+                    <div class="summary-line">
+                        <span>Coût démarche</span>
+                        <span class="summary-price">19,90 €</span>
+                    </div>
+                    <hr>
+                    <div class="summary-total">
+                        <span>Total</span>
+                        <span class="total-price" id="checkout-total">19,90 €</span>
+                    </div>
+                </div>
+                <div class="sidebar-advantages">
+                    <div class="advantage-item">
+                        <span class="adv-icon">⏱️</span>
+                        <span>Traitement sous 12h</span>
+                    </div>
+                    <div class="advantage-item">
+                        <span class="adv-icon">📧</span>
+                        <span>Certificat envoyé par email</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-main">
+            <div class="container footer-grid">
+                <div class="footer-col">
+                    <h4>Centre de traitement habilité</h4>
+                    <p>Habilitation Préfecture N°9744</p>
+                </div>
+                <div class="footer-col footer-contact">
+                    <h4>Besoin d'aide ?</h4>
+                    <p class="footer-phone">0 892 882 300</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <p>Copyright © VosDocs.com 2026</p>
+                <nav class="footer-links">
+                    <a href="conditions-generales-vente.html">CGV</a>
+                    <span>•</span>
+                    <a href="politique-confidentialite.html">Confidentialité</a>
+                </nav>
+            </div>
+        </div>
+        <div class="footer-disclaimer">
+            <div class="container">Le Site et les Services sont proposés à titre privé. Démarches gratuites sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
+        </div>
+    </footer>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="js/vehicle-service.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+      (function(){
+        var d = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
+        if (d) {
+          var ref = document.getElementById('checkout-ref');
+          if (ref) ref.textContent = d.immatriculation || '—';
+          var tot = document.getElementById('checkout-total');
+          if (tot) tot.textContent = (d.prix !== undefined ? d.prix : 19.90).toFixed(2).replace('.',',') + ' €';
+        }
+      })();
+    </script>
+    <script src="js/checkout-payment.js"></script>
+</body>
+</html>
