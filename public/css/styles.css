@@ -159,7 +159,7 @@ img { max-width: 100%; height: auto; }
 .logo:hover { opacity: 0.95; text-decoration: none; }
 .header-dark .logo { color: var(--white); }
 .header-light .logo { color: var(--primary); }
-.nav-main { display: flex; gap: 20px; font-size: 14px; }
+.nav-main { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
 .nav-link {
   display: flex;
   align-items: center;
