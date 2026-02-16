@@ -15,6 +15,9 @@
     <header class="header header-light">
         <div class="container header-inner">
             <a href="index.html" class="logo"><img src="/logo.png" alt="VosDocs"></a>
+            <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
             <nav class="nav-main">
                 <a href="index.html#demande-certificat" class="nav-link">Demande</a>
                 <a href="index.html#nos-atouts" class="nav-link">Nos atouts</a>
@@ -25,6 +28,18 @@
                 <a href="index.html#comment-faire" class="nav-link">Comment faire</a>
             </nav>
             <a href="contact.html" class="btn btn-contact">Contact</a>
+        </div>
+        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
+            <nav class="mobile-nav-inner">
+                <a href="index.html#demande-certificat" class="mobile-nav-link">Demande</a>
+                <a href="index.html#nos-atouts" class="mobile-nav-link">Nos atouts</a>
+                <a href="index.html#avis-clients" class="mobile-nav-link">Avis clients</a>
+                <a href="index.html#vehicules" class="mobile-nav-link">Véhicules</a>
+                <a href="index.html#quest-ce" class="mobile-nav-link">Qu'est-ce que c'est ?</a>
+                <a href="index.html#document" class="mobile-nav-link">Document</a>
+                <a href="index.html#comment-faire" class="mobile-nav-link">Comment faire</a>
+                <a href="contact.html" class="mobile-nav-link mobile-nav-contact">Contact</a>
+            </nav>
         </div>
     </header>
 
@@ -64,5 +79,6 @@
             <div class="container">Le Site et les Services sont proposés à titre privé et ne constituent en aucun cas une mission de service public déléguée par une administration ou une collectivité territoriale. Il est possible d'effectuer vos démarches gratuitement sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
         </div>
     </footer>
+    <script src="js/main.js"></script>
 </body>
 </html>
