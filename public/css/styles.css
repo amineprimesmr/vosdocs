@@ -348,12 +348,11 @@ img { max-width: 100%; height: auto; }
   background: var(--white);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-hover);
-  transform: rotate(-2deg);
   transition: transform var(--transition);
   overflow: hidden;
   border: 1px solid var(--border);
 }
-.hero-image:hover .certificate-preview { transform: rotate(0) scale(1.02); }
+.hero-image:hover .certificate-preview { transform: scale(1.02); }
 .certificate-doc {
   padding: 24px 32px 56px;
   max-width: 420px;
