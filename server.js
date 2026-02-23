@@ -9,6 +9,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const Stripe = require('stripe');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,63 @@ async function notifyTeam(order) {
   }
 }
 
+/** Envoi email à l'équipe (infos.vosdocs@gmail.com) avec le détail de la commande */
+async function sendOrderEmail(order) {
+  const to = process.env.MAIL_TO || 'infos.vosdocs@gmail.com';
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) {
+    console.warn('Email non envoyé: SMTP_HOST, SMTP_USER et SMTP_PASS requis dans .env');
+    return;
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user, pass }
+    });
+    const lines = [
+      'Nouvelle commande VosDocs – Paiement validé',
+      '-------------------------------------------',
+      'Référence Stripe: ' + (order.id || '—'),
+      'Montant: ' + (order.montant || '—'),
+      '',
+      '— Client —',
+      'Nom: ' + (order.nom || '—'),
+      'Prénom: ' + (order.prenom || '—'),
+      'Email: ' + (order.email || '—'),
+      'Téléphone: ' + (order.phone || '—'),
+      '',
+      '— Véhicule / démarche —',
+      'Immatriculation: ' + (order.immatriculation || '—'),
+      'Département: ' + (order.departement || '—'),
+      'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
+      'Titulaire (C.1): ' + (order.titulaire || '—'),
+      'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
+      'Date certificat (I): ' + (order.dateCertificat || '—'),
+      '',
+      '— Adresse (si renseignée) —',
+      'CP: ' + (order.cp || '—'),
+      'Ville: ' + (order.ville || '—'),
+      '',
+      'Envoyé le ' + new Date().toLocaleString('fr-FR')
+    ];
+    const text = lines.join('\n');
+    await transporter.sendMail({
+      from: process.env.MAIL_FROM || user,
+      to,
+      subject: 'VosDocs – Nouvelle commande ' + (order.immatriculation || order.id || ''),
+      text,
+      replyTo: order.email || undefined
+    });
+    console.log('Email commande envoyé à', to);
+  } catch (e) {
+    console.error('Erreur envoi email commande:', e);
+  }
+}
+
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) {
     return res.status(500).send('Stripe non configuré');
@@ -75,6 +133,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
       immatriculation: m.immatriculation || '',
       departement: m.departement || '',
       titulaire: m.titulaire || '',
+      typePersonne: m.typePersonne || 'particulier',
       miseCirculation: m.miseCirculation || '',
       dateCertificat: m.dateCertificat || '',
       cp: m.cp || '',
@@ -82,11 +141,35 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     };
     saveOrder(order);
     await notifyTeam(order);
+    await sendOrderEmail(order);
   }
   res.status(200).send('ok');
 });
 
 app.use(express.json());
+
+// --- ROUTE TEST TEMPORAIRE : simuler paiement validé + envoi email équipe (à supprimer ensuite) ---
+app.post('/api/test-order-email', async (req, res) => {
+  const fakeOrder = {
+    id: 'pi_test_' + Date.now(),
+    montant: '19,90 €',
+    nom: (req.body && req.body.nom) || 'Dupont',
+    prenom: (req.body && req.body.prenom) || 'Jean',
+    email: (req.body && req.body.email) || 'test@example.com',
+    phone: (req.body && req.body.phone) || '06 12 34 56 78',
+    immatriculation: (req.body && req.body.immatriculation) || 'AB-123-CD',
+    departement: (req.body && req.body.departement) || '75',
+    titulaire: (req.body && req.body.titulaire) || 'DUPONT Jean',
+    typePersonne: (req.body && req.body.typePersonne) || 'particulier',
+    miseCirculation: (req.body && req.body.miseCirculation) || '01/01/2020',
+    dateCertificat: (req.body && req.body.dateCertificat) || new Date().toLocaleDateString('fr-FR'),
+    cp: (req.body && req.body.cp) || '',
+    ville: (req.body && req.body.ville) || ''
+  };
+  await sendOrderEmail(fakeOrder);
+  res.json({ ok: true, message: 'Email test envoyé' });
+});
+
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
 app.use(express.static(path.join(__dirname, 'public')));
 

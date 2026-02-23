@@ -103,6 +103,7 @@
         immatriculation: data.immatriculation || '',
         departement: data.departement || '',
         titulaire: data.titulaire || '',
+        typePersonne: data.typePersonne || 'particulier',
         miseCirculation: data.miseCirculation || '',
         dateCertificat: data.dateCertificat || ''
       };

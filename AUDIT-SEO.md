@@ -3,6 +3,8 @@
 **Date :** 13 février 2026  
 **Site :** vosdocs.fr
 
+**→ Guide opérationnel (Google Analytics, Search Console, sitemap, indexation) :** voir **[GUIDE-GOOGLE-SEO-COMPLET.md](GUIDE-GOOGLE-SEO-COMPLET.md)**.
+
 ---
 
 ## ✅ CE QUI EST BIEN CONFIGURÉ

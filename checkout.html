@@ -60,6 +60,12 @@
                     <p class="stripe-mention">🔐 Paiement sécurisé par Stripe. Aucun compte à créer.</p>
 
                     <button type="submit" class="btn btn-primary btn-lg" id="submitPaymentBtn">Payer 19,90 €</button>
+
+                    <!-- Bouton TEST temporaire (à supprimer ensuite) -->
+                    <div class="test-order-box" style="margin-top: 28px; padding: 20px; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
+                        <p style="font-size: 0.9rem; color: #0369a1; margin: 0 0 12px 0; font-weight: 600;">Mode test</p>
+                        <button type="button" id="btnTestOrderEmail" class="btn btn-outline" style="font-size: 0.95rem;">Test : simuler paiement et envoyer l’email</button>
+                    </div>
                 </form>
             </div>
 
@@ -154,5 +160,46 @@
       })();
     </script>
     <script src="js/checkout-payment.js"></script>
+    <script>
+      (function() {
+        var btn = document.getElementById('btnTestOrderEmail');
+        if (!btn) return;
+        btn.addEventListener('click', function() {
+          var form = document.getElementById('checkoutPaymentForm');
+          var data = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : {};
+          var order = {
+            nom: (form && form.nom && form.nom.value) || 'Dupont',
+            prenom: (form && form.prenom && form.prenom.value) || 'Jean',
+            email: (form && form.email && form.email.value) || 'test@example.com',
+            phone: (form && form.phone && form.phone.value) || '06 12 34 56 78',
+            immatriculation: data.immatriculation || 'AB-123-CD',
+            departement: data.departement || '75',
+            titulaire: data.titulaire || 'DUPONT Jean',
+            typePersonne: data.typePersonne || 'particulier',
+            miseCirculation: data.miseCirculation || '01/01/2020',
+            dateCertificat: data.dateCertificat || new Date().toLocaleDateString('fr-FR')
+          };
+          btn.disabled = true;
+          btn.textContent = 'Envoi en cours...';
+          fetch(window.location.origin + '/api/test-order-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(order)
+          })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+              if (typeof VehicleService !== 'undefined') {
+                VehicleService.saveCommandeData(Object.assign({}, data, { prix: 19.90, immatriculation: order.immatriculation }));
+              }
+              window.location.href = 'confirmation.html';
+            })
+            .catch(function() {
+              btn.disabled = false;
+              btn.textContent = 'Test : simuler paiement et envoyer l\'email';
+              alert('Erreur. Démarrez le serveur (npm start) et vérifiez la config email.');
+            });
+        });
+      })();
+    </script>
 </body>
 </html>
