@@ -10,6 +10,7 @@ const path = require('path');
 const fs = require('fs');
 const Stripe = require('stripe');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,14 +49,66 @@ async function notifyTeam(order) {
 }
 
 /** Envoi email à l'équipe (infos.vosdocs@gmail.com) avec le détail de la commande */
+function getOrderEmailContent(order) {
+  const lines = [
+    'Nouvelle commande VosDocs – Paiement validé',
+    '-------------------------------------------',
+    'Référence Stripe: ' + (order.id || '—'),
+    'Montant: ' + (order.montant || '—'),
+    '',
+    '— Client —',
+    'Nom: ' + (order.nom || '—'),
+    'Prénom: ' + (order.prenom || '—'),
+    'Email: ' + (order.email || '—'),
+    'Téléphone: ' + (order.phone || '—'),
+    '',
+    '— Véhicule / démarche —',
+    'Immatriculation: ' + (order.immatriculation || '—'),
+    'Département: ' + (order.departement || '—'),
+    'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
+    'Titulaire (C.1): ' + (order.titulaire || '—'),
+    'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
+    'Date certificat (I): ' + (order.dateCertificat || '—'),
+    '',
+    '— Adresse (si renseignée) —',
+    'CP: ' + (order.cp || '—'),
+    'Ville: ' + (order.ville || '—'),
+    '',
+    'Envoyé le ' + new Date().toLocaleString('fr-FR')
+  ];
+  return lines.join('\n');
+}
+
+/** @returns {Promise<{ sent: boolean, error?: string }>} */
 async function sendOrderEmail(order) {
   const to = process.env.MAIL_TO || 'infos.vosdocs@gmail.com';
+  const subject = 'VosDocs – Nouvelle commande ' + (order.immatriculation || order.id || '');
+  const text = getOrderEmailContent(order);
+
+  if (process.env.RESEND_API_KEY) {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const from = process.env.MAIL_FROM || 'onboarding@resend.dev';
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
+      subject,
+      text,
+      replyTo: order.email || undefined
+    });
+    if (error) {
+      console.error('Erreur Resend:', error.message || error);
+      return { sent: false, error: error.message || String(error) };
+    }
+    console.log('Email commande envoyé à', to, '(Resend)', data?.id || '');
+    return { sent: true };
+  }
+
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) {
-    console.warn('Email non envoyé: SMTP_HOST, SMTP_USER et SMTP_PASS requis dans .env');
-    return;
+    console.warn('Email non envoyé: définir RESEND_API_KEY ou SMTP_* dans .env / Vercel');
+    return { sent: false, error: 'RESEND_API_KEY non configurée (Vercel → Settings → Environment Variables)' };
   }
   try {
     const transporter = nodemailer.createTransport({
@@ -64,43 +117,18 @@ async function sendOrderEmail(order) {
       secure: process.env.SMTP_SECURE === 'true',
       auth: { user, pass }
     });
-    const lines = [
-      'Nouvelle commande VosDocs – Paiement validé',
-      '-------------------------------------------',
-      'Référence Stripe: ' + (order.id || '—'),
-      'Montant: ' + (order.montant || '—'),
-      '',
-      '— Client —',
-      'Nom: ' + (order.nom || '—'),
-      'Prénom: ' + (order.prenom || '—'),
-      'Email: ' + (order.email || '—'),
-      'Téléphone: ' + (order.phone || '—'),
-      '',
-      '— Véhicule / démarche —',
-      'Immatriculation: ' + (order.immatriculation || '—'),
-      'Département: ' + (order.departement || '—'),
-      'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
-      'Titulaire (C.1): ' + (order.titulaire || '—'),
-      'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
-      'Date certificat (I): ' + (order.dateCertificat || '—'),
-      '',
-      '— Adresse (si renseignée) —',
-      'CP: ' + (order.cp || '—'),
-      'Ville: ' + (order.ville || '—'),
-      '',
-      'Envoyé le ' + new Date().toLocaleString('fr-FR')
-    ];
-    const text = lines.join('\n');
     await transporter.sendMail({
       from: process.env.MAIL_FROM || user,
       to,
-      subject: 'VosDocs – Nouvelle commande ' + (order.immatriculation || order.id || ''),
+      subject,
       text,
       replyTo: order.email || undefined
     });
-    console.log('Email commande envoyé à', to);
+    console.log('Email commande envoyé à', to, '(SMTP)');
+    return { sent: true };
   } catch (e) {
     console.error('Erreur envoi email commande:', e);
+    return { sent: false, error: e.message || String(e) };
   }
 }
 
@@ -148,7 +176,14 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
 
 app.use(express.json());
 
-// --- ROUTE TEST TEMPORAIRE : simuler paiement validé + envoi email équipe (à supprimer ensuite) ---
+// --- ROUTE TEST TEMPORAIRE (à supprimer ensuite) ---
+app.get('/api/email-status', (req, res) => {
+  res.json({
+    resendConfigured: !!process.env.RESEND_API_KEY,
+    mailTo: process.env.MAIL_TO || 'infos.vosdocs@gmail.com'
+  });
+});
+
 app.post('/api/test-order-email', async (req, res) => {
   const fakeOrder = {
     id: 'pi_test_' + Date.now(),
@@ -166,8 +201,12 @@ app.post('/api/test-order-email', async (req, res) => {
     cp: (req.body && req.body.cp) || '',
     ville: (req.body && req.body.ville) || ''
   };
-  await sendOrderEmail(fakeOrder);
-  res.json({ ok: true, message: 'Email test envoyé' });
+  const result = await sendOrderEmail(fakeOrder);
+  res.json({
+    ok: result.sent,
+    emailSent: result.sent,
+    error: result.error || null
+  });
 });
 
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
@@ -248,6 +287,11 @@ if (!process.env.VERCEL) {
     console.log(`VosDocs démarré sur http://localhost:${PORT}`);
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn('⚠️  STRIPE_SECRET_KEY manquant dans .env - les paiements ne fonctionneront pas');
+    }
+    if (process.env.RESEND_API_KEY) {
+      console.log('✓ Email (Resend) configuré →', process.env.MAIL_TO || 'infos.vosdocs@gmail.com');
+    } else {
+      console.warn('⚠️  RESEND_API_KEY manquant - les emails commande ne seront pas envoyés');
     }
   });
 }

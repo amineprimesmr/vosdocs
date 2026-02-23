@@ -187,16 +187,22 @@
             body: JSON.stringify(order)
           })
             .then(function(r) { return r.json(); })
-            .then(function() {
-              if (typeof VehicleService !== 'undefined') {
-                VehicleService.saveCommandeData(Object.assign({}, data, { prix: 19.90, immatriculation: order.immatriculation }));
+            .then(function(result) {
+              if (result.emailSent) {
+                if (typeof VehicleService !== 'undefined') {
+                  VehicleService.saveCommandeData(Object.assign({}, data, { prix: 19.90, immatriculation: order.immatriculation }));
+                }
+                window.location.href = 'confirmation.html';
+              } else {
+                btn.disabled = false;
+                btn.textContent = 'Test : simuler paiement et envoyer l\'email';
+                alert('L\'email n\'a pas été envoyé.\n\n' + (result.error || 'Sur le site en ligne : ajoute RESEND_API_KEY dans Vercel (Settings → Environment Variables) puis redéploie.'));
               }
-              window.location.href = 'confirmation.html';
             })
             .catch(function() {
               btn.disabled = false;
               btn.textContent = 'Test : simuler paiement et envoyer l\'email';
-              alert('Erreur. Démarrez le serveur (npm start) et vérifiez la config email.');
+              alert('Impossible de joindre le serveur. Sur www.vosdocs.fr : l\'API n\'est peut-être pas déployée. En local : lancez "npm start".');
             });
         });
       })();
