@@ -7,6 +7,35 @@
 
 ---
 
+## 🔔 Alerte Search Console « Nouveaux motifs empêchant l’indexation » (fév. 2026)
+
+Google signale jusqu’à quatre motifs : **« Introuvable (404) »**, **« Bloquée (403) »**, **« Page avec redirection »**, **« Exclue par la balise noindex »**.
+
+### Explication
+
+1. **Page avec redirection**  
+   Le sitemap contenait à la fois `https://www.vosdocs.fr/` et `https://www.vosdocs.fr/index.html`. Une des deux redirige vers l’autre → alerte « Page avec redirection ».
+
+2. **Exclue par noindex**  
+   Les pages **checkout**, **récapitulatif**, **confirmation** et **404** ont volontairement `noindex`. Elles étaient dans le sitemap → Google les crawlait puis les excluait → alerte « Exclue par noindex ».
+
+3. **Introuvable (404)**  
+   Google peut découvrir des URLs qui n’existent plus (ancien sitemap, liens externes) ou des chemins comme `/api/...` non prévus pour le crawl → 404.
+
+4. **Bloquée (403)**  
+   Les routes **/api/** (paiement, webhooks, départements, etc.) peuvent renvoyer 403 ou 404 en GET. Si Google les découvre (liens, ancien sitemap, exploration), il les signale comme « Bloquée (403) ».
+
+### Actions effectuées
+
+- **Sitemap** : une seule URL d’accueil (`https://www.vosdocs.fr/`), retrait de `recapitulatif.html` et `checkout.html` du sitemap.
+- **Canonical / Open Graph / JSON-LD** : URL d’accueil unifiée en `https://www.vosdocs.fr/`.
+- **Redirection** : dans `vercel.json`, 301 de `/index.html` vers `/`.
+- **robots.txt** : **`Disallow: /api/`** pour que Google ne tente plus de crawler les routes API → moins de 403/404 dans le rapport d’indexation.
+
+Résultat attendu : réduction des quatre motifs après le prochain crawl. Pour les 404 restants : vérifier dans Search Console la liste des URLs concernées (anciennes URLs ou liens externes à corriger).
+
+---
+
 ## ✅ CE QUI EST BIEN CONFIGURÉ
 
 ### Meta tags de base (toutes les pages)
@@ -64,9 +93,9 @@
 - **Impact modéré** : Moins de rich snippets possibles
 - **Recommandation** : Ajouter LocalBusiness/Organization sur contact, FAQPage sur aide
 
-### 6. **Sitemap : doublon / et index.html**
-- Les deux URLs pointent vers la même page (priority 1.0)
-- **Recommandation** : Choisir une URL canonique (ex: /) et garder une seule entrée prioritaire
+### 6. **Sitemap : doublon / et index.html** — CORRIGÉ (fév. 2026)
+- Les deux URLs pointaient vers la même page (priority 1.0) → Google signalait « Page avec redirection »
+- **Correction** : Une seule URL d’accueil dans le sitemap (`https://www.vosdocs.fr/`), canonical et og:url alignés sur `/`, redirection 301 `/index.html` → `/` dans vercel.json
 
 ### 7. **404.html : pas de meta description**
 - Impact faible pour une page d'erreur (noindex)

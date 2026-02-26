@@ -9,12 +9,12 @@
     <meta name="robots" content="index, follow">
     <meta name="author" content="VosDocs">
     <meta name="geo.region" content="FR">
-    <link rel="canonical" href="https://www.vosdocs.fr/index.html">
+    <link rel="canonical" href="https://www.vosdocs.fr/">
     
     <!-- VosDocs -->
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://www.vosdocs.fr/index.html">
+    <meta property="og:url" content="https://www.vosdocs.fr/">
     <meta property="og:title" content="Certificat de non-gage en ligne - 19,90€ | VosDocs">
     <meta property="og:description" content="Obtenez votre certificat de non-gage officiel en 5 minutes. Traitement en 5 minutes, envoi par email.">
     <meta property="og:image" content="https://www.vosdocs.fr/og-image.png">
@@ -54,11 +54,13 @@
           }
         },
         {
-          "@type": "Product",
-          "@id": "https://www.vosdocs.fr/#product",
+          "@type": "Service",
+          "@id": "https://www.vosdocs.fr/#service",
           "name": "Certificat de situation administrative détaillée (NON GAGE)",
-          "description": "Document officiel attestant de l'absence de gage et d'opposition sur votre véhicule. Obligatoire pour la vente d'un véhicule d'occasion.",
-          "brand": { "@type": "Organization", "name": "VosDocs" },
+          "description": "Document officiel attestant de l'absence de gage et d'opposition sur votre véhicule. Obligatoire pour la vente d'un véhicule d'occasion. Livré par email en PDF.",
+          "image": "https://www.vosdocs.fr/og-image.png",
+          "provider": { "@id": "https://www.vosdocs.fr/#organization" },
+          "brand": { "@type": "Brand", "name": "VosDocs" },
           "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": "4.6",
@@ -71,13 +73,18 @@
             "price": "19.90",
             "priceCurrency": "EUR",
             "availability": "https://schema.org/InStock",
-            "url": "https://www.vosdocs.fr/index.html"
+            "url": "https://www.vosdocs.fr/",
+            "hasMerchantReturnPolicy": {
+              "@type": "MerchantReturnPolicy",
+              "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
+              "applicableCountry": "FR"
+            }
           }
         },
         {
           "@type": "WebPage",
           "@id": "https://www.vosdocs.fr/#webpage",
-          "url": "https://www.vosdocs.fr/index.html",
+          "url": "https://www.vosdocs.fr/",
           "name": "Certificat de non-gage en ligne - 19,90€ | VosDocs",
           "description": "Obtenez votre certificat de non-gage (situation administrative détaillée) en ligne en 5 minutes.",
           "breadcrumb": {

@@ -3,8 +3,10 @@
 
 User-agent: *
 Allow: /
+Disallow: /api/
 
 # Les pages checkout/recap ont meta noindex - pas besoin de Disallow
+# /api/ → évite 403/404 dans Search Console (routes API non indexables)
 
 # Sitemap
 Sitemap: https://www.vosdocs.fr/sitemap.xml
