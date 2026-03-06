@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "blog": "node scripts/generate-blog.js",
+    "blog:publish": "node scripts/publish-next-blog.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

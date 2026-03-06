@@ -1,0 +1,35 @@
+[
+  {
+    "id": "1",
+    "slug": "certificat-non-gage-vente-obligatoire",
+    "title": "Certificat de non-gage : obligatoire pour vendre sa voiture ?",
+    "description": "Tout savoir sur l'obligation du certificat de situation administrative (non-gage) lors de la vente d'un véhicule d'occasion. Délais, validité, sanctions.",
+    "date": "2026-02-20",
+    "category": "certificat-non-gage",
+    "keywords": ["certificat de non-gage", "vente voiture", "obligation", "CSA", "cession véhicule"],
+    "readingTime": "4 min",
+    "bodyHtml": "<p>Lorsque vous vendez un véhicule d'occasion, vous devez remettre à l'acheteur un <strong>certificat de situation administrative</strong> (CSA), souvent appelé « certificat de non-gage ». Ce document officiel atteste qu'aucune inscription (gage, opposition) ne figure au fichier des véhicules et qu'il n'existe pas d'empêchement à la cession.</p><h2>Une obligation légale</h2><p>L'article R322-8 du code de la route impose au vendeur de fournir un certificat de non-gage datant de <strong>moins de 15 jours</strong> le jour de la vente. Sans ce document, la vente peut être contestée et vous vous exposez à des poursuites.</p><h2>Où l'obtenir ?</h2><p>Le certificat est délivré par le Ministère de l'Intérieur. Vous pouvez le demander en ligne sur le site officiel ou via un intermédiaire agréé comme <a href=\"https://www.vosdocs.fr/\">VosDocs</a>, qui vous le délivre sous 5 minutes par e-mail.</p><h2>En résumé</h2><p>Oui, le certificat de non-gage est <strong>obligatoire</strong> pour vendre votre voiture en toute légalité. Prévoyez de le commander quelques jours avant la date prévue de cession pour respecter la règle des 15 jours.</p>"
+  },
+  {
+    "id": "2",
+    "slug": "carte-grise-cession-vehicule-etapes",
+    "title": "Carte grise et cession de véhicule : les étapes à suivre",
+    "description": "Guide pratique des démarches carte grise lors de la vente ou l'achat d'un véhicule : qui fait quoi, délais, documents à fournir.",
+    "date": "2026-02-18",
+    "category": "carte-grise",
+    "keywords": ["carte grise", "cession", "vente voiture", "démarches", "titulaire"],
+    "readingTime": "5 min",
+    "bodyHtml": "<p>Que vous soyez vendeur ou acheteur, la <strong>cession d'un véhicule</strong> implique des démarches précises concernant la carte grise (certificat d'immatriculation). Voici les étapes clés.</p><h2>Côté vendeur</h2><p>Vous devez remettre à l'acheteur : la carte grise signée et datée au verso (case « vendeur »), le certificat de non-gage de moins de 15 jours, et éventuellement le procès-verbal de cession. Vous n'avez plus à faire de démarche d'immatriculation : c'est à l'acheteur de demander sa nouvelle carte grise à son nom.</p><h2>Côté acheteur</h2><p>Après la vente, vous devez demander votre certificat d'immatriculation (carte grise) à votre nom dans un délai d'un mois. La démarche se fait en ligne sur l'ANTS ou en préfecture. Vous aurez besoin du formulaire de cession signé, de votre justificatif d'identité, d'adresse et du justificatif de domicile de moins de 6 mois.</p><h2>Récap</h2><p>Vendeur : signer la carte grise, fournir le certificat de non-gage. Acheteur : demander la nouvelle carte grise à son nom sous 1 mois. Pour obtenir rapidement votre certificat de non-gage, <a href=\"https://www.vosdocs.fr/\">VosDocs</a> vous le délivre en 5 minutes.</p>"
+  },
+  {
+    "id": "3",
+    "slug": "acheter-voiture-occasion-documents-verifier",
+    "title": "Acheter une voiture d'occasion : quels documents vérifier ?",
+    "description": "Checklist des documents à exiger et à contrôler avant d'acheter un véhicule d'occasion : carte grise, certificat de non-gage, historique.",
+    "date": "2026-02-15",
+    "category": "achat-occasion",
+    "keywords": ["achat voiture occasion", "documents", "vérification", "certificat non-gage", "carte grise"],
+    "readingTime": "5 min",
+    "bodyHtml": "<p>Avant de signer un acte de vente pour un véhicule d'occasion, plusieurs <strong>documents</strong> doivent être vérifiés pour éviter les mauvaises surprises.</p><h2>Documents obligatoires à exiger</h2><ul><li><strong>La carte grise</strong> (certificat d'immatriculation) au nom du vendeur, pour vérifier l'identité du titulaire.</li><li>Le <strong>certificat de non-gage</strong> (situation administrative) datant de <strong>moins de 15 jours</strong>. Sans lui, vous pourriez acheter un véhicule gagé ou sous opposition.</li><li>Une pièce d'identité du vendeur et, si possible, un justificatif de domicile.</li></ul><h2>Ce qu'il faut contrôler</h2><p>Vérifiez que le numéro de chassis (VIN) sur la carte grise correspond à celui gravé sur le véhicule. Assurez-vous que le certificat de non-gage ne comporte aucune mention d'opposition ou de gage. En cas de doute, n'hésitez pas à demander un nouveau certificat au vendeur.</p><h2>Où obtenir un certificat de non-gage rapidement ?</h2><p>Le vendeur peut commander son certificat en ligne sur <a href=\"https://www.vosdocs.fr/\">VosDocs</a> et le recevoir par e-mail en quelques minutes, ce qui simplifie la vente pour les deux parties.</p>"
+  }
+]
