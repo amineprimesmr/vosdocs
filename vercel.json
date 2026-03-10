@@ -5,7 +5,12 @@
     { "source": "/blog/index.html", "destination": "/blog", "permanent": true },
     { "source": "/blog/:slug.html", "destination": "/blog/:slug", "permanent": true }
   ],
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/server.js" }],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/server.js" },
+    { "source": "/blog", "destination": "/server.js" },
+    { "source": "/blog/(.*)", "destination": "/server.js" },
+    { "source": "/sitemap.xml", "destination": "/server.js" }
+  ],
   "crons": [
     {
       "path": "/api/cron/generate-articles",
