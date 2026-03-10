@@ -80,6 +80,18 @@
                 <article class="blog-card" data-category="certificat-non-gage">
                   <div class="blog-card-inner">
                     <span class="blog-card-cat">Certificat de non-gage</span>
+                    <h2 class="blog-card-title"><a href="validite-15-jours-certificat-non-gage.html">Pourquoi le certificat de non-gage doit avoir moins de 15 jours ?</a></h2>
+                    <p class="blog-card-desc">Explication de la règle des 15 jours pour le certificat de situation administrative : origine, bon sens et conséquences si le délai est dépassé.</p>
+                    <div class="blog-card-meta">
+                      <time datetime="2026-03-06">6 mars 2026</time>
+                      <span class="blog-card-time">3 min</span>
+                    </div>
+                    <a href="validite-15-jours-certificat-non-gage.html" class="blog-card-link">Lire l'article →</a>
+                  </div>
+                </article>
+                <article class="blog-card" data-category="certificat-non-gage">
+                  <div class="blog-card-inner">
+                    <span class="blog-card-cat">Certificat de non-gage</span>
                     <h2 class="blog-card-title"><a href="certificat-non-gage-vente-obligatoire.html">Certificat de non-gage : obligatoire pour vendre sa voiture ?</a></h2>
                     <p class="blog-card-desc">Tout savoir sur l'obligation du certificat de situation administrative (non-gage) lors de la vente d'un véhicule d'occasion. Délais, validité, sanctions.</p>
                     <div class="blog-card-meta">
@@ -140,10 +152,50 @@
   </footer>
   <script>
     (function() {
-      var articles = [{"slug":"certificat-non-gage-vente-obligatoire","title":"Certificat de non-gage : obligatoire pour vendre sa voiture ?","description":"Tout savoir sur l'obligation du certificat de situation administrative (non-gage) lors de la vente d'un véhicule d'occasion. Délais, validité, sanctions.","date":"2026-02-20","category":"certificat-non-gage","readingTime":"4 min"},{"slug":"carte-grise-cession-vehicule-etapes","title":"Carte grise et cession de véhicule : les étapes à suivre","description":"Guide pratique des démarches carte grise lors de la vente ou l'achat d'un véhicule : qui fait quoi, délais, documents à fournir.","date":"2026-02-18","category":"carte-grise","readingTime":"5 min"},{"slug":"acheter-voiture-occasion-documents-verifier","title":"Acheter une voiture d'occasion : quels documents vérifier ?","description":"Checklist des documents à exiger et à contrôler avant d'acheter un véhicule d'occasion : carte grise, certificat de non-gage, historique.","date":"2026-02-15","category":"achat-occasion","readingTime":"5 min"}];
+      var articles = [];
       var grid = document.getElementById('blogGrid');
       var countEl = document.getElementById('blogCount');
       var filterBtns = document.querySelectorAll('.blog-filter-btn');
+      var categoryLabels = {};
+      filterBtns.forEach(function(btn) {
+        var cat = btn.getAttribute('data-category');
+        if (!cat) return;
+        categoryLabels[cat] = btn.textContent.trim();
+      });
+
+      function escapeHtml(s) {
+        return String(s || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+
+      function renderCards(items) {
+        grid.innerHTML = items.map(function(a) {
+          var catLabel = categoryLabels[a.category] || a.category;
+          var href = '/blog/' + encodeURIComponent(a.slug);
+          return '<article class="blog-card" data-category="' + escapeHtml(a.category) + '">' +
+            '<div class="blog-card-inner">' +
+            '<span class="blog-card-cat">' + escapeHtml(catLabel) + '</span>' +
+            '<h2 class="blog-card-title"><a href="' + href + '">' + escapeHtml(a.title) + '</a></h2>' +
+            '<p class="blog-card-desc">' + escapeHtml(a.description) + '</p>' +
+            '<div class="blog-card-meta">' +
+            '<time datetime="' + escapeHtml(a.publishedAt || a.date || '') + '">' + escapeHtml(formatDate(a.publishedAt || a.date)) + '</time>' +
+            (a.readingTime ? '<span class="blog-card-time">' + escapeHtml(a.readingTime) + '</span>' : '') +
+            '</div>' +
+            '<a href="' + href + '" class="blog-card-link">Lire l\\'article →</a>' +
+            '</div>' +
+            '</article>';
+        }).join('');
+      }
+
       function updateFilter(cat) {
         var cards = grid.querySelectorAll('.blog-card');
         var n = 0;
@@ -158,7 +210,19 @@
       filterBtns.forEach(function(btn) {
         btn.addEventListener('click', function() { updateFilter(this.getAttribute('data-category')); });
       });
-      updateFilter('');
+
+      fetch('/api/blog/posts')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(data) {
+          if (Array.isArray(data) && data.length) {
+            articles = data;
+            renderCards(articles);
+          }
+          updateFilter('');
+        })
+        .catch(function() {
+          updateFilter('');
+        });
     })();
   </script>
   <script src="../js/main.js"></script>
