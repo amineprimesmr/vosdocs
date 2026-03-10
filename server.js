@@ -262,7 +262,10 @@ app.get('/api/blog/approve', async (req, res) => {
     if (!authToken) {
       return res.redirect(302, '/blog?error=expired');
     }
-    await blogLib.approveArticle(authToken.proposal.id);
+    const published = await blogLib.approveArticle(authToken.proposal.id);
+    if (published?.slug) {
+      return res.redirect(302, '/blog/' + encodeURIComponent(published.slug));
+    }
     return res.redirect(302, '/blog/published');
   } catch (e) {
     console.error('Approve blog:', e);
@@ -328,6 +331,47 @@ if (blogDbAvailable) {
     } catch (e) {
       console.error('Blog article:', e);
       res.status(500).send('Erreur.');
+    }
+  });
+
+  // Compatibilité ancienne URL /blog/mon-article.html
+  app.get('/blog/:slug.html', async (req, res, next) => {
+    try {
+      const post = await blogLib.getBlogPostBySlug(req.params.slug);
+      if (!post) return next();
+      return res.redirect(301, '/blog/' + encodeURIComponent(req.params.slug));
+    } catch (e) {
+      return next();
+    }
+  });
+
+  // Compatibilité URL legacy à la racine: /mon-article.html
+  app.get('/:slug.html', async (req, res, next) => {
+    // Laisse les pages statiques existantes (contact.html, etc.) passer
+    const staticPages = new Set([
+      'index',
+      'contact',
+      'guides',
+      'aide',
+      'demarches',
+      'carte-grise',
+      'papiers',
+      'mentions-legales',
+      'conditions-generales-vente',
+      'conditions-generales-utilisation',
+      'politique-confidentialite',
+      'prix-carte-grise',
+      'prix-cheval-fiscal',
+      'checkout',
+      'recapitulatif'
+    ]);
+    if (staticPages.has(req.params.slug)) return next();
+    try {
+      const post = await blogLib.getBlogPostBySlug(req.params.slug);
+      if (!post) return next();
+      return res.redirect(301, '/blog/' + encodeURIComponent(req.params.slug));
+    } catch (e) {
+      return next();
     }
   });
 
