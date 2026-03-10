@@ -308,6 +308,7 @@ if (blogDbAvailable) {
       const posts = await blogLib.getBlogPosts();
       const config = getBlogConfig();
       const html = blogRender ? blogRender.renderBlogIndex(config, posts) : '';
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(html || '<p>Aucun article.</p>');
     } catch (e) {
