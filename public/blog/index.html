@@ -76,55 +76,7 @@
                 <button type="button" class="blog-filter-btn" data-category="documents">Documents véhicule</button>
       </div>
       <div class="blog-grid" id="blogGrid">
-        
-                <article class="blog-card" data-category="certificat-non-gage">
-                  <div class="blog-card-inner">
-                    <span class="blog-card-cat">Certificat de non-gage</span>
-                    <h2 class="blog-card-title"><a href="validite-15-jours-certificat-non-gage.html">Pourquoi le certificat de non-gage doit avoir moins de 15 jours ?</a></h2>
-                    <p class="blog-card-desc">Explication de la règle des 15 jours pour le certificat de situation administrative : origine, bon sens et conséquences si le délai est dépassé.</p>
-                    <div class="blog-card-meta">
-                      <time datetime="2026-03-06">6 mars 2026</time>
-                      <span class="blog-card-time">3 min</span>
-                    </div>
-                    <a href="validite-15-jours-certificat-non-gage.html" class="blog-card-link">Lire l'article →</a>
-                  </div>
-                </article>
-                <article class="blog-card" data-category="certificat-non-gage">
-                  <div class="blog-card-inner">
-                    <span class="blog-card-cat">Certificat de non-gage</span>
-                    <h2 class="blog-card-title"><a href="certificat-non-gage-vente-obligatoire.html">Certificat de non-gage : obligatoire pour vendre sa voiture ?</a></h2>
-                    <p class="blog-card-desc">Tout savoir sur l'obligation du certificat de situation administrative (non-gage) lors de la vente d'un véhicule d'occasion. Délais, validité, sanctions.</p>
-                    <div class="blog-card-meta">
-                      <time datetime="2026-02-20">20 février 2026</time>
-                      <span class="blog-card-time">4 min</span>
-                    </div>
-                    <a href="certificat-non-gage-vente-obligatoire.html" class="blog-card-link">Lire l'article →</a>
-                  </div>
-                </article>
-                <article class="blog-card" data-category="carte-grise">
-                  <div class="blog-card-inner">
-                    <span class="blog-card-cat">Carte grise</span>
-                    <h2 class="blog-card-title"><a href="carte-grise-cession-vehicule-etapes.html">Carte grise et cession de véhicule : les étapes à suivre</a></h2>
-                    <p class="blog-card-desc">Guide pratique des démarches carte grise lors de la vente ou l'achat d'un véhicule : qui fait quoi, délais, documents à fournir.</p>
-                    <div class="blog-card-meta">
-                      <time datetime="2026-02-18">18 février 2026</time>
-                      <span class="blog-card-time">5 min</span>
-                    </div>
-                    <a href="carte-grise-cession-vehicule-etapes.html" class="blog-card-link">Lire l'article →</a>
-                  </div>
-                </article>
-                <article class="blog-card" data-category="achat-occasion">
-                  <div class="blog-card-inner">
-                    <span class="blog-card-cat">Achat d'occasion</span>
-                    <h2 class="blog-card-title"><a href="acheter-voiture-occasion-documents-verifier.html">Acheter une voiture d'occasion : quels documents vérifier ?</a></h2>
-                    <p class="blog-card-desc">Checklist des documents à exiger et à contrôler avant d'acheter un véhicule d'occasion : carte grise, certificat de non-gage, historique.</p>
-                    <div class="blog-card-meta">
-                      <time datetime="2026-02-15">15 février 2026</time>
-                      <span class="blog-card-time">5 min</span>
-                    </div>
-                    <a href="acheter-voiture-occasion-documents-verifier.html" class="blog-card-link">Lire l'article →</a>
-                  </div>
-                </article>
+        <p id="blogLoading">Chargement des derniers articles...</p>
       </div>
       <p class="blog-count" id="blogCount" aria-live="polite"></p>
     </div>
@@ -211,17 +163,33 @@
         btn.addEventListener('click', function() { updateFilter(this.getAttribute('data-category')); });
       });
 
-      fetch('/api/blog/posts')
-        .then(function(r) { return r.ok ? r.json() : []; })
+      function loadPosts(tryNumber) {
+        return fetch('/api/blog/posts?t=' + Date.now(), { cache: 'no-store' })
+          .then(function(r) { return r.ok ? r.json() : []; })
+          .then(function(data) {
+            if (Array.isArray(data) && data.length) {
+              articles = data;
+              renderCards(articles);
+              updateFilter('');
+              return;
+            }
+            throw new Error('Aucun article recu');
+          })
+          .catch(function() {
+            if (tryNumber < 2) {
+              return new Promise(function(resolve) {
+                setTimeout(function() { resolve(loadPosts(tryNumber + 1)); }, 700);
+              });
+            }
+            var loading = document.getElementById('blogLoading');
+            if (loading) loading.textContent = 'Impossible de charger les articles pour le moment.';
+            updateFilter('');
+          });
+      }
+
+      loadPosts(1)
         .then(function(data) {
-          if (Array.isArray(data) && data.length) {
-            articles = data;
-            renderCards(articles);
-          }
-          updateFilter('');
-        })
-        .catch(function() {
-          updateFilter('');
+          return data;
         });
     })();
   </script>

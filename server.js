@@ -278,6 +278,7 @@ app.get('/api/blog/posts', async (req, res) => {
   if (!blogLib) return res.json([]);
   try {
     const posts = await blogLib.getBlogPosts();
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
     return res.json(posts.map(p => ({
       slug: p.slug,
       title: p.title,
