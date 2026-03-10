@@ -209,6 +209,168 @@ app.post('/api/test-order-email', async (req, res) => {
   });
 });
 
+// ---------- Auto-Blog SEO : API et pages (si DATABASE_URL configurée) ----------
+const blogLib = (function () {
+  try {
+    return require('./lib/blog');
+  } catch (e) {
+    return null;
+  }
+})();
+const blogRender = (function () {
+  try {
+    return require('./lib/blog-render');
+  } catch (e) {
+    return null;
+  }
+})();
+
+function getBlogConfig() {
+  const configPath = path.join(__dirname, 'content', 'blog-config.json');
+  if (!fs.existsSync(configPath)) {
+    return { baseUrl: process.env.BASE_URL || 'https://www.vosdocs.fr', blogPath: '/blog', categories: {} };
+  }
+  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
+// CRON : génération de 2 articles (protégé par CRON_SECRET)
+app.get('/api/cron/generate-articles', async (req, res) => {
+  const secret = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.query.secret;
+  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  if (!blogLib) {
+    return res.status(503).json({ error: 'Module blog non disponible' });
+  }
+  try {
+    const result = await blogLib.runCronGenerateArticles();
+    return res.json({ ok: true, proposals: result.proposals?.length, emailId: result.emailId });
+  } catch (e) {
+    console.error('Cron generate-articles:', e);
+    return res.status(500).json({ error: e.message || 'Erreur génération' });
+  }
+});
+
+// Approbation d'un article (clic depuis l'email)
+app.get('/api/blog/approve', async (req, res) => {
+  const token = req.query.token;
+  if (!token || !blogLib) {
+    return res.redirect(302, '/blog?error=invalid');
+  }
+  try {
+    const authToken = await blogLib.getProposalByToken(token);
+    if (!authToken) {
+      return res.redirect(302, '/blog?error=expired');
+    }
+    await blogLib.approveArticle(authToken.proposal.id);
+    return res.redirect(302, '/blog/published');
+  } catch (e) {
+    console.error('Approve blog:', e);
+    return res.redirect(302, '/blog?error=error');
+  }
+});
+
+// API liste des articles publiés (pour sitemap / usage externe)
+app.get('/api/blog/posts', async (req, res) => {
+  if (!blogLib) return res.json([]);
+  try {
+    const posts = await blogLib.getBlogPosts();
+    return res.json(posts.map(p => ({
+      slug: p.slug,
+      title: p.title,
+      description: p.description,
+      publishedAt: p.publishedAt,
+      category: p.category
+    })));
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Pages blog dynamiques (si DB + Prisma disponibles)
+let blogDbAvailable = false;
+try {
+  blogDbAvailable = !!(blogLib && blogLib.getPrisma && blogLib.getPrisma());
+} catch (_) {}
+if (blogDbAvailable) {
+  app.get('/blog/published', (req, res) => {
+    const config = getBlogConfig();
+    const html = blogRender ? blogRender.renderBlogPublished(config) : '';
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html || '<p>Module de rendu indisponible.</p>');
+  });
+
+  const serveBlogIndex = async (req, res) => {
+    try {
+      const posts = await blogLib.getBlogPosts();
+      const config = getBlogConfig();
+      const html = blogRender ? blogRender.renderBlogIndex(config, posts) : '';
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html || '<p>Aucun article.</p>');
+    } catch (e) {
+      console.error('Blog index:', e);
+      res.status(500).send('Erreur chargement du blog.');
+    }
+  };
+  app.get('/blog', serveBlogIndex);
+  app.get('/blog/', serveBlogIndex);
+
+  app.get('/blog/:slug', async (req, res, next) => {
+    if (req.params.slug === 'index.html' || req.params.slug === 'published') return next();
+    try {
+      const post = await blogLib.getBlogPostBySlug(req.params.slug);
+      if (!post) return next();
+      const posts = await blogLib.getBlogPosts();
+      const config = getBlogConfig();
+      const html = blogRender ? blogRender.renderBlogArticle(config, post, posts) : '';
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    } catch (e) {
+      console.error('Blog article:', e);
+      res.status(500).send('Erreur.');
+    }
+  });
+
+  // Sitemap dynamique (inclut les articles du blog)
+  app.get('/sitemap.xml', async (req, res) => {
+    const baseUrl = (process.env.BASE_URL || getBlogConfig().baseUrl || 'https://www.vosdocs.fr').replace(/\/$/, '');
+    const staticUrls = [
+      { loc: baseUrl + '/', changefreq: 'weekly', priority: '1.0' },
+      { loc: baseUrl + '/conditions-generales-vente.html', changefreq: 'yearly', priority: '0.5' },
+      { loc: baseUrl + '/conditions-generales-utilisation.html', changefreq: 'yearly', priority: '0.5' },
+      { loc: baseUrl + '/politique-confidentialite.html', changefreq: 'yearly', priority: '0.5' },
+      { loc: baseUrl + '/contact.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/aide.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/carte-grise.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/demarches.html', changefreq: 'monthly', priority: '0.9' },
+      { loc: baseUrl + '/prix-carte-grise.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/prix-cheval-fiscal.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/papiers.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/mentions-legales.html', changefreq: 'monthly', priority: '0.5' },
+      { loc: baseUrl + '/blog', changefreq: 'weekly', priority: '0.8' }
+    ];
+    let posts = [];
+    try {
+      posts = await blogLib.getBlogPosts();
+    } catch (_) {}
+    const lastmod = new Date().toISOString().slice(0, 10);
+    const urlEntries = [
+      ...staticUrls.map(u => `<url><loc>${escapeXml(u.loc)}</loc><lastmod>${lastmod}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`),
+      ...posts.map(p => `<url><loc>${escapeXml(baseUrl + '/blog/' + encodeURIComponent(p.slug))}</loc><lastmod>${p.publishedAt ? new Date(p.publishedAt).toISOString().slice(0, 10) : lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`)
+    ];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+${urlEntries.join('\n')}
+</urlset>`;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.send(xml);
+  });
+}
+
+function escapeXml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
 app.use(express.static(path.join(__dirname, 'public')));
 

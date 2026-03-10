@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+ENV-VERCEL.txt
 
 # Données clients (ne pas commiter)
 data/commandes.json

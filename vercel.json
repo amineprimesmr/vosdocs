@@ -3,5 +3,11 @@
   "redirects": [
     { "source": "/index.html", "destination": "/", "permanent": true }
   ],
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/server.js" }]
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/server.js" }],
+  "crons": [
+    {
+      "path": "/api/cron/generate-articles",
+      "schedule": "0 9 */3 * *"
+    }
+  ]
 }

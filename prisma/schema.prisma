@@ -1,0 +1,58 @@
+// Schéma Prisma pour le système Auto-Blog SEO (VosDocs)
+// Base : PostgreSQL (Neon ou Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Article publié (visible sur /blog/:slug)
+model BlogPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  bodyHtml    String   @map("body_html")
+  category    String
+  keywords    String[] @default([])
+  readingTime String?  @map("reading_time")
+  publishedAt DateTime @default(now()) @map("published_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("blog_posts")
+}
+
+// Proposition d'article (générée par l'IA, en attente de validation)
+model BlogProposal {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String
+  description String
+  content     String   // markdown ou texte
+  bodyHtml    String   @map("body_html")
+  category    String
+  readingTime String?  @map("reading_time")
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  batchId     String   @map("batch_id")   // même batch = 2 propositions envoyées ensemble
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  token       BlogAuthToken?
+
+  @@map("blog_proposals")
+}
+
+// Token d'approbation (usage unique, expiration 48h)
+model BlogAuthToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  proposalId String   @unique @map("proposal_id")
+  proposal   BlogProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+
+  @@map("blog_auth_tokens")
+}
