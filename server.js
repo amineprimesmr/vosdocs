@@ -290,13 +290,10 @@ app.get('/api/blog/posts', async (req, res) => {
   }
 });
 
-// Pages blog dynamiques (si DB + Prisma disponibles)
-let blogDbAvailable = false;
-try {
-  blogDbAvailable = !!(blogLib && blogLib.getPrisma && blogLib.getPrisma());
-} catch (_) {}
-if (blogDbAvailable) {
+// Pages blog dynamiques
+{
   app.get('/blog/published', (req, res) => {
+    if (!blogRender) return res.redirect(302, '/blog');
     const config = getBlogConfig();
     const html = blogRender ? blogRender.renderBlogPublished(config) : '';
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -304,6 +301,7 @@ if (blogDbAvailable) {
   });
 
   const serveBlogIndex = async (req, res) => {
+    if (!blogLib || !blogRender) return res.redirect(302, '/blog/index.html');
     try {
       const posts = await blogLib.getBlogPosts();
       const config = getBlogConfig();
@@ -321,6 +319,7 @@ if (blogDbAvailable) {
 
   app.get('/blog/:slug', async (req, res, next) => {
     if (req.params.slug === 'index.html' || req.params.slug === 'published') return next();
+    if (!blogLib || !blogRender) return next();
     try {
       const post = await blogLib.getBlogPostBySlug(req.params.slug);
       if (!post) return next();
@@ -337,6 +336,7 @@ if (blogDbAvailable) {
 
   // Compatibilité ancienne URL /blog/mon-article.html
   app.get('/blog/:slug.html', async (req, res, next) => {
+    if (!blogLib) return next();
     try {
       const post = await blogLib.getBlogPostBySlug(req.params.slug);
       if (!post) return next();
@@ -367,6 +367,7 @@ if (blogDbAvailable) {
       'recapitulatif'
     ]);
     if (staticPages.has(req.params.slug)) return next();
+    if (!blogLib) return next();
     try {
       const post = await blogLib.getBlogPostBySlug(req.params.slug);
       if (!post) return next();
@@ -396,7 +397,7 @@ if (blogDbAvailable) {
     ];
     let posts = [];
     try {
-      posts = await blogLib.getBlogPosts();
+      posts = blogLib ? await blogLib.getBlogPosts() : [];
     } catch (_) {}
     const lastmod = new Date().toISOString().slice(0, 10);
     const urlEntries = [
