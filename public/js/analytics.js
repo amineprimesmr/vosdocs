@@ -4,7 +4,7 @@
  * dans ce fichier uniquement, puis déploie le site.
  */
 (function () {
-  var GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
+  var GA_MEASUREMENT_ID = 'G-VL0J44Y6GG';
   if (!GA_MEASUREMENT_ID || GA_MEASUREMENT_ID === 'G-XXXXXXXXXX') return;
 
   window.dataLayer = window.dataLayer || [];
