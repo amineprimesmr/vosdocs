@@ -3,7 +3,7 @@
  * Génère le sitemap dynamique avec les articles en base.
  */
 module.exports = async (req, res) => {
-  const baseUrl = (process.env.BASE_URL || 'https://www.vosdocs.fr').replace(/\/$/, '');
+  const baseUrl = (process.env.BASE_URL || 'https://www.carvinguard.fr').replace(/\/$/, '');
   const staticUrls = [
     { loc: baseUrl + '/', changefreq: 'weekly', priority: '1.0' },
     { loc: baseUrl + '/conditions-generales-vente.html', changefreq: 'yearly', priority: '0.5' },

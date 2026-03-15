@@ -1,5 +1,5 @@
 /**
- * VosDocs - Certificat de situation administrative détaillée (NON GAGE)
+ * Carvinguard - Certificat de situation administrative détaillée (NON GAGE)
  * Script principal - Animations et interactions
  */
 
@@ -119,8 +119,12 @@ function initScrollAnimations() {
     });
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
-  document.querySelectorAll('.stat-card, .avis-card, .vehicle-btn').forEach(el => {
-    el.style.animationPlayState = 'paused';
+  document.querySelectorAll('.stat-card, .discover-card, .avis-card, .vehicle-btn, .vehicle-card, .faq-item[data-faq-item]').forEach(el => {
+    if (el.classList.contains('faq-item')) {
+      el.style.animationPlayState = 'paused';
+    } else {
+      el.style.animationPlayState = 'paused';
+    }
     observer.observe(el);
   });
 }

@@ -1,5 +1,5 @@
 /**
- * Google Analytics 4 - VosDocs
+ * Google Analytics 4 - Carvinguard
  * Remplace G-XXXXXXXXXX par ton ID de mesure GA4 (ex. G-A1B2C3D4E5)
  * dans ce fichier uniquement, puis déploie le site.
  */

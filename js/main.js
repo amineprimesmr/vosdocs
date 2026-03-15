@@ -1,5 +1,5 @@
 /**
- * VosDocs - Certificat de situation administrative détaillée (NON GAGE)
+ * Carvinguard - Certificat de situation administrative détaillée (NON GAGE)
  * Script principal - Animations et interactions
  */
 
@@ -119,7 +119,7 @@ function initScrollAnimations() {
     });
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
-  document.querySelectorAll('.stat-card, .avis-card, .vehicle-btn').forEach(el => {
+  document.querySelectorAll('.stat-card, .avis-card, .vehicle-btn, .vehicle-card').forEach(el => {
     el.style.animationPlayState = 'paused';
     observer.observe(el);
   });
@@ -145,6 +145,7 @@ function initMobileMenu() {
   const toggle = document.querySelector('.menu-toggle');
   const mobileNav = document.getElementById('mobileNav');
   if (!toggle || !mobileNav) return;
+
   function openMenu() {
     mobileNav.classList.add('is-open');
     toggle.setAttribute('aria-expanded', 'true');
@@ -157,20 +158,25 @@ function initMobileMenu() {
     toggle.setAttribute('aria-label', 'Ouvrir le menu');
     document.body.style.overflow = '';
   }
+
   toggle.addEventListener('click', () => {
     if (mobileNav.classList.contains('is-open')) closeMenu();
     else openMenu();
   });
+
   mobileNav.addEventListener('click', (e) => {
     if (e.target === mobileNav) closeMenu();
   });
+
   mobileNav.querySelectorAll('.mobile-nav-link').forEach(link => {
     link.addEventListener('click', () => closeMenu());
   });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && mobileNav.classList.contains('is-open')) closeMenu();
   });
 }
+
 // ===== Utilitaires =====
 function throttle(fn, delay) {
   let last = 0;

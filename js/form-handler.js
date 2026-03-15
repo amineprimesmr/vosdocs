@@ -1,5 +1,5 @@
 /**
- * VosDocs - Gestion du formulaire de recherche véhicule
+ * Carvinguard - Gestion du formulaire de recherche véhicule
  */
 
 (function() {
@@ -57,7 +57,7 @@
           prix: 19.90
         });
       }
-      window.location.href = 'recapitulatif.html';
+      window.location.href = 'resultats.html';
     });
   });
 })();

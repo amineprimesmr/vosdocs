@@ -1,5 +1,5 @@
 /**
- * VosDocs - Récapitulatif et formulaire manuel
+ * Carvinguard - Récapitulatif et formulaire manuel
  */
 
 (function() {
@@ -14,6 +14,10 @@
     set('recap-demarche', data && data.demarche);
     set('recap-departement', data && data.departement);
     set('recap-immatriculation', data && data.immatriculation);
+
+    // Pré-remplir l'email si déjà saisi sur la page rapport
+    var recapEmailEl = document.getElementById('recap-email');
+    if (recapEmailEl && data && data.email) recapEmailEl.value = data.email;
 
     // Format date JJ/MM/AAAA : uniquement chiffres, ajout automatique des /
     function formatDateValue(val) {

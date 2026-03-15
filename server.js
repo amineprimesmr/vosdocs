@@ -1,5 +1,5 @@
 /**
- * VosDocs - Serveur API
+ * Carvinguard - Serveur API
  * Sert les pages, départements et paiement Stripe
  */
 
@@ -48,10 +48,10 @@ async function notifyTeam(order) {
   }
 }
 
-/** Envoi email à l'équipe (infos.vosdocs@gmail.com) avec le détail de la commande */
+/** Envoi email à l'équipe (infos.carvinguard@gmail.com) avec le détail de la commande */
 function getOrderEmailContent(order) {
   const lines = [
-    'Nouvelle commande VosDocs – Paiement validé',
+    'Nouvelle commande Carvinguard – Paiement validé',
     '-------------------------------------------',
     'Référence Stripe: ' + (order.id || '—'),
     'Montant: ' + (order.montant || '—'),
@@ -81,8 +81,8 @@ function getOrderEmailContent(order) {
 
 /** @returns {Promise<{ sent: boolean, error?: string }>} */
 async function sendOrderEmail(order) {
-  const to = process.env.MAIL_TO || 'infos.vosdocs@gmail.com';
-  const subject = 'VosDocs – Nouvelle commande ' + (order.immatriculation || order.id || '');
+  const to = process.env.MAIL_TO || 'infos.carvinguard@gmail.com';
+  const subject = 'Carvinguard – Nouvelle commande ' + (order.immatriculation || order.id || '');
   const text = getOrderEmailContent(order);
 
   if (process.env.RESEND_API_KEY) {
@@ -180,7 +180,7 @@ app.use(express.json());
 app.get('/api/email-status', (req, res) => {
   res.json({
     resendConfigured: !!process.env.RESEND_API_KEY,
-    mailTo: process.env.MAIL_TO || 'infos.vosdocs@gmail.com'
+    mailTo: process.env.MAIL_TO || 'infos.carvinguard@gmail.com'
   });
 });
 
@@ -228,7 +228,7 @@ const blogRender = (function () {
 function getBlogConfig() {
   const configPath = path.join(__dirname, 'content', 'blog-config.json');
   if (!fs.existsSync(configPath)) {
-    return { baseUrl: process.env.BASE_URL || 'https://www.vosdocs.fr', blogPath: '/blog', categories: {} };
+    return { baseUrl: process.env.BASE_URL || 'https://www.carvinguard.fr', blogPath: '/blog', categories: {} };
   }
   return JSON.parse(fs.readFileSync(configPath, 'utf8'));
 }
@@ -380,7 +380,7 @@ app.get('/api/blog/posts', async (req, res) => {
 
   // Sitemap dynamique (inclut les articles du blog)
   app.get('/sitemap.xml', async (req, res) => {
-    const baseUrl = (process.env.BASE_URL || getBlogConfig().baseUrl || 'https://www.vosdocs.fr').replace(/\/$/, '');
+    const baseUrl = (process.env.BASE_URL || getBlogConfig().baseUrl || 'https://www.carvinguard.fr').replace(/\/$/, '');
     const staticUrls = [
       { loc: baseUrl + '/', changefreq: 'weekly', priority: '1.0' },
       { loc: baseUrl + '/conditions-generales-vente.html', changefreq: 'yearly', priority: '0.5' },
@@ -493,12 +493,12 @@ app.get('/', (req, res) => {
 // Export pour Vercel (serverless) ; listen uniquement en local
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`VosDocs démarré sur http://localhost:${PORT}`);
+    console.log(`Carvinguard démarré sur http://localhost:${PORT}`);
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn('⚠️  STRIPE_SECRET_KEY manquant dans .env - les paiements ne fonctionneront pas');
     }
     if (process.env.RESEND_API_KEY) {
-      console.log('✓ Email (Resend) configuré →', process.env.MAIL_TO || 'infos.vosdocs@gmail.com');
+      console.log('✓ Email (Resend) configuré →', process.env.MAIL_TO || 'infos.carvinguard@gmail.com');
     } else {
       console.warn('⚠️  RESEND_API_KEY manquant - les emails commande ne seront pas envoyés');
     }

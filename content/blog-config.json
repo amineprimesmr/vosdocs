@@ -1,7 +1,7 @@
 {
   "title": "Blog & Actualités",
   "subtitle": "Certificat de non-gage, carte grise, vente et achat de véhicule : conseils, démarches et actualités.",
-  "baseUrl": "https://www.vosdocs.fr",
+  "baseUrl": "https://www.carvinguard.fr",
   "blogPath": "/blog",
   "categories": {
     "certificat-non-gage": "Certificat de non-gage",
@@ -13,7 +13,7 @@
   },
   "pagination": { "perPage": 12 },
   "seo": {
-    "indexTitle": "Blog & Actualités | Certificat de non-gage, véhicule | VosDocs",
-    "indexDescription": "Articles et conseils sur le certificat de non-gage, la vente et l'achat de véhicule, la carte grise. Restez informé avec VosDocs."
+    "indexTitle": "Blog & Actualités | Certificat de non-gage, véhicule | Carvinguard",
+    "indexDescription": "Articles et conseils sur le certificat de non-gage, la vente et l'achat de véhicule, la carte grise. Restez informé avec Carvinguard."
   }
 }

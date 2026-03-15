@@ -1,4 +1,4 @@
-# VosDocs - Certificat de situation administrative détaillée (NON GAGE)
+# Carvinguard - Certificat de situation administrative détaillée (NON GAGE)
 
 Site **100% fonctionnel** pour une agence prestataire proposant l'obtention du **Certificat de situation administrative détaillée (NON GAGE)** à 19,90 €.
 
@@ -33,7 +33,7 @@ Site **100% fonctionnel** pour une agence prestataire proposant l'obtention du *
 ## Lancer le site (recommandé)
 
 ```bash
-cd vosdocs
+cd carvinguard
 npm install
 npm start
 ```
@@ -45,7 +45,7 @@ Le serveur Node.js fournit l'API véhicule et sert les pages.
 ## Alternative : mode statique
 
 ```bash
-cd vosdocs
+cd carvinguard
 python3 -m http.server 8080
 ```
 

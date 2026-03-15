@@ -1,5 +1,5 @@
 /**
- * VosDocs - Récapitulatif et formulaire manuel
+ * Carvinguard - Récapitulatif et formulaire manuel
  */
 
 (function() {

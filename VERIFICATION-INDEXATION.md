@@ -1,4 +1,4 @@
-# Comment vérifier l’indexation et le SEO (VosDocs)
+# Comment vérifier l’indexation et le SEO (Carvinguard)
 
 Checklist pour vérifier que tout est correct après les corrections Search Console (sitemap, robots, redirections, noindex).
 
@@ -8,9 +8,9 @@ Checklist pour vérifier que tout est correct après les corrections Search Cons
 
 | Vérification | Où regarder | Attendu |
 |--------------|-------------|---------|
-| **robots.txt** | `public/robots.txt` | `Disallow: /api/` présent, `Sitemap: https://www.vosdocs.fr/sitemap.xml` |
-| **Sitemap** | `public/sitemap.xml` | Une seule URL d’accueil (`https://www.vosdocs.fr/`), **pas** de `index.html`, **pas** de `recapitulatif.html` ni `checkout.html` |
-| **Page d’accueil** | `public/index.html` | `canonical` et `og:url` = `https://www.vosdocs.fr/` (sans `index.html`) |
+| **robots.txt** | `public/robots.txt` | `Disallow: /api/` présent, `Sitemap: https://www.carvinguard.fr/sitemap.xml` |
+| **Sitemap** | `public/sitemap.xml` | Une seule URL d’accueil (`https://www.carvinguard.fr/`), **pas** de `index.html`, **pas** de `recapitulatif.html` ni `checkout.html` |
+| **Page d’accueil** | `public/index.html` | `canonical` et `og:url` = `https://www.carvinguard.fr/` (sans `index.html`) |
 | **Redirection** | `vercel.json` | `"source": "/index.html"` → `"destination": "/"`, `"permanent": true` |
 | **Pages noindex** | checkout, recapitulatif, confirmation, 404 | Chacune a `<meta name="robots" content="noindex, follow">` |
 
@@ -22,19 +22,19 @@ Ouvre ces URLs dans le navigateur (en remplaçant par ton domaine si différent)
 
 | URL | Ce qu’il faut vérifier |
 |-----|-------------------------|
-| `https://www.vosdocs.fr/robots.txt` | Texte avec `Disallow: /api/` et `Sitemap: https://www.vosdocs.fr/sitemap.xml` |
-| `https://www.vosdocs.fr/sitemap.xml` | Liste d’URLs sans `recapitulatif`, sans `checkout`, une seule entrée pour l’accueil (`/`) |
-| `https://www.vosdocs.fr/` | Page d’accueil s’affiche (pas d’erreur 404) |
-| `https://www.vosdocs.fr/index.html` | Redirection automatique vers `https://www.vosdocs.fr/` (URL dans la barre d’adresse devient `/`) |
+| `https://www.carvinguard.fr/robots.txt` | Texte avec `Disallow: /api/` et `Sitemap: https://www.carvinguard.fr/sitemap.xml` |
+| `https://www.carvinguard.fr/sitemap.xml` | Liste d’URLs sans `recapitulatif`, sans `checkout`, une seule entrée pour l’accueil (`/`) |
+| `https://www.carvinguard.fr/` | Page d’accueil s’affiche (pas d’erreur 404) |
+| `https://www.carvinguard.fr/index.html` | Redirection automatique vers `https://www.carvinguard.fr/` (URL dans la barre d’adresse devient `/`) |
 
-Pour la redirection : ouvre `https://www.vosdocs.fr/index.html` → tu dois finir sur `https://www.vosdocs.fr/` (sans `index.html`).
+Pour la redirection : ouvre `https://www.carvinguard.fr/index.html` → tu dois finir sur `https://www.carvinguard.fr/` (sans `index.html`).
 
 ---
 
 ## 3. Vérifier dans Google Search Console
 
 1. Va sur [Google Search Console](https://search.google.com/search-console).
-2. Sélectionne la propriété **www.vosdocs.fr** (ou celle que tu utilises).
+2. Sélectionne la propriété **www.carvinguard.fr** (ou celle que tu utilises).
 3. **Rapport « Couverture » / « Pages » (indexation)**
    - Menu : **Indexation** → **Pages** (ou **Couverture** selon l’interface).
    - Tu verras les motifs : « Introuvable (404) », « Bloquée (403) », « Page avec redirection », « Exclue par noindex ».
@@ -45,9 +45,9 @@ Pour la redirection : ouvre `https://www.vosdocs.fr/index.html` → tu dois fini
    - **403 / 404** : les URLs sous `/api/...` devraient disparaître du rapport une fois que Google respecte le `Disallow: /api/` (attendre quelques jours).
 5. **Tester une URL**
    - Menu **Inspection d’URL**.
-   - Saisis `https://www.vosdocs.fr/` → « Tester l’URL en direct » pour voir si Google peut indexer la page.
+   - Saisis `https://www.carvinguard.fr/` → « Tester l’URL en direct » pour voir si Google peut indexer la page.
 6. **Soumettre le sitemap**
-   - **Sitemaps** : vérifier que `https://www.vosdocs.fr/sitemap.xml` est bien envoyé et sans erreur.
+   - **Sitemaps** : vérifier que `https://www.carvinguard.fr/sitemap.xml` est bien envoyé et sans erreur.
 
 ---
 

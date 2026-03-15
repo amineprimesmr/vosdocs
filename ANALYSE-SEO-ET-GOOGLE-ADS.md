@@ -28,7 +28,7 @@ Dans **index.html** et **public/index.html** :
 | Avant | Après |
 |-------|--------|
 | `"@type": "Service"` avec `aggregateRating` | `"@type": "Product"` avec `aggregateRating` |
-| `"@id": "https://www.vosdocs.fr/#service"` | `"@id": "https://www.vosdocs.fr/#product"` |
+| `"@id": "https://www.carvinguard.fr/#service"` | `"@id": "https://www.carvinguard.fr/#product"` |
 | `"reviewCount": "32000"` (chaîne) | `"reviewCount": 32000` (nombre) |
 | `"bestRating": "5"`, `"worstRating": "1"` | `"bestRating": 5`, `"worstRating": 1` (nombres) |
 | Propriété `provider` (spécifique Service) | Supprimée (Product n’en a pas besoin) |
@@ -43,7 +43,7 @@ Résultat : l’AggregateRating a maintenant un **parent de type Product**, acce
 
 1. Déployer le site avec les corrections.
 2. Aller sur : [Google Rich Results Test](https://search.google.com/test/rich-results).
-3. Saisir l’URL de la page d’accueil : `https://www.vosdocs.fr/` (ou `https://www.vosdocs.fr/index.html` si elle ne redirige pas).
+3. Saisir l’URL de la page d’accueil : `https://www.carvinguard.fr/` (ou `https://www.carvinguard.fr/index.html` si elle ne redirige pas).
 4. Lancer le test.
 5. Vérifier qu’il n’y a **plus d’erreur** sur « Review snippet » / « Extraits d’avis » et que le type détecté pour l’entité contenant l’avis est bien **Product** (ou équivalent).
 
@@ -51,7 +51,7 @@ Si le test est vert pour les avis, la structure est correcte côté Google.
 
 ### Étape 2 – Search Console (validation de la correction)
 
-1. [Google Search Console](https://search.google.com/search-console) → propriété **www.vosdocs.fr**.
+1. [Google Search Console](https://search.google.com/search-console) → propriété **www.carvinguard.fr**.
 2. Menu **Améliorations** (ou **Expérience**) → **Données structurées** / **Extraits d’avis** (selon l’interface).
 3. Ouvrir le rapport qui montrait l’erreur « Type d’objet non valide pour le champ &lt;parent_node&gt; ».
 4. Cliquer sur **« Valider la correction »** (ou « Demander une réindexation » / « Tester l’URL en direct » selon les options proposées).
@@ -69,7 +69,7 @@ Pour que les annonces fonctionnent correctement, la **page d’accueil** (ou la 
 
 Checklist rapide :
 
-- [ ] Ouvrir `https://www.vosdocs.fr/` en navigation privée : la page s’affiche correctement.
+- [ ] Ouvrir `https://www.carvinguard.fr/` en navigation privée : la page s’affiche correctement.
 - [ ] Pas de message d’erreur dans la console du navigateur (F12).
 - [ ] Liens « Obtenir mon certificat », « Contact », « Mentions légales » fonctionnent.
 - [ ] Données structurées : test Rich Results OK (étape 1).
@@ -108,6 +108,6 @@ En résumé : l’erreur « Extraits d’avis » est **corrigée**. En validant 
 2. **Tester** l’URL de la page d’accueil dans [Rich Results Test](https://search.google.com/test/rich-results) et confirmer qu’il n’y a plus d’erreur sur les avis.
 3. Dans **Search Console**, demander la **validation de la correction** pour les données structurées « Extraits d’avis ».
 4. Dans **Google Ads**, lancer **« Tester la connexion »** (ou équivalent) pour la balise sur la page d’accueil.
-5. Si tout est vert, **créer ou reprendre une campagne** en ciblant l’URL `https://www.vosdocs.fr/` (ou la page de destination choisie).
+5. Si tout est vert, **créer ou reprendre une campagne** en ciblant l’URL `https://www.carvinguard.fr/` (ou la page de destination choisie).
 
 Si après tout ça une campagne est encore refusée, le message de refus dans Google Ads (e-mail ou dans l’interface) indiquera la raison précise (ex. « Expérience de la page de destination », « Contenu », « Compte ») à traiter en priorité.

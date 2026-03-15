@@ -1,5 +1,5 @@
 /**
- * VosDocs - Paiement Stripe (checkout unique)
+ * Carvinguard - Paiement Stripe (checkout unique)
  */
 
 (function() {

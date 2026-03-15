@@ -1,29 +1,29 @@
 # Guide complet : Google Analytics, Search Console, SEO – A à Z
 
-**Objectif :** optimisation SEO maximale et suivi complet de vosdocs.fr.
+**Objectif :** optimisation SEO maximale et suivi complet de carvinguard.fr.
 
 ---
 
 ## PARTIE 1 – Google Search Console (déjà commencé)
 
 ### Ce que tu as déjà fait
-- Propriété domaine **vosdocs.fr** vérifiée (DNS TXT).
+- Propriété domaine **carvinguard.fr** vérifiée (DNS TXT).
 
 ### À faire tout de suite
 
 1. **Soumettre le sitemap**
    - Search Console → **Indexation** → **Sitemaps**.
-   - Nouveau sitemap : `https://www.vosdocs.fr/sitemap.xml`
+   - Nouveau sitemap : `https://www.carvinguard.fr/sitemap.xml`
    - Cliquer sur **Envoyer**.
 
 2. **Demander l’indexation des pages importantes**
    - En haut : **Inspection d’URL**.
    - Tester et demander l’indexation pour :
-     - `https://www.vosdocs.fr/`
-     - `https://www.vosdocs.fr/index.html`
-     - `https://www.vosdocs.fr/contact.html`
-     - `https://www.vosdocs.fr/aide.html`
-     - `https://www.vosdocs.fr/demarches.html`
+     - `https://www.carvinguard.fr/`
+     - `https://www.carvinguard.fr/index.html`
+     - `https://www.carvinguard.fr/contact.html`
+     - `https://www.carvinguard.fr/aide.html`
+     - `https://www.carvinguard.fr/demarches.html`
    - Pour chaque URL : **Demander une indexation**.
 
 3. **Comprendre les pages non indexées**
@@ -41,15 +41,15 @@
 ### Étape 1 : Créer un compte GA4
 
 1. Va sur [analytics.google.com](https://analytics.google.com).
-2. Connecte-toi avec le compte Google de VosDocs.
+2. Connecte-toi avec le compte Google de Carvinguard.
 3. **Admin** (engrenage en bas à gauche) → **Créer un compte**.
-   - Nom du compte : `VosDocs` (ou ce que tu veux).
+   - Nom du compte : `Carvinguard` (ou ce que tu veux).
 4. **Créer une propriété** :
-   - Nom : `VosDocs.fr` ou `Site VosDocs`.
+   - Nom : `Carvinguard.fr` ou `Site Carvinguard`.
    - Fuseau : France.
    - Devise : Euro (EUR).
 5. **Détails du site** :
-   - URL : `https://www.vosdocs.fr`
+   - URL : `https://www.carvinguard.fr`
    - Nom du flux : `Site web principal`.
    - Créer un flux **Web**.
 6. Tu obtiens un **ID de mesure** du type : `G-XXXXXXXXXX`.
@@ -68,7 +68,7 @@ Après déploiement, les visites seront enregistrées dans GA4 (délai possible 
 
 - **Objectifs (conversions)** : marquer comme conversion « Début du paiement » ou « Paiement réussi » si tu veux suivre les commandes.
 - **Exploration** : utiliser les rapports **Acquisition** (d’où viennent les visiteurs) et **Engagement** (pages vues, durée).
-- **Liens avec Search Console** : dans GA4, **Admin** → **Liens** → **Search Console** → associer la propriété vosdocs.fr pour voir les requêtes dans GA4.
+- **Liens avec Search Console** : dans GA4, **Admin** → **Liens** → **Search Console** → associer la propriété carvinguard.fr pour voir les requêtes dans GA4.
 
 ---
 
@@ -76,7 +76,7 @@ Après déploiement, les visites seront enregistrées dans GA4 (délai possible 
 
 1. Dans **GA4** : **Admin** → **Liens** (colonne Propriété).
 2. **Liens Search Console** → **Lier**.
-3. Choisir le compte et la propriété **vosdocs.fr**.
+3. Choisir le compte et la propriété **carvinguard.fr**.
 4. Valider.
 
 Résultat : dans GA4, tu pourras voir une partie des requêtes Google qui amènent du trafic (données dans **Acquisition** / rapports liés à la recherche).
@@ -85,11 +85,11 @@ Résultat : dans GA4, tu pourras voir une partie des requêtes Google qui amène
 
 ## PARTIE 4 – Google Business Profile (si tu as une adresse)
 
-Si VosDocs a une adresse physique ou un local :
+Si Carvinguard a une adresse physique ou un local :
 
 1. [business.google.com](https://business.google.com) → **Gérer maintenant**.
 2. Créer / revendiquer la fiche pour ton activité.
-3. Renseigner : adresse, téléphone (ex. 07 98 63 78 31), site (vosdocs.fr), horaires.
+3. Renseigner : adresse, téléphone (ex. 07 98 63 78 31), site (carvinguard.fr), horaires.
 4. Choisir une catégorie (ex. « Service administratif » ou proche).
 5. Valider la fiche (courrier, téléphone ou email selon ce que Google propose).
 
@@ -102,7 +102,7 @@ Si VosDocs a une adresse physique ou un local :
 Utile si plus tard tu ajoutes d’autres outils (publicité, remarketing, etc.) sans retoucher le code à chaque fois.
 
 1. [tagmanager.google.com](https://tagmanager.google.com) → Créer un compte.
-2. Créer un **conteneur** pour **Web** → URL : `https://www.vosdocs.fr`.
+2. Créer un **conteneur** pour **Web** → URL : `https://www.carvinguard.fr`.
 3. Tu reçois deux extraits de code (un pour le `<head>`, un pour le `<body>`).
 4. Dans GTM, ajouter une **balise** de type **Google Analytics : GA4** et y coller ton ID de mesure GA4.
 5. Déclencher la balise sur **All Pages**.
@@ -112,7 +112,7 @@ On peut le faire plus tard ; pour l’instant GA4 direct suffit.
 
 ---
 
-## PARTIE 6 – SEO : checklist technique (déjà en place sur vosdocs.fr)
+## PARTIE 6 – SEO : checklist technique (déjà en place sur carvinguard.fr)
 
 | Élément | Statut |
 |--------|--------|

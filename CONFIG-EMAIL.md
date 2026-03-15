@@ -1,4 +1,4 @@
-# Configurer l’envoi d’email (commande → infos.vosdocs@gmail.com)
+# Configurer l’envoi d’email (commande → infos.carvinguard@gmail.com)
 
 Une seule chose à faire : **mettre ta clé API Resend** dans le projet (en local et sur Vercel).
 
@@ -23,19 +23,19 @@ Tu as déjà un compte Resend. Récupère ta clé :
    (remplace `re_ta_cle_ici` par ta vraie clé Resend, sans espace).
 3. Enregistre, puis lance **`npm start`**.
 4. Ouvre **http://localhost:3000/checkout.html** et clique sur **« Test : simuler paiement et envoyer l’email »**.  
-   L’email doit arriver sur **infos.vosdocs@gmail.com**.
+   L’email doit arriver sur **infos.carvinguard@gmail.com**.
 
 ---
 
-## 3. En production (www.vosdocs.fr)
+## 3. En production (www.carvinguard.fr)
 
-1. Va sur **https://vercel.com** → projet **vosdocs** → **Settings** → **Environment Variables**.
+1. Va sur **https://vercel.com** → projet **carvinguard** → **Settings** → **Environment Variables**.
 2. Ajoute (pour l’environnement **Production**) :
    - **RESEND_API_KEY** = ta clé Resend (celle qui commence par `re_`)
-   - **MAIL_TO** = `infos.vosdocs@gmail.com` (optionnel, c’est déjà la valeur par défaut)
+   - **MAIL_TO** = `infos.carvinguard@gmail.com` (optionnel, c’est déjà la valeur par défaut)
 3. **Redéploie** le projet (Deployments → … → Redeploy).
 
-Après ça, chaque paiement validé (et le bouton test) enverra un email à **infos.vosdocs@gmail.com** via Resend.
+Après ça, chaque paiement validé (et le bouton test) enverra un email à **infos.carvinguard@gmail.com** via Resend.
 
 ---
 

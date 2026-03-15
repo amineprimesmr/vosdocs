@@ -1,11 +1,12 @@
 {
-  "name": "vosdocs",
+  "name": "carvinguard",
   "version": "1.0.0",
   "description": "Certificat de situation administrative détaillée (NON GAGE)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "serve": "cd public && python3 -m http.server 3000",
     "build": "prisma generate",
     "postinstall": "prisma generate",
     "blog": "node scripts/generate-blog.js",

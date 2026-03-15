@@ -39,10 +39,10 @@ node scripts/seed-blog-db.js
 | `DATABASE_URL`   | Neon ou Supabase → connection string PostgreSQL             |
 | `GROQ_API_KEY`   | [console.groq.com](https://console.groq.com) → API Keys      |
 | `CRON_SECRET`    | Générer : `openssl rand -hex 32`                            |
-| `MERCHANT_EMAIL` | Adresse qui reçoit les 2 propositions (ex. infos.vosdocs@gmail.com) |
-| `BASE_URL`       | URL du site (ex. https://www.vosdocs.fr)                    |
+| `MERCHANT_EMAIL` | Adresse qui reçoit les 2 propositions (ex. infos.carvinguard@gmail.com) |
+| `BASE_URL`       | URL du site (ex. https://www.carvinguard.fr)                    |
 | `RESEND_API_KEY` | Déjà utilisé pour les emails commandes                      |
-| `MAIL_FROM`      | Optionnel, défaut Resend (ex. noreply@vosdocs.fr si domaine vérifié) |
+| `MAIL_FROM`      | Optionnel, défaut Resend (ex. noreply@carvinguard.fr si domaine vérifié) |
 
 ## 3. CRON (tous les 3 jours à 9h UTC)
 
@@ -50,19 +50,19 @@ Sur Vercel, le CRON ne peut pas envoyer d’en-tête personnalisé. Il faut donc
 
 1. Créez un compte sur [cron-job.org](https://cron-job.org) (ou équivalent).
 2. Créez un job :
-   - **URL :** `https://www.vosdocs.fr/api/cron/generate-articles`
+   - **URL :** `https://www.carvinguard.fr/api/cron/generate-articles`
    - **Méthode :** GET
    - **En-tête :** `Authorization: Bearer VOTRE_CRON_SECRET`
    - **Planification :** tous les 3 jours à 9h00 UTC → expression cron : `0 9 */3 * *`
 
 Alternative avec secret en query (moins propre mais possible) :  
-`https://www.vosdocs.fr/api/cron/generate-articles?secret=VOTRE_CRON_SECRET`  
+`https://www.carvinguard.fr/api/cron/generate-articles?secret=VOTRE_CRON_SECRET`  
 (à ne pas exposer dans des logs.)
 
 ## 4. Test manuel du CRON
 
 ```bash
-curl -H "Authorization: Bearer VOTRE_CRON_SECRET" "https://www.vosdocs.fr/api/cron/generate-articles"
+curl -H "Authorization: Bearer VOTRE_CRON_SECRET" "https://www.carvinguard.fr/api/cron/generate-articles"
 ```
 
 Ou en local (avec `.env` rempli) :

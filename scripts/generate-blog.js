@@ -21,7 +21,7 @@ try {
 }
 
 const categories = config.categories || {};
-const baseUrl = config.baseUrl || 'https://www.vosdocs.fr';
+const baseUrl = config.baseUrl || 'https://www.carvinguard.fr';
 const blogPath = config.blogPath || '/blog';
 
 // Trier par date décroissante
@@ -67,8 +67,8 @@ function headBlock(title, description, canonical, isArticle, article) {
       "headline": ${JSON.stringify(article.title)},
       "description": ${JSON.stringify(description)},
       "datePublished": "${article.date}",
-      "author": { "@type": "Organization", "name": "VosDocs" },
-      "publisher": { "@type": "Organization", "name": "VosDocs", "url": "${baseUrl}" }
+      "author": { "@type": "Organization", "name": "Carvinguard" },
+      "publisher": { "@type": "Organization", "name": "Carvinguard", "url": "${baseUrl}" }
     }
     </script>`;
   }
@@ -115,7 +115,7 @@ function formatDate(dateStr) {
 
 // ---------- Index page ----------
 function buildIndex() {
-  const title = config.seo?.indexTitle || config.title + ' | VosDocs';
+  const title = config.seo?.indexTitle || config.title + ' | Carvinguard';
   const description = config.seo?.indexDescription || config.subtitle;
   const canonical = baseUrl + blogPath + '/';
 
@@ -158,7 +158,7 @@ ${headBlock(title, description, canonical, false)}
   <a href="#blog-main" class="skip-link">Aller au contenu</a>
   <header class="header header-light blog-header">
     <div class="container header-inner">
-      <a href="../index.html" class="logo"><img src="/logo.png" alt="VosDocs"></a>
+      <a href="../index.html" class="logo"><img src="/logo.png" alt="Carvinguard"></a>
       <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
       ${navHtml('blog')}
     </div>
@@ -191,7 +191,7 @@ ${headBlock(title, description, canonical, false)}
     <div class="footer-bottom">
       <div class="container footer-bottom-inner">
         <div class="footer-copyright">
-          <p>Copyright © VosDocs.fr 2026</p>
+          <p>Copyright © Carvinguard.fr 2026</p>
           <span class="ssl-badge">🔒</span>
         </div>
         <nav class="footer-links">
@@ -238,7 +238,7 @@ ${headBlock(title, description, canonical, false)}
 // ---------- Article page ----------
 function buildArticle(article, index) {
   const catLabel = categories[article.category] || article.category;
-  const title = article.title + ' | Blog VosDocs';
+  const title = article.title + ' | Blog Carvinguard';
   const canonical = baseUrl + blogPath + '/' + article.slug + '.html';
 
   const related = articles
@@ -262,7 +262,7 @@ ${headBlock(title, article.description, canonical, true, article)}
   <a href="#article-body" class="skip-link">Aller au contenu</a>
   <header class="header header-light blog-header">
     <div class="container header-inner">
-      <a href="../index.html" class="logo"><img src="/logo.png" alt="VosDocs"></a>
+      <a href="../index.html" class="logo"><img src="/logo.png" alt="Carvinguard"></a>
       <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
       ${navHtml('blog')}
     </div>
@@ -301,7 +301,7 @@ ${headBlock(title, article.description, canonical, true, article)}
     <div class="footer-bottom">
       <div class="container footer-bottom-inner">
         <div class="footer-copyright">
-          <p>Copyright © VosDocs.fr 2026</p>
+          <p>Copyright © Carvinguard.fr 2026</p>
           <span class="ssl-badge">🔒</span>
         </div>
         <nav class="footer-links">

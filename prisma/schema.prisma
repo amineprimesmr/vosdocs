@@ -1,4 +1,4 @@
-// Schéma Prisma pour le système Auto-Blog SEO (VosDocs)
+// Schéma Prisma pour le système Auto-Blog SEO (Carvinguard)
 // Base : PostgreSQL (Neon ou Supabase)
 
 generator client {

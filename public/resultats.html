@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification véhicule | Carvinguard</title>
+    <meta name="description" content="Vérification de votre véhicule en cours. Carvinguard analyse plus de 330 millions de relevés pour votre certificat de non-gage.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://www.carvinguard.fr/resultats.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css?v=202603152400">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/analytics.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-17972633421');
+    </script>
+</head>
+<body class="resultats-page">
+    <a href="#resultats-card" class="skip-link">Aller à la vérification</a>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6" stroke-linecap="round"/></svg>
+                </span>
+                <span class="logo-text">Carvinguard</span>
+            </a>
+            <a href="contact.html" class="btn btn-contact">Contact</a>
+        </div>
+    </header>
+
+    <main class="resultats-main">
+        <div class="container resultats-container">
+            <div class="resultats-card" id="resultats-card">
+                <h1 class="resultats-title">
+                    <span class="resultats-title-loading" id="resultatsTitleLoading">Vérification en cours...</span>
+                    <span class="resultats-title-done" id="resultatsTitleDone" aria-hidden="true">Nous vérifierons votre véhicule</span>
+                </h1>
+
+                <div class="resultats-verif-block" id="resultatsVerifBlock">
+                    <div class="resultats-icon-car" id="resultatsIconCar" aria-hidden="true">
+                        <svg viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 38h64v4H8z" fill="#e5e7eb"/>
+                            <path d="M12 34h56l-4-12H16l-4 12z" fill="#3b82f6" opacity="0.9"/>
+                            <path d="M20 42a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm40 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="#1f2937"/>
+                            <path d="M68 26l-6-8H18l-6 8" fill="#60a5fa"/>
+                            <rect x="68" y="22" width="8" height="8" rx="2" fill="#16a34a"/>
+                            <path d="M72 24l1.5 1.5L72 27l-1.5-1.5L72 24z" stroke="white" stroke-width="1.5" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="resultats-immat-badge" id="resultatsImmatBadge">
+                        <span class="resultats-immat-label">IMM:</span>
+                        <strong class="resultats-immat-value" id="resultatsImmatValue">—</strong>
+                    </div>
+                    <h2 class="resultats-verif-title" id="resultatsVerifTitle">Nous vérifierons :</h2>
+                    <ul class="resultats-verif-list" id="resultatsVerifList">
+                        <li class="resultats-verif-item" data-verif="1">
+                            <span class="resultats-verif-check">✓</span>
+                            <span>Plus de <strong>330 millions</strong> de relevés de dommages</span>
+                        </li>
+                        <li class="resultats-verif-item" data-verif="2">
+                            <span class="resultats-verif-check">✓</span>
+                            <span>Plus de <strong>1000</strong> sources de données</span>
+                        </li>
+                        <li class="resultats-verif-item" data-verif="3">
+                            <span class="resultats-verif-check">✓</span>
+                            <span>Plus de <strong>45</strong> pays</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="resultats-redirect-msg" id="resultatsRedirectMsg" aria-hidden="true">
+                    <span class="loading-dots"><span></span><span></span><span></span></span>
+                    <span>Redirection vers le récapitulatif...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/vehicle-service.js"></script>
+    <script src="js/resultats.js"></script>
+</body>
+</html>

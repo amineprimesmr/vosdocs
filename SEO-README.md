@@ -1,4 +1,4 @@
-# VosDocs - Guide SEO Complet
+# Carvinguard - Guide SEO Complet
 
 Toutes les optimisations SEO ont été implémentées sur le site. Ce document récapitule ce qui a été fait et ce que vous devez personnaliser avant mise en production.
 
@@ -44,7 +44,7 @@ Toutes les optimisations SEO ont été implémentées sur le site. Ce document r
 ## 📋 À personnaliser avant mise en ligne
 
 ### 1. URLs et domaine
-Remplacer `https://www.vosdocs.fr` par votre domaine réel dans :
+Remplacer `https://www.carvinguard.fr` par votre domaine réel dans :
 - Tous les `<link rel="canonical">`
 - sitemap.xml
 - robots.txt

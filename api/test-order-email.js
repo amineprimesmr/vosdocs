@@ -6,7 +6,7 @@ const { Resend } = require('resend');
 
 function getOrderEmailContent(order) {
   const lines = [
-    'Nouvelle commande VosDocs – Paiement validé',
+    'Nouvelle commande Carvinguard – Paiement validé',
     '-------------------------------------------',
     'Référence Stripe: ' + (order.id || '—'),
     'Montant: ' + (order.montant || '—'),
@@ -67,8 +67,8 @@ module.exports = async (req, res) => {
     });
   }
 
-  const to = process.env.MAIL_TO || 'infos.vosdocs@gmail.com';
-  const subject = 'VosDocs – Nouvelle commande ' + (fakeOrder.immatriculation || fakeOrder.id || '');
+  const to = process.env.MAIL_TO || 'infos.carvinguard@gmail.com';
+  const subject = 'Carvinguard – Nouvelle commande ' + (fakeOrder.immatriculation || fakeOrder.id || '');
   const text = getOrderEmailContent(fakeOrder);
 
   try {

@@ -1,5 +1,5 @@
 /**
- * VosDocs - Service commande
+ * Carvinguard - Service commande
  * Stockage des données de la démarche (sessionStorage)
  */
 
@@ -25,16 +25,16 @@ var VehicleService = (function() {
 
   function saveCommandeData(data) {
     var payload = Object.assign({}, data, { timestamp: Date.now() });
-    sessionStorage.setItem('vosdocs_commande', JSON.stringify(payload));
+    sessionStorage.setItem('carvinguard_commande', JSON.stringify(payload));
   }
 
   function getCommandeData() {
     try {
-      var raw = sessionStorage.getItem('vosdocs_commande');
+      var raw = sessionStorage.getItem('carvinguard_commande');
       if (!raw) return null;
       var data = JSON.parse(raw);
       if (Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
-        sessionStorage.removeItem('vosdocs_commande');
+        sessionStorage.removeItem('carvinguard_commande');
         return null;
       }
       return data;
@@ -42,7 +42,7 @@ var VehicleService = (function() {
   }
 
   function clearCommandeData() {
-    sessionStorage.removeItem('vosdocs_commande');
+    sessionStorage.removeItem('carvinguard_commande');
   }
 
   return {

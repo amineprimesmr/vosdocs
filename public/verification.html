@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche en cours | Carvinguard</title>
+    <meta name="description" content="Vérification des informations de votre véhicule. Recherche sécurisée dans plus de 330 millions de relevés.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css?v=202603152500">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/analytics.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-17972633421');
+    </script>
+</head>
+<body class="verification-page">
+    <a href="#verification-card" class="skip-link">Aller à la recherche</a>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6" stroke-linecap="round"/></svg>
+                </span>
+                <span class="logo-text">Carvinguard</span>
+            </a>
+            <a href="contact.html" class="btn btn-contact">Contact</a>
+        </div>
+    </header>
+
+    <main class="verification-main">
+        <div class="container verification-container">
+            <div class="verification-card" id="verification-card">
+                <h1 class="verification-header">
+                    Récupération des informations relatives au véhicule
+                </h1>
+
+                <div class="verification-immat-block">
+                    <div class="verification-immat-avatar" aria-hidden="true">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z"/><circle cx="7.5" cy="16.5" r="1.5"/><circle cx="16.5" cy="16.5" r="1.5"/></svg>
+                    </div>
+                    <span class="verification-padlock" aria-hidden="true" title="Recherche sécurisée">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </span>
+                    <span class="verification-immat" id="verificationImmat">—</span>
+                </div>
+
+                <div class="verification-progress-wrap">
+                    <div class="verification-progress-bar">
+                        <div class="verification-progress-fill" id="verificationProgressFill"></div>
+                    </div>
+                    <span class="verification-progress-pct" id="verificationProgressPct">0 %</span>
+                </div>
+
+                <p class="verification-reassurance">
+                    Veuillez patienter pendant que nous recherchons des milliards de dossiers. Votre recherche est privée et sécurisée.
+                </p>
+
+                <h2 class="verification-section-title">Recherche des informations du véhicule...</h2>
+                <ul class="verification-search-list" id="verificationSearchList">
+                    <li class="verification-search-item" data-item="1">
+                        <span class="verification-search-spinner"></span>
+                        <span class="verification-search-check">✓</span>
+                        <span class="verification-search-label">Gages et oppositions</span>
+                    </li>
+                    <li class="verification-search-item" data-item="2">
+                        <span class="verification-search-spinner"></span>
+                        <span class="verification-search-check">✓</span>
+                        <span class="verification-search-label">Statut du véhicule</span>
+                    </li>
+                    <li class="verification-search-item" data-item="3">
+                        <span class="verification-search-spinner"></span>
+                        <span class="verification-search-check">✓</span>
+                        <span class="verification-search-label">Sinistres</span>
+                    </li>
+                    <li class="verification-search-item" data-item="4">
+                        <span class="verification-search-spinner"></span>
+                        <span class="verification-search-check">✓</span>
+                        <span class="verification-search-label">Vol et rappels</span>
+                    </li>
+                    <li class="verification-search-item" data-item="5">
+                        <span class="verification-search-spinner"></span>
+                        <span class="verification-search-check">✓</span>
+                        <span class="verification-search-label">Caractéristiques</span>
+                    </li>
+                </ul>
+
+                <div class="verification-redirect" id="verificationRedirect" aria-hidden="true">
+                    <span class="loading-dots"><span></span><span></span><span></span></span>
+                    <span>Redirection vers les résultats...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Avis (même que page d'accueil) -->
+        <section class="avis-section" id="avis-clients" aria-labelledby="avis-title">
+            <div class="container">
+                <h2 class="avis-title avis-title-gradient" id="avis-title">Des milliers de personnes trouvent des réponses avec nous</h2>
+                <div class="avis-rating">
+                    <span class="avis-excellent">Excellent</span>
+                    <span class="avis-stars-lg">★★★★★</span>
+                    <span class="avis-score">4.75</span>
+                    <span class="avis-count">basé sur 32 000 avis</span>
+                </div>
+                <div class="avis-carousel-wrapper">
+                    <button class="carousel-btn prev" aria-label="Avis précédent">‹</button>
+                    <div class="avis-carousel">
+                        <div class="avis-card">
+                            <div class="avis-card-header">
+                                <div class="avis-stars">★★★★★</div>
+                                <span class="avis-verified">✔ Client vérifié</span>
+                            </div>
+                            <h3 class="avis-card-title">Efficacité</h3>
+                            <p class="avis-text">Deux mots : Efficacité et rapidité ! :)</p>
+                            <div class="avis-card-meta">
+                                <span class="avis-author">Driant pascal</span>
+                                <span class="avis-date">Il y a 1 jour</span>
+                            </div>
+                        </div>
+                        <div class="avis-card">
+                            <div class="avis-card-header">
+                                <div class="avis-stars">★★★★★</div>
+                                <span class="avis-verified">✔ Client vérifié</span>
+                            </div>
+                            <h3 class="avis-card-title">Certificat reçu rapidement</h3>
+                            <p class="avis-text">Demande simple et certificat reçu par email en quelques heures. Très bien.</p>
+                            <div class="avis-card-meta">
+                                <span class="avis-author">Cliente</span>
+                                <span class="avis-date">Il y a 2 jours</span>
+                            </div>
+                        </div>
+                        <div class="avis-card">
+                            <div class="avis-card-header">
+                                <div class="avis-stars">★★★★★</div>
+                                <span class="avis-verified">✔ Client vérifié</span>
+                            </div>
+                            <h3 class="avis-card-title">Certificat de non-gage</h3>
+                            <p class="avis-text">La demande de certificat s'est faite d'une manière fluide et rapide. Document reçu par email en quelques heures.</p>
+                            <div class="avis-card-meta">
+                                <span class="avis-author">Catherine Delorme</span>
+                                <span class="avis-date">Il y a 3 jours</span>
+                            </div>
+                        </div>
+                        <div class="avis-card">
+                            <div class="avis-card-header">
+                                <div class="avis-stars">★★★★★</div>
+                                <span class="avis-verified">✔ Client vérifié</span>
+                            </div>
+                            <h3 class="avis-card-title">Qualité du service rapide 5 étoiles</h3>
+                            <p class="avis-text">Qualité du service rapide 5 étoiles ✨</p>
+                            <div class="avis-card-meta">
+                                <span class="avis-author">Afraid S.</span>
+                                <span class="avis-date">Il y a 5 jours</span>
+                            </div>
+                        </div>
+                        <div class="avis-card">
+                            <div class="avis-card-header">
+                                <div class="avis-stars">★★★★★</div>
+                                <span class="avis-verified">✔ Client vérifié</span>
+                            </div>
+                            <h3 class="avis-card-title">Tout est parfait</h3>
+                            <p class="avis-text">Bonjour, RAD, TOUT EST PARFAIT CONTINUER.</p>
+                            <div class="avis-card-meta">
+                                <span class="avis-author">JAYAVARMAN POK</span>
+                                <span class="avis-date">Il y a 1 semaine</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="carousel-btn next" aria-label="Avis suivant">›</button>
+                </div>
+                <div class="avis-trustpilot-footer">
+                    <p>Une note de <strong>4,5</strong> sur 5 sur la base de <strong>32 000</strong> avis. Nos avis préférés.</p>
+                    <a href="https://www.trustpilot.com" target="_blank" rel="noopener" class="avis-tp-logo">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#00b67a"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6-6.3 4.6 2.3-7-6-4.6h7.6z"/></svg>
+                        Trustpilot
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/vehicle-service.js"></script>
+    <script src="js/verification.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-# VosDocs - robots.txt
-# Certificat de non-gage - https://www.vosdocs.fr
+# Carvinguard - robots.txt
+# Certificat de non-gage - https://www.carvinguard.fr
 
 User-agent: *
 Allow: /
@@ -9,7 +9,7 @@ Disallow: /api/
 # /api/ → évite 403/404 dans Search Console (routes API non indexables)
 
 # Sitemap
-Sitemap: https://www.vosdocs.fr/sitemap.xml
+Sitemap: https://www.carvinguard.fr/sitemap.xml
 
 # Crawl-delay (optionnel, certains bots l'ignorent)
 # Crawl-delay: 1

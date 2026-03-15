@@ -1,4 +1,4 @@
-# Blog VosDocs – Organisation et publication
+# Blog Carvinguard – Organisation et publication
 
 Le blog est généré à partir de fichiers JSON. Les pages sont créées dans `public/blog/`.
 
