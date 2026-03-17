@@ -6,14 +6,13 @@
   document.addEventListener('DOMContentLoaded', function() {
     var data = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
 
-    // Afficher les infos de l'étape 1 (plaque, département)
+    // Afficher les infos de l'étape 1 (VIN)
     var set = function(id, val) {
       var el = document.getElementById(id);
       if (el) el.textContent = val || '—';
     };
     set('recap-demarche', data && data.demarche);
-    set('recap-departement', data && data.departement);
-    set('recap-immatriculation', data && data.immatriculation);
+    set('recap-vin', data && data.vin);
 
     // Pré-remplir l'email si déjà saisi sur la page rapport
     var recapEmailEl = document.getElementById('recap-email');

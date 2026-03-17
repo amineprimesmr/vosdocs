@@ -11,7 +11,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    var immatEl = document.getElementById('rapportImmat');
+    var vinEl = document.getElementById('rapportVin');
     var dateEl = document.getElementById('rapportDate');
     var form = document.getElementById('rapportForm');
     var emailInput = document.getElementById('rapportEmail');
@@ -22,7 +22,7 @@
       return;
     }
 
-    if (immatEl) immatEl.textContent = commande.immatriculation || '—';
+    if (vinEl) vinEl.textContent = commande.vin || '—';
     if (dateEl) dateEl.textContent = formatDate();
     if (commande.email && emailInput) emailInput.value = commande.email;
 

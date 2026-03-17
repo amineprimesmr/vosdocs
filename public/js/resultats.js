@@ -7,7 +7,7 @@
   function animateVerifBlock() {
     var block = document.getElementById('resultatsVerifBlock');
     var iconCar = document.getElementById('resultatsIconCar');
-    var immatBadge = document.getElementById('resultatsImmatBadge');
+    var immatBadge = document.getElementById('resultatsVinBadge');
     var verifTitle = document.getElementById('resultatsVerifTitle');
     var items = document.querySelectorAll('.resultats-verif-item');
     if (!block) return;
@@ -22,7 +22,7 @@
     }
     if (immatBadge) {
       setTimeout(function() {
-        immatBadge.classList.add('resultats-immat-visible');
+        immatBadge.classList.add('resultats-vin-visible');
       }, delays[1]);
     }
     if (verifTitle) {
@@ -63,7 +63,7 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     var card = document.getElementById('resultats-card');
-    var immatEl = document.getElementById('resultatsImmatValue');
+    var immatEl = document.getElementById('resultatsVinValue');
 
     if (!card) return;
 
@@ -73,8 +73,8 @@
       return;
     }
 
-    if (immatEl && commande.immatriculation) {
-      immatEl.textContent = commande.immatriculation;
+    if (immatEl && commande.vin) {
+      immatEl.textContent = commande.vin;
     }
 
     card.classList.add('resultats-card-visible');

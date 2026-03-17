@@ -73,7 +73,7 @@
             if (data) {
                 var ref = document.getElementById('ref');
                 var montant = document.getElementById('montant');
-                if (ref && data.immatriculation) ref.textContent = data.immatriculation;
+                if (ref && data.vin) ref.textContent = data.vin;
                 if (montant && data.prix) montant.textContent = (data.prix || 19.90).toFixed(2).replace('.', ',') + ' €';
             }
         })();

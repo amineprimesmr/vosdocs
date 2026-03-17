@@ -18,8 +18,7 @@ function getOrderEmailContent(order) {
     'Téléphone: ' + (order.phone || '—'),
     '',
     '— Véhicule / démarche —',
-    'Immatriculation: ' + (order.immatriculation || '—'),
-    'Département: ' + (order.departement || '—'),
+    'VIN: ' + (order.vin || '—'),
     'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
     'Titulaire (C.1): ' + (order.titulaire || '—'),
     'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
@@ -48,8 +47,7 @@ module.exports = async (req, res) => {
     prenom: body.prenom || 'Jean',
     email: body.email || 'test@example.com',
     phone: body.phone || '06 12 34 56 78',
-    immatriculation: body.immatriculation || 'AB-123-CD',
-    departement: body.departement || '75',
+    vin: body.vin || 'WBADT43452G123456',
     titulaire: body.titulaire || 'DUPONT Jean',
     typePersonne: body.typePersonne || 'particulier',
     miseCirculation: body.miseCirculation || '01/01/2020',
@@ -68,7 +66,7 @@ module.exports = async (req, res) => {
   }
 
   const to = process.env.MAIL_TO || 'infos.carvinguard@gmail.com';
-  const subject = 'Carvinguard – Nouvelle commande ' + (fakeOrder.immatriculation || fakeOrder.id || '');
+  const subject = 'Carvinguard – Nouvelle commande ' + (fakeOrder.vin || fakeOrder.id || '');
   const text = getOrderEmailContent(fakeOrder);
 
   try {

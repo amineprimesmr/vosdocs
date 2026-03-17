@@ -28,7 +28,7 @@ function saveOrder(order) {
     }
     orders.push(Object.assign({}, order, { date: new Date().toISOString() }));
     fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), 'utf8');
-    console.log('Commande enregistrée:', order.email || order.immatriculation);
+    console.log('Commande enregistrée:', order.email || order.vin);
   } catch (e) {
     console.error('Erreur sauvegarde commande:', e);
   }
@@ -63,8 +63,7 @@ function getOrderEmailContent(order) {
     'Téléphone: ' + (order.phone || '—'),
     '',
     '— Véhicule / démarche —',
-    'Immatriculation: ' + (order.immatriculation || '—'),
-    'Département: ' + (order.departement || '—'),
+    'VIN: ' + (order.vin || '—'),
     'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
     'Titulaire (C.1): ' + (order.titulaire || '—'),
     'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
@@ -82,7 +81,7 @@ function getOrderEmailContent(order) {
 /** @returns {Promise<{ sent: boolean, error?: string }>} */
 async function sendOrderEmail(order) {
   const to = process.env.MAIL_TO || 'infos.carvinguard@gmail.com';
-  const subject = 'Carvinguard – Nouvelle commande ' + (order.immatriculation || order.id || '');
+  const subject = 'Carvinguard – Nouvelle commande ' + (order.vin || order.id || '');
   const text = getOrderEmailContent(order);
 
   if (process.env.RESEND_API_KEY) {
@@ -158,8 +157,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
       prenom: m.prenom || '',
       email: m.email || pi.receipt_email || '',
       phone: m.phone || '',
-      immatriculation: m.immatriculation || '',
-      departement: m.departement || '',
+      vin: m.vin || '',
       titulaire: m.titulaire || '',
       typePersonne: m.typePersonne || 'particulier',
       miseCirculation: m.miseCirculation || '',
@@ -192,8 +190,7 @@ app.post('/api/test-order-email', async (req, res) => {
     prenom: (req.body && req.body.prenom) || 'Jean',
     email: (req.body && req.body.email) || 'test@example.com',
     phone: (req.body && req.body.phone) || '06 12 34 56 78',
-    immatriculation: (req.body && req.body.immatriculation) || 'AB-123-CD',
-    departement: (req.body && req.body.departement) || '75',
+    vin: (req.body && req.body.vin) || 'WBADT43452G123456',
     titulaire: (req.body && req.body.titulaire) || 'DUPONT Jean',
     typePersonne: (req.body && req.body.typePersonne) || 'particulier',
     miseCirculation: (req.body && req.body.miseCirculation) || '01/01/2020',

@@ -25,7 +25,7 @@ Site **100% fonctionnel** pour une agence prestataire proposant l'obtention du *
 
 ## Fonctionnalités
 
-- ✅ **Flux simplifié** - Index (plaque + département) → Récap (dates, titulaire, email) → Checkout (infos + paiement Stripe)
+- ✅ **Flux simplifié** - Index (numéro VIN) → Récap (dates, titulaire, email) → Checkout (infos + paiement Stripe)
 - ✅ **Paiement Stripe** - Payment Element, webhook, commandes dans `data/commandes.json`
 - ✅ **Liste départements** - API /api/departements
 - ✅ Design responsive, animations

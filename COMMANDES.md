@@ -18,7 +18,7 @@ Ouvre ce fichier pour voir la liste des commandes. Chaque entrée contient :
 - `date` – Date et heure
 - `nom`, `prenom` – Identité
 - `email`, `phone` – Contact
-- `immatriculation`, `departement` – Véhicule
+- `vin` – Numéro VIN du véhicule (17 caractères)
 - `titulaire`, `miseCirculation`, `dateCertificat` – Infos certificat
 - `cp`, `ville` – Adresse
 - `montant` – Montant payé
@@ -34,7 +34,7 @@ Pour remplir une feuille Google partagée avec ton équipe :
 1. Crée une feuille Google : [sheets.google.com](https://sheets.google.com)
 2. En ligne 1, mets les en-têtes :
    ```
-   Date | Nom | Prénom | Email | Téléphone | Immatriculation | Département | Titulaire | Date certif | CP | Ville | Montant
+   Date | Nom | Prénom | Email | Téléphone | VIN | Titulaire | Date certif | CP | Ville | Montant
    ```
 
 ### Étape 2 – Script Apps Script
@@ -53,7 +53,7 @@ function doPost(e) {
       data.prenom || '',
       data.email || '',
       data.phone || '',
-      data.immatriculation || '',
+      data.vin || '',
       data.departement || '',
       data.titulaire || '',
       data.dateCertificat || '',

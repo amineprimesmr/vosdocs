@@ -138,7 +138,7 @@
         var form = document.getElementById('checkoutPaymentForm');
         if (d && form) {
           var ref = document.getElementById('checkout-ref');
-          if (ref) ref.textContent = d.immatriculation || '—';
+          if (ref) ref.textContent = d.vin || '—';
           var tot = document.getElementById('checkout-total');
           if (tot) tot.textContent = (d.prix !== undefined ? d.prix : 19.90).toFixed(2).replace('.',',') + ' €';
           if (d.titulaire) {

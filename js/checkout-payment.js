@@ -100,8 +100,7 @@
         prenom: prenom,
         phone: phone,
         email: email,
-        immatriculation: data.immatriculation || '',
-        departement: data.departement || '',
+        vin: data.vin || '',
         titulaire: data.titulaire || '',
         miseCirculation: data.miseCirculation || '',
         dateCertificat: data.dateCertificat || ''

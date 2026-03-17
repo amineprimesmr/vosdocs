@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Certificat de non-gage en ligne | Carvinguard</title>
     <meta name="description" content="Obtenez votre certificat de non-gage (situation administrative détaillée) en ligne en 5 minutes. Document officiel. Envoi par email en 5 minutes.">
-    <meta name="keywords" content="certificat de non-gage, certificat situation administrative, non gage voiture, CSA véhicule, vente voiture occasion, carte grise, document officiel">
+    <meta name="keywords" content="certificat de non-gage, VIN véhicule, numéro de série, non gage voiture, CSA véhicule, vente voiture occasion, carte grise, document officiel">
     <meta name="robots" content="index, follow">
     <meta name="author" content="Carvinguard">
     <meta name="geo.region" content="FR">
@@ -181,15 +181,9 @@
                 </h1>
                 
                 <form class="hero-form hero-form-claritycheck" id="heroForm" novalidate>
-                    <div class="search-field search-field-select">
-                        <span class="search-field-icon">🇫🇷</span>
-                        <select name="departement" id="departementSelect" class="search-select" aria-label="Département">
-                            <option value="35">35 - Ille et Vilaine</option>
-                        </select>
-                        <span class="search-field-chevron">▼</span>
-                    </div>
-                    <div class="search-field search-field-input">
-                        <input type="text" name="immatriculation" id="plaqueInput" maxlength="9" placeholder="AB-123-CD" class="search-input" aria-label="Plaque d'immatriculation">
+                    <div class="search-field search-field-input search-field-vin">
+                        <span class="search-field-icon">🔍</span>
+                        <input type="text" name="vin" id="vinInput" maxlength="17" placeholder="WBADT43452G123456" class="search-input" aria-label="Numéro VIN (17 caractères)" autocomplete="off">
                     </div>
                     <div id="formError" class="form-error"></div>
                     <button type="submit" class="btn btn-search" id="submitBtn">Rechercher</button>
@@ -359,8 +353,7 @@
                 <div class="doc-body">
                     <h4>Identification du véhicule</h4>
                     <ul>
-                        <li>Numéro d'immatriculation du véhicule : •••••••••</li>
-                        <li>Numéro VIN du véhicule (ou numéro de série) : •••••••••</li>
+                        <li>Numéro VIN du véhicule (17 caractères) : •••••••••••••••••</li>
                         <li>Marque : •••••••••</li>
                     </ul>
                     <h4>Situation administrative du véhicule</h4>

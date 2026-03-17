@@ -68,7 +68,7 @@ Crée la boîte mail **contact@carvinguard.fr** dans Hostinger :
 
 - [ ] https://carvinguard.fr fonctionne
 - [ ] https://www.carvinguard.fr fonctionne
-- [ ] Le formulaire de demande (plaque + département) fonctionne
+- [ ] Le formulaire de demande (numéro VIN) fonctionne
 - [ ] Le paiement Stripe fonctionne
 - [ ] Les emails de confirmation partent bien
 

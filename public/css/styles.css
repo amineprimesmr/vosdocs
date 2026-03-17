@@ -496,6 +496,16 @@ img { max-width: 100%; height: auto; }
   justify-content: center;
   padding: 12px 16px;
 }
+.search-field-vin {
+  flex-direction: row;
+  align-items: center;
+}
+.search-field-vin .search-input {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Monaco', 'Consolas', monospace;
+  letter-spacing: 0.08em;
+}
 .search-field-label {
   font-size: 12px;
   color: var(--text-muted);
@@ -2332,6 +2342,7 @@ img.hero-media-logo:hover {
   60% { transform: translateY(2px) scale(1); }
   100% { transform: translateY(0) scale(1); }
 }
+.resultats-vin-badge,
 .resultats-immat-badge {
   background: var(--text-dark);
   color: var(--white);
@@ -2346,6 +2357,7 @@ img.hero-media-logo:hover {
   transform: scale(0.9);
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
+.resultats-vin-badge.resultats-vin-visible,
 .resultats-immat-badge.resultats-immat-visible {
   opacity: 1;
   transform: scale(1);
@@ -2355,6 +2367,7 @@ img.hero-media-logo:hover {
   from { opacity: 0; transform: scale(0.85); }
   to { opacity: 1; transform: scale(1); }
 }
+.resultats-vin-label,
 .resultats-immat-label { opacity: 0.9; }
 .resultats-verif-title {
   font-size: 17px;
@@ -2612,12 +2625,14 @@ img.hero-media-logo:hover {
   margin-bottom: 20px;
   line-height: 1.4;
 }
+.verification-vin-block,
 .verification-immat-block {
   display: flex;
   align-items: center;
   gap: 14px;
   margin-bottom: 24px;
 }
+.verification-vin-avatar,
 .verification-immat-avatar {
   width: 48px;
   height: 48px;
@@ -2629,17 +2644,19 @@ img.hero-media-logo:hover {
   color: var(--cta-blue);
   opacity: 0.85;
 }
-.verification-immat-avatar svg { width: 28px; height: 28px; }
+.verification-vin,
+.verification-immat {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: 0.05em;
+}
 .verification-padlock {
   color: #f59e0b;
   flex-shrink: 0;
 }
-.verification-immat {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--text-dark);
-  letter-spacing: 0.08em;
-}
+.verification-vin-avatar svg,
+.verification-immat-avatar svg { width: 28px; height: 28px; }
 .verification-progress-wrap {
   display: flex;
   align-items: center;
@@ -2759,6 +2776,7 @@ img.hero-media-logo:hover {
   .verification-main { padding: 24px 0 60px; }
   .verification-card { padding: 24px 20px; }
   .verification-header { font-size: 1rem; }
+  .verification-vin,
   .verification-immat { font-size: 1.2rem; }
 }
 

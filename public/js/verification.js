@@ -10,7 +10,7 @@
 
   function initPage() {
     var card = document.getElementById('verification-card');
-    var immatEl = document.getElementById('verificationImmat');
+    var vinEl = document.getElementById('verificationVin');
     var progressFill = document.getElementById('verificationProgressFill');
     var progressPct = document.getElementById('verificationProgressPct');
     var listEl = document.getElementById('verificationSearchList');
@@ -25,8 +25,8 @@
       return;
     }
 
-    var immat = (commande && commande.immatriculation) ? commande.immatriculation : 'AB-123-CD';
-    if (immatEl) immatEl.textContent = immat;
+    var vin = (commande && commande.vin) ? commande.vin : 'WBADT43452G123456';
+    if (vinEl) vinEl.textContent = vin;
 
     card.classList.add('verification-card-visible');
 
@@ -69,8 +69,7 @@
       if (isDemo && typeof VehicleService !== 'undefined') {
         VehicleService.saveCommandeData({
           demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
-          departement: '35 - Ille-et-Vilaine',
-          immatriculation: 'AB-123-CD',
+          vin: 'WBADT43452G123456',
           prix: 19.90
         });
       }

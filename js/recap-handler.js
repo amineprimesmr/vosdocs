@@ -12,8 +12,7 @@
       if (el) el.textContent = val || '—';
     };
     set('recap-demarche', data && data.demarche);
-    set('recap-departement', data && data.departement);
-    set('recap-immatriculation', data && data.immatriculation);
+    set('recap-vin', data && data.vin);
 
     // Format date JJ/MM/AAAA : uniquement chiffres, ajout automatique des /
     function formatDateValue(val) {
