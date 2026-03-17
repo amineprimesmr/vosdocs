@@ -64,6 +64,7 @@ function getOrderEmailContent(order) {
     '',
     '— Véhicule / démarche —',
     'VIN: ' + (order.vin || '—'),
+    'Véhicule: ' + (order.vehicleDesc || '—'),
     'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
     'Titulaire (C.1): ' + (order.titulaire || '—'),
     'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
@@ -418,6 +419,45 @@ function escapeXml(s) {
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// API VIN Decode (Vehicle Databases - proxy pour masquer la clé)
+app.get('/api/vin-decode/:vin', async (req, res) => {
+  const apiKey = process.env.VEHICLEDATABASES_API_KEY;
+  const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+  if (vin.length !== 17) {
+    return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
+  }
+  if (!apiKey) {
+    return res.status(503).json({
+      status: 'error',
+      error: 'Service VIN non configuré',
+      degraded: true
+    });
+  }
+  try {
+    const extRes = await fetch(
+      `https://api.vehicledatabases.com/advanced-vin-decode/v2/${vin}`,
+      { headers: { 'x-authkey': apiKey } }
+    );
+    const data = await extRes.json();
+    if (!extRes.ok) {
+      return res.status(extRes.status).json({
+        status: 'error',
+        message: data.message || data.error || 'VIN introuvable'
+      });
+    }
+    if (data.status === 'error') {
+      return res.status(400).json({
+        status: 'error',
+        message: data.message || 'VIN introuvable ou invalide'
+      });
+    }
+    res.json(data);
+  } catch (e) {
+    console.error('VIN decode:', e.message);
+    res.status(500).json({ status: 'error', message: 'Erreur service VIN' });
+  }
+});
+
 // API Départements
 app.get('/api/departements', (req, res) => {
   try {
@@ -427,6 +467,7 @@ app.get('/api/departements', (req, res) => {
     res.status(500).json({ error: 'Erreur chargement départements' });
   }
 });
+
 
 // API Config (clé publique Stripe pour le frontend)
 app.get('/api/config', (req, res) => {

@@ -1,5 +1,6 @@
 /**
  * Carvinguard - Gestion du formulaire de recherche véhicule (VIN uniquement)
+ * Intégration API Vehicle Databases pour décoder le VIN et récupérer les infos véhicule
  */
 
 (function() {
@@ -31,14 +32,45 @@
         return;
       }
       if (formError) formError.style.display = 'none';
-      if (typeof VehicleService !== 'undefined') {
-        VehicleService.saveCommandeData({
-          demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
-          vin: vin.toUpperCase(),
-          prix: 19.90
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Recherche...'; }
+
+      var apiBase = window.location.origin;
+      fetch(apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()))
+        .then(function(res) { return res.json(); })
+        .then(function(result) {
+          if (result.status === 'success' && result.data) {
+            var d = result.data;
+            var vehicleData = {
+              make: d.make || '',
+              model: d.model || '',
+              year: d.year || '',
+              trim: d.trim || '',
+              summary: d.summary || ''
+            };
+            if (typeof VehicleService !== 'undefined') {
+              VehicleService.saveCommandeData({
+                demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
+                vin: vin.toUpperCase(),
+                vehicleData: vehicleData,
+                prix: 19.90
+              });
+            }
+            window.location.href = 'resultats.html';
+          } else {
+            if (formError) {
+              formError.textContent = result.error || 'Ce VIN n\'a pas été reconnu. Vérifiez le numéro (17 caractères sur la carte grise ou le véhicule).';
+              formError.style.display = 'block';
+            }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
+          }
+        })
+        .catch(function(err) {
+          if (formError) {
+            formError.textContent = 'Erreur de connexion. Vérifiez votre connexion ou réessayez dans un instant.';
+            formError.style.display = 'block';
+          }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
         });
-      }
-      window.location.href = 'resultats.html';
     });
   });
 })();

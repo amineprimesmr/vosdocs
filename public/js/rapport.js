@@ -23,6 +23,10 @@
     }
 
     if (vinEl) vinEl.textContent = commande.vin || '—';
+    var descEl = document.getElementById('rapportVehicleDesc');
+    if (descEl && commande.vehicleData && commande.vehicleData.description) {
+      descEl.textContent = commande.vehicleData.description;
+    }
     if (dateEl) dateEl.textContent = formatDate();
     if (commande.email && emailInput) emailInput.value = commande.email;
 

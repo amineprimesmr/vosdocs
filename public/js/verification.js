@@ -27,6 +27,10 @@
 
     var vin = (commande && commande.vin) ? commande.vin : 'WBADT43452G123456';
     if (vinEl) vinEl.textContent = vin;
+    var descEl = document.getElementById('verificationVehicleDesc');
+    if (descEl && commande && commande.vehicleData && commande.vehicleData.description) {
+      descEl.textContent = commande.vehicleData.description;
+    }
 
     card.classList.add('verification-card-visible');
 

@@ -47,6 +47,10 @@
                             <span class="recap-label">Numéro VIN</span>
                             <span class="recap-value"><strong id="checkout-vin">—</strong></span>
                         </div>
+                        <div class="recap-row recap-row-vehicle-desc" id="checkout-vehicle-desc-row" style="display:none;">
+                            <span class="recap-label">Véhicule</span>
+                            <span class="recap-value" id="checkout-vehicle-desc">—</span>
+                        </div>
                     </div>
                     <a href="index.html" class="btn btn-outline checkout-change-vehicle">Changer le véhicule</a>
                 </div>
@@ -187,6 +191,13 @@
           set('checkout-demarche', d.demarche || 'Certificat de situation administrative détaillée (NON GAGE)');
           set('checkout-vin', d.vin);
           set('checkout-ref', d.vin);
+          var vd = d.vehicleData;
+          var row = document.getElementById('checkout-vehicle-desc-row');
+          var descEl = document.getElementById('checkout-vehicle-desc');
+          if (vd && vd.vehicleDesc && row && descEl) {
+            descEl.textContent = vd.vehicleDesc;
+            row.style.display = '';
+          }
           var tot = document.getElementById('checkout-total');
           if (tot) tot.textContent = (d.prix !== undefined ? d.prix : 19.90).toFixed(2).replace('.',',') + ' €';
         }

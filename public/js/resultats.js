@@ -76,6 +76,12 @@
     if (immatEl && commande.vin) {
       immatEl.textContent = commande.vin;
     }
+    var vehicleDesc = document.getElementById('resultatsVehicleDesc');
+    if (vehicleDesc && commande.vehicleData) {
+      var v = commande.vehicleData;
+      var desc = [v.year, v.make, v.model].filter(Boolean).join(' ');
+      if (desc) vehicleDesc.textContent = desc;
+    }
 
     card.classList.add('resultats-card-visible');
 
