@@ -56,3 +56,31 @@ model BlogAuthToken {
 
   @@map("blog_auth_tokens")
 }
+
+// --- SaaS : comptes et crédits (recherche VIN) ---
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  credits      Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  creditTransactions CreditTransaction[]
+
+  @@map("users")
+}
+
+model CreditTransaction {
+  id                    String   @id @default(cuid())
+  userId                String   @map("user_id")
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta                 Int // positif = achat, négatif = consommation
+  reason                String // purchase | vin_decode | admin_adjust
+  stripePaymentIntentId String?  @unique @map("stripe_payment_intent_id")
+  meta                  String? // JSON optionnel (ex. VIN tronqué)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("credit_transactions")
+}

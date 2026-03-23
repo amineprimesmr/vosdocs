@@ -11,12 +11,15 @@ const fs = require('fs');
 const Stripe = require('stripe');
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
+const cookieParser = require('cookie-parser');
+const { getPrisma } = require('./lib/prisma');
+const authLib = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 // Webhook Stripe doit recevoir le body brut AVANT express.json()
 const ORDERS_FILE = path.join(__dirname, 'data', 'commandes.json');
 
@@ -31,6 +34,75 @@ function saveOrder(order) {
     console.log('Commande enregistrée:', order.email || order.vin);
   } catch (e) {
     console.error('Erreur sauvegarde commande:', e);
+  }
+}
+
+/** Achat de crédits via Stripe (idempotent par payment_intent) */
+async function handleStripeCreditPurchase(pi) {
+  const m = pi.metadata || {};
+  if (m.purpose !== 'credit_purchase') {
+    return false;
+  }
+  const prisma = getPrisma();
+  if (!prisma) {
+    console.warn('credit_purchase ignoré: pas de DATABASE_URL');
+    return true;
+  }
+  const userId = m.userId;
+  const credits = parseInt(String(m.credits || '0'), 10);
+  if (!userId || credits < 1) {
+    console.warn('Métadonnées credit_purchase invalides', pi.id);
+    return true;
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const dup = await tx.creditTransaction.findUnique({
+        where: { stripePaymentIntentId: pi.id }
+      });
+      if (dup) return;
+      await tx.user.update({
+        where: { id: userId },
+        data: { credits: { increment: credits } }
+      });
+      await tx.creditTransaction.create({
+        data: {
+          userId,
+          delta: credits,
+          reason: 'purchase',
+          stripePaymentIntentId: pi.id,
+          meta: JSON.stringify({
+            eur: (pi.amount / 100).toFixed(2),
+            packId: m.packId || ''
+          })
+        }
+      });
+    });
+  } catch (e) {
+    console.error('Webhook crédits:', e);
+  }
+  return true;
+}
+
+async function refundVinDecodeCredit(userId, vinMasked) {
+  const prisma = getPrisma();
+  if (!prisma || !userId) return;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { credits: { increment: 1 } }
+      });
+      await tx.creditTransaction.create({
+        data: {
+          userId,
+          delta: 1,
+          reason: 'vin_decode_refund',
+          meta: JSON.stringify({ vin: vinMasked })
+        }
+      });
+    });
+  } catch (e) {
+    console.error('Remboursement crédit VIN:', e);
   }
 }
 
@@ -150,29 +222,33 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
   }
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object;
-    const m = pi.metadata || {};
-    const order = {
-      id: pi.id,
-      montant: (pi.amount / 100).toFixed(2) + ' €',
-      nom: m.nom || '',
-      prenom: m.prenom || '',
-      email: m.email || pi.receipt_email || '',
-      phone: m.phone || '',
-      vin: m.vin || '',
-      titulaire: m.titulaire || '',
-      typePersonne: m.typePersonne || 'particulier',
-      miseCirculation: m.miseCirculation || '',
-      dateCertificat: m.dateCertificat || '',
-      cp: m.cp || '',
-      ville: m.ville || ''
-    };
-    saveOrder(order);
-    await notifyTeam(order);
-    await sendOrderEmail(order);
+    const isCreditPurchase = await handleStripeCreditPurchase(pi);
+    if (!isCreditPurchase) {
+      const m = pi.metadata || {};
+      const order = {
+        id: pi.id,
+        montant: (pi.amount / 100).toFixed(2) + ' €',
+        nom: m.nom || '',
+        prenom: m.prenom || '',
+        email: m.email || pi.receipt_email || '',
+        phone: m.phone || '',
+        vin: m.vin || '',
+        titulaire: m.titulaire || '',
+        typePersonne: m.typePersonne || 'particulier',
+        miseCirculation: m.miseCirculation || '',
+        dateCertificat: m.dateCertificat || '',
+        cp: m.cp || '',
+        ville: m.ville || ''
+      };
+      saveOrder(order);
+      await notifyTeam(order);
+      await sendOrderEmail(order);
+    }
   }
   res.status(200).send('ok');
 });
 
+app.use(cookieParser());
 app.use(express.json());
 
 // --- ROUTE TEST TEMPORAIRE (à supprimer ensuite) ---
@@ -205,6 +281,181 @@ app.post('/api/test-order-email', async (req, res) => {
     emailSent: result.sent,
     error: result.error || null
   });
+});
+
+// ---------- SaaS : comptes, crédits, achat Stripe ----------
+function saaSAuthReady() {
+  return !!(getPrisma() && process.env.JWT_SECRET);
+}
+
+app.get('/api/saas-config', (req, res) => {
+  const prisma = getPrisma();
+  const vinApi = !!process.env.VEHICLEDATABASES_API_KEY;
+  res.json({
+    vinRequiresAccount: !!(prisma && vinApi),
+    authAvailable: saaSAuthReady(),
+    creditPacks: [
+      {
+        id: 'pack_5',
+        credits: 5,
+        priceCents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10),
+        label: '5 recherches VIN'
+      },
+      {
+        id: 'pack_20',
+        credits: 20,
+        priceCents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10),
+        label: '20 recherches VIN'
+      }
+    ]
+  });
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  if (!saaSAuthReady()) {
+    return res.status(503).json({
+      error: 'Inscription indisponible. Configurez DATABASE_URL et JWT_SECRET.'
+    });
+  }
+  const prisma = getPrisma();
+  const email = authLib.normalizeEmail(req.body && req.body.email);
+  const password = (req.body && req.body.password) || '';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Adresse email invalide.' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
+  }
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé.' });
+    }
+    const passwordHash = await authLib.hashPassword(password);
+    const welcome = Math.max(0, parseInt(process.env.WELCOME_CREDITS || '0', 10) || 0);
+    const user = await prisma.user.create({
+      data: { email, passwordHash, credits: welcome }
+    });
+    if (welcome > 0) {
+      await prisma.creditTransaction.create({
+        data: { userId: user.id, delta: welcome, reason: 'welcome_bonus' }
+      });
+    }
+    const token = authLib.signAuthToken(user.id);
+    authLib.setAuthCookie(res, token);
+    return res.json({
+      user: { id: user.id, email: user.email, credits: user.credits }
+    });
+  } catch (e) {
+    console.error('register:', e);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  if (!saaSAuthReady()) {
+    return res.status(503).json({ error: 'Connexion indisponible.' });
+  }
+  const prisma = getPrisma();
+  const email = authLib.normalizeEmail(req.body && req.body.email);
+  const password = (req.body && req.body.password) || '';
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !(await authLib.verifyPassword(password, user.passwordHash))) {
+      return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
+    }
+    const token = authLib.signAuthToken(user.id);
+    authLib.setAuthCookie(res, token);
+    return res.json({
+      user: { id: user.id, email: user.email, credits: user.credits }
+    });
+  } catch (e) {
+    console.error('login:', e);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  authLib.clearAuthCookie(res);
+  res.json({ ok: true });
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  if (!getPrisma()) {
+    return res.status(503).json({ error: 'Comptes non disponibles.' });
+  }
+  const prisma = getPrisma();
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({ authenticated: false });
+  }
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, credits: true }
+    });
+    if (!user) {
+      authLib.clearAuthCookie(res);
+      return res.status(401).json({ authenticated: false });
+    }
+    return res.json({ authenticated: true, user });
+  } catch (e) {
+    console.error('me:', e);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/create-credit-purchase-intent', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).json({ error: 'Stripe non configuré.' });
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Connexion requise.' });
+  }
+  const prisma = getPrisma();
+  if (!prisma) {
+    return res.status(503).json({ error: 'Base de données requise.' });
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    return res.status(401).json({ error: 'Session invalide.' });
+  }
+  const packId = req.body && req.body.packId;
+  const packs = {
+    pack_5: {
+      credits: 5,
+      cents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10)
+    },
+    pack_20: {
+      credits: 20,
+      cents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10)
+    }
+  };
+  const p = packs[packId];
+  if (!p || p.cents < 50) {
+    return res.status(400).json({ error: 'Forfait inconnu.' });
+  }
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: p.cents,
+      currency: 'eur',
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        purpose: 'credit_purchase',
+        userId,
+        credits: String(p.credits),
+        packId: String(packId)
+      }
+    });
+    return res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
+  } catch (e) {
+    console.error('create-credit-purchase-intent:', e);
+    return res.status(500).json({ error: e.message || 'Erreur paiement' });
+  }
 });
 
 // ---------- Auto-Blog SEO : API et pages (si DATABASE_URL configurée) ----------
@@ -351,6 +602,7 @@ app.get('/api/blog/posts', async (req, res) => {
     const staticPages = new Set([
       'index',
       'contact',
+      'compte',
       'guides',
       'aide',
       'demarches',
@@ -419,13 +671,67 @@ function escapeXml(s) {
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API VIN Decode (Vehicle Databases - proxy pour masquer la clé)
+// API VIN Decode (Vehicle Databases - proxy ; crédits si DB + clé API)
 app.get('/api/vin-decode/:vin', async (req, res) => {
+  const prisma = getPrisma();
   const apiKey = process.env.VEHICLEDATABASES_API_KEY;
   const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+  const vinMasked = vin.slice(0, 11) + '…';
+
   if (vin.length !== 17) {
     return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
   }
+
+  const requireAccountForVin = !!(prisma && apiKey);
+  let userId = null;
+
+  if (requireAccountForVin) {
+    const tokenUserId = authLib.getUserIdFromCookies(req);
+    if (!tokenUserId) {
+      return res.status(401).json({
+        status: 'error',
+        code: 'AUTH_REQUIRED',
+        message: 'Connectez-vous pour lancer une recherche VIN (1 crédit par recherche).'
+      });
+    }
+    userId = tokenUserId;
+    try {
+      const charged = await prisma.$transaction(async (tx) => {
+        const updated = await tx.user.updateMany({
+          where: { id: userId, credits: { gte: 1 } },
+          data: { credits: { decrement: 1 } }
+        });
+        if (updated.count === 0) {
+          const u = await tx.user.findUnique({
+            where: { id: userId },
+            select: { credits: true }
+          });
+          return { ok: false, credits: u ? u.credits : 0 };
+        }
+        await tx.creditTransaction.create({
+          data: {
+            userId,
+            delta: -1,
+            reason: 'vin_decode',
+            meta: JSON.stringify({ vin: vinMasked })
+          }
+        });
+        return { ok: true };
+      });
+      if (!charged.ok) {
+        return res.status(402).json({
+          status: 'error',
+          code: 'INSUFFICIENT_CREDITS',
+          message: 'Crédits insuffisants. Rechargez votre compte.',
+          credits: charged.credits
+        });
+      }
+    } catch (e) {
+      console.error('Débit crédit VIN:', e);
+      return res.status(500).json({ status: 'error', message: 'Erreur compte' });
+    }
+  }
+
   if (!apiKey) {
     return res.status(503).json({
       status: 'error',
@@ -433,6 +739,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       degraded: true
     });
   }
+
   try {
     const extRes = await fetch(
       `https://api.vehicledatabases.com/advanced-vin-decode/v2/${vin}`,
@@ -440,12 +747,18 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     );
     const data = await extRes.json();
     if (!extRes.ok) {
+      if (requireAccountForVin) {
+        await refundVinDecodeCredit(userId, vinMasked);
+      }
       return res.status(extRes.status).json({
         status: 'error',
         message: data.message || data.error || 'VIN introuvable'
       });
     }
     if (data.status === 'error') {
+      if (requireAccountForVin) {
+        await refundVinDecodeCredit(userId, vinMasked);
+      }
       return res.status(400).json({
         status: 'error',
         message: data.message || 'VIN introuvable ou invalide'
@@ -454,6 +767,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('VIN decode:', e.message);
+    if (requireAccountForVin) {
+      await refundVinDecodeCredit(userId, vinMasked);
+    }
     res.status(500).json({ status: 'error', message: 'Erreur service VIN' });
   }
 });

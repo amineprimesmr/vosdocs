@@ -12,13 +12,18 @@
     "blog": "node scripts/generate-blog.js",
     "blog:publish": "node scripts/publish-next-blog.js",
     "db:push": "prisma db push",
-    "db:seed": "node scripts/seed-blog-db.js"
+    "db:seed": "node scripts/seed-blog-db.js",
+    "gen:jwt-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+    "saas:check": "node scripts/check-saas-ready.js"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
     "nodemailer": "^8.0.1",
     "resend": "^6.9.2",
     "stripe": "^20.3.1"

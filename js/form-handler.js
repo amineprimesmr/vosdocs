@@ -12,7 +12,6 @@
 
     if (!form) return;
 
-    // Formatage VIN en temps réel : 17 caractères alphanumériques (sans I, O, Q)
     if (vinInput) {
       vinInput.addEventListener('input', function() {
         var v = this.value.replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
@@ -35,9 +34,13 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Recherche...'; }
 
       var apiBase = window.location.origin;
-      fetch(apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()))
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
+      fetch(apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()), {
+        credentials: 'include'
+      })
+        .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+        .then(function(out) {
+          var result = out.data;
+          var status = out.res.status;
           if (result.status === 'success' && result.data) {
             var d = result.data;
             var vehicleData = {
@@ -56,15 +59,36 @@
               });
             }
             window.location.href = 'resultats.html';
+          } else if (result.degraded) {
+            if (typeof VehicleService !== 'undefined') {
+              VehicleService.saveCommandeData({
+                demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
+                vin: vin.toUpperCase(),
+                prix: 19.90
+              });
+            }
+            window.location.href = 'resultats.html';
+          } else if (status === 401 || result.code === 'AUTH_REQUIRED') {
+            if (formError) {
+              formError.innerHTML = 'Connexion requise : <a href="compte.html">créer un compte ou se connecter</a> pour utiliser la recherche VIN (1 crédit par recherche).';
+              formError.style.display = 'block';
+            }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
+          } else if (status === 402 || result.code === 'INSUFFICIENT_CREDITS') {
+            if (formError) {
+              formError.innerHTML = 'Crédits insuffisants. <a href="compte.html">Recharger votre compte</a>.';
+              formError.style.display = 'block';
+            }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
           } else {
             if (formError) {
-              formError.textContent = result.error || 'Ce VIN n\'a pas été reconnu. Vérifiez le numéro (17 caractères sur la carte grise ou le véhicule).';
+              formError.textContent = result.message || result.error || 'Ce VIN n\'a pas été reconnu. Vérifiez le numéro (17 caractères sur la carte grise ou le véhicule).';
               formError.style.display = 'block';
             }
             if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
           }
         })
-        .catch(function(err) {
+        .catch(function() {
           if (formError) {
             formError.textContent = 'Erreur de connexion. Vérifiez votre connexion ou réessayez dans un instant.';
             formError.style.display = 'block';

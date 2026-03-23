@@ -537,6 +537,8 @@ img { max-width: 100%; height: auto; }
   border: 1px solid #ffcdd2;
 }
 .form-error:not(:empty) { display: block; }
+.form-error a { color: #1565c0; font-weight: 600; text-decoration: underline; }
+.form-error a:hover { color: #0d47a1; }
 .form-actions { display: flex; flex-direction: column; gap: 12px; }
 .btn-search {
   width: 100%;

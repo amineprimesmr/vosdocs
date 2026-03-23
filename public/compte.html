@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon compte | Carvinguard</title>
+    <meta name="description" content="Créez un compte Carvinguard, achetez des crédits pour les recherches VIN et gérez votre solde.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://www.carvinguard.fr/compte.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .compte-wrap { max-width: 520px; margin: 0 auto; padding: 48px 20px 80px; }
+        .compte-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+        .compte-tabs button {
+            flex: 1; padding: 12px; border: 1px solid var(--border); background: var(--bg-light);
+            border-radius: var(--radius); font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+        .compte-tabs button.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .compte-form .form-group { margin-bottom: 16px; }
+        .compte-form label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; }
+        .compte-form input {
+            width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+            font-family: inherit; font-size: 1rem;
+        }
+        .form-error-inline { color: var(--red); font-size: 0.9rem; margin-top: 8px; display: none; }
+        .compte-card {
+            background: var(--bg-light); border-radius: var(--radius-lg); padding: 28px;
+            margin-bottom: 24px; border: 1px solid var(--border);
+        }
+        .compte-balance { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        .credit-packs { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+        .credit-pack-btn {
+            flex: 1; min-width: 140px; text-align: left; padding: 16px !important; height: auto !important;
+            background: #fff !important; color: var(--text) !important; border: 2px solid var(--border) !important;
+            box-shadow: none !important;
+        }
+        .credit-pack-btn.is-selected { border-color: var(--btn-green) !important; background: #f0fdf4 !important; }
+        .credit-pack-btn .pack-price { font-size: 1.1rem; color: var(--btn-green); font-weight: 700; }
+        #creditPaymentContainer { margin: 16px 0; min-height: 24px; }
+        .saas-banner { display: none; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; font-size: 0.95rem; }
+        #creditsMessage { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; }
+    </style>
+    <script src="js/analytics.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-17972633421');
+    </script>
+</head>
+<body>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6" stroke-linecap="round"/></svg>
+                </span>
+                <span class="logo-text">Carvinguard</span>
+            </a>
+            <nav class="nav-main">
+                <a href="index.html" class="nav-link">Accueil</a>
+                <a href="contact.html" class="nav-link">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="compte-wrap">
+        <nav class="breadcrumb" style="margin-bottom: 24px;">
+            <a href="index.html">Accueil</a> &gt; <span>Mon compte</span>
+        </nav>
+        <h1 style="margin-bottom: 8px;">Mon compte</h1>
+        <p class="section-subtitle" style="margin-bottom: 28px;">Crédits pour les recherches d’historique véhicule (VIN)</p>
+
+        <p id="saasUnavailable" class="saas-banner" role="alert"></p>
+
+        <div id="compteGuest">
+            <div class="compte-tabs">
+                <button type="button" class="is-active" data-compte-tab="login">Connexion</button>
+                <button type="button" data-compte-tab="register">Inscription</button>
+            </div>
+            <div class="compte-panel" data-panel="login">
+                <form id="formLogin" class="compte-form compte-card">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input id="loginEmail" name="email" type="email" autocomplete="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Mot de passe</label>
+                        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+                    </div>
+                    <p id="loginError" class="form-error-inline"></p>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Se connecter</button>
+                </form>
+            </div>
+            <div class="compte-panel" data-panel="register" style="display:none;">
+                <form id="formRegister" class="compte-form compte-card">
+                    <div class="form-group">
+                        <label for="regEmail">Email</label>
+                        <input id="regEmail" name="email" type="email" autocomplete="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Mot de passe (min. 8 caractères)</label>
+                        <input id="regPassword" name="password" type="password" autocomplete="new-password" minlength="8" required>
+                    </div>
+                    <p id="registerError" class="form-error-inline"></p>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Créer mon compte</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="compteUser" style="display:none;">
+            <p id="creditsMessage"></p>
+            <div class="compte-card">
+                <p style="color:var(--text-light); margin-bottom:8px;">Connecté en tant que <strong id="userEmailDisplay"></strong></p>
+                <p style="margin-bottom:4px;">Solde crédits</p>
+                <p class="compte-balance" id="creditBalance">0</p>
+                <p style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">1 crédit = 1 recherche VIN avec décodage complet.</p>
+                <button type="button" id="btnLogout" class="btn" style="margin-top:16px; background:var(--border);">Déconnexion</button>
+            </div>
+            <div class="compte-card" id="creditsSection">
+                <h2 style="font-size:1.15rem; margin-bottom:12px;">Recharger</h2>
+                <div id="creditPacks" class="credit-packs"></div>
+                <div id="creditPaySection" style="display:none;">
+                    <button type="button" id="btnPrepareCreditPay" class="btn btn-primary">Préparer le paiement</button>
+                    <form id="formCreditPay" style="margin-top:20px;">
+                        <div id="creditPaymentContainer"></div>
+                        <p id="creditPayError" class="form-error-inline"></p>
+                        <button type="submit" id="creditPaySubmit" class="btn btn-primary" style="width:100%; margin-top:12px;">Payer</button>
+                    </form>
+                </div>
+            </div>
+            <p><a href="index.html">← Retour à la recherche VIN</a></p>
+        </div>
+    </main>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="js/compte.js"></script>
+</body>
+</html>
