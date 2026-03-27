@@ -3,156 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement - Certificat de non-gage 19,90€ | Carvinguard</title>
-    <meta name="description" content="Finalisez votre commande de certificat de non-gage. Paiement sécurisé en 2 minutes.">
+    <title>Tarifs | Carvinguard</title>
+    <meta name="description" content="Tarifs transparents — certificat de situation administrative. Paiement sécurisé par Stripe.">
     <meta name="robots" content="noindex, follow">
     <link rel="canonical" href="https://www.carvinguard.fr/checkout.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/checkout-pricing.css?v=3">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="js/analytics.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-17972633421');
+    </script>
 </head>
-<body>
-    <header class="header header-light">
-        <div class="container header-inner">
-            <a href="index.html" class="logo"><img src="/logo.png" alt="Carvinguard"></a>
-            <a href="contact.html" class="btn btn-contact">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                Contact
+<body class="checkout-page checkout-page--pricing">
+    <header class="cg-header">
+        <a href="index.html" class="cg-header-logo">
+            <span class="cg-header-logo-mark">CG</span>
+            Carvinguard
+        </a>
+        <nav class="cg-header-nav" aria-label="Accès rapide">
+            <a href="compte.html" class="cg-header-btn" title="Mon compte" aria-label="Mon compte">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </a>
-        </div>
+            <a href="contact.html" class="cg-header-btn" aria-label="Contact">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </a>
+        </nav>
     </header>
 
-    <main class="checkout-main">
-        <div class="container checkout-container">
-            <div class="checkout-content" style="position: relative;">
-                <h1 class="checkout-title">Vos informations et paiement</h1>
+    <main class="cg-main">
+        <section class="cg-pricing-hero">
+            <h1 class="cg-hero-title">Tarifs simples et <span class="cg-text-green">transparents</span></h1>
+            <p class="cg-hero-sub">Choisissez votre formule. Vous serez redirigé vers un paiement sécurisé Stripe pour finaliser la commande. Aucun frais caché.</p>
+        </section>
 
-                <div id="paymentFormError" class="form-error" style="display:none;"></div>
-                <form class="checkout-form" id="checkoutPaymentForm" novalidate>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Nom</label>
-                            <input type="text" name="nom" required placeholder="Dupont">
-                        </div>
-                        <div class="form-group">
-                            <label>Prénom</label>
-                            <input type="text" name="prenom" required placeholder="Jean">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Téléphone</label>
-                        <input type="tel" name="phone" required placeholder="06 12 34 56 78">
-                    </div>
-                    <div class="form-group">
-                        <label>Email (réception du certificat)</label>
-                        <input type="email" name="email" required placeholder="jean@email.com">
-                    </div>
-                    <h2 class="section-title-form">Paiement</h2>
-                    <div id="payment-element-container" class="payment-element-wrapper"></div>
-
-                    <div class="form-group checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="cgv">
-                            J'accepte les <a href="conditions-generales-vente.html" target="_blank" rel="noopener">CGV</a> et la <a href="politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.
-                        </label>
-                    </div>
-
-                    <p class="stripe-mention">🔐 Paiement sécurisé par Stripe. Aucun compte à créer.</p>
-
-                    <button type="submit" class="btn btn-primary btn-lg" id="submitPaymentBtn">Payer 19,90 €</button>
-                </form>
-            </div>
-
-            <aside class="checkout-sidebar">
-                <div class="sidebar-summary">
-                    <h3>Certificat de situation administrative détaillée (NON GAGE)</h3>
-                    <p class="sidebar-ref" id="checkout-ref">—</p>
-                    <hr>
-                    <div class="summary-line">
-                        <span>Coût démarche</span>
-                        <span class="summary-price">19,90 €</span>
-                    </div>
-                    <div class="summary-line summary-inclus">
-                        <span>Livraison express en 5 minutes</span>
-                        <span class="summary-inclus-price">Inclus</span>
-                    </div>
-                    <div class="summary-line summary-inclus">
-                        <span>Document PDF officiel</span>
-                        <span class="summary-inclus-price">Inclus</span>
-                    </div>
-                    <div class="summary-line summary-inclus">
-                        <span>Support client par téléphone</span>
-                        <span class="summary-inclus-price">Inclus</span>
-                    </div>
-                    <hr>
-                    <div class="summary-total">
-                        <span>Total</span>
-                        <span class="total-price" id="checkout-total">19,90 €</span>
-                    </div>
-                </div>
-                <div class="sidebar-advantages">
-                    <div class="advantage-item">
-                        <span class="adv-icon">⏱️</span>
-                        <span>Traitement en 5 minutes</span>
-                    </div>
-                    <div class="advantage-item">
-                        <span class="adv-icon">📧</span>
-                        <span>Certificat envoyé par email</span>
-                    </div>
-                </div>
-            </aside>
+        <div id="paymentLinksMissing" class="cg-config-banner" hidden>
+            <strong>Configuration requise.</strong> Ajoutez vos liens Stripe (Payment Links) dans les variables d’environnement&nbsp;:
+            <code>STRIPE_PAYMENT_LINK_ESSENTIEL</code>, <code>STRIPE_PAYMENT_LINK_CONFORT</code>, <code>STRIPE_PAYMENT_LINK_PREMIUM</code>.
         </div>
+
+        <section class="cg-tiers-section" aria-labelledby="tiersTitle">
+            <h2 id="tiersTitle" class="visually-hidden">Formules</h2>
+            <div class="cg-tier-grid">
+                <a class="cg-tier-card" id="pay-link-essentiel" href="#" aria-disabled="true" data-plan="essentiel" rel="noopener noreferrer">
+                    <span class="cg-tier-icon" aria-hidden="true">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </span>
+                    <span class="cg-tier-name">Certificat unique</span>
+                    <span class="cg-tier-sub">Un certificat complet pour un véhicule.</span>
+                    <span class="cg-tier-price">14,99&nbsp;€</span>
+                    <span class="cg-tier-unit">1 certificat</span>
+                    <span class="cg-tier-cta cg-tier-cta--muted">Payer <span aria-hidden="true">→</span></span>
+                </a>
+
+                <a class="cg-tier-card cg-tier-card--popular" id="pay-link-confort" href="#" aria-disabled="true" data-plan="confort" rel="noopener noreferrer">
+                    <span class="cg-tier-badge">Le plus populaire</span>
+                    <span class="cg-tier-icon" aria-hidden="true">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </span>
+                    <span class="cg-tier-name">Meilleur rapport qualité-prix</span>
+                    <span class="cg-tier-sub">Pour comparer plusieurs véhicules ou anticiper vos démarches.</span>
+                    <span class="cg-tier-price">29,99&nbsp;€</span>
+                    <span class="cg-tier-unit">3 certificats · <strong>9,99&nbsp;€</strong>/cert.</span>
+                    <span class="cg-tier-cta cg-tier-cta--primary">Payer <span aria-hidden="true">→</span></span>
+                </a>
+
+                <a class="cg-tier-card" id="pay-link-premium" href="#" aria-disabled="true" data-plan="premium" rel="noopener noreferrer">
+                    <span class="cg-tier-icon" aria-hidden="true">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                    </span>
+                    <span class="cg-tier-name">Pack Pro</span>
+                    <span class="cg-tier-sub">Pour professionnels et volumes réguliers.</span>
+                    <span class="cg-tier-price">69,99&nbsp;€</span>
+                    <span class="cg-tier-unit">10 certificats · <strong>6,99&nbsp;€</strong>/cert.</span>
+                    <span class="cg-tier-cta cg-tier-cta--muted">Payer <span aria-hidden="true">→</span></span>
+                </a>
+            </div>
+        </section>
+
+        <section class="cg-includes" aria-labelledby="includesTitle">
+            <h2 id="includesTitle" class="cg-section-heading">Chaque certificat <span class="cg-text-green">inclut</span></h2>
+            <p class="cg-includes-lead">Traitement de votre dossier et envoi du document officiel.</p>
+            <ul class="cg-includes-list">
+                <li><span class="cg-check" aria-hidden="true">✓</span> Vérification situation administrative (gages, oppositions)</li>
+                <li><span class="cg-check" aria-hidden="true">✓</span> PDF officiel pour votre vente</li>
+                <li><span class="cg-check" aria-hidden="true">✓</span> Envoi par email</li>
+                <li><span class="cg-check" aria-hidden="true">✓</span> Support client en France</li>
+                <li><span class="cg-check" aria-hidden="true">✓</span> Paiement sécurisé Stripe</li>
+            </ul>
+        </section>
+
+        <section class="cg-trust" aria-label="Confiance">
+            <div class="cg-trust-card">
+                <div class="cg-trust-icon" aria-hidden="true">🔐</div>
+                <h3>SSL</h3>
+                <p>Connexion chiffrée</p>
+            </div>
+            <div class="cg-trust-card">
+                <div class="cg-trust-icon" aria-hidden="true">💳</div>
+                <h3>Stripe</h3>
+                <p>Paiement sécurisé</p>
+            </div>
+            <div class="cg-trust-card">
+                <div class="cg-trust-icon" aria-hidden="true">🛡️</div>
+                <h3>+50K</h3>
+                <p>Dossiers traités</p>
+            </div>
+        </section>
+
+        <section class="cg-faq" aria-labelledby="faqTitle">
+            <h2 id="faqTitle" class="cg-section-heading">Questions <span class="cg-text-green">fréquentes</span></h2>
+            <details><summary>À quoi sert ce certificat ?</summary><p>Il atteste de l’absence de gage et d’opposition — souvent exigé lors d’une vente entre particuliers.</p></details>
+            <details><summary>Que se passe-t-il après le paiement ?</summary><p>Vous recevez un email de confirmation. Notre équipe traite votre dossier selon la formule choisie.</p></details>
+            <details><summary>Le paiement est-il sécurisé ?</summary><p>Oui, via Stripe — nous ne stockons pas votre numéro de carte.</p></details>
+        </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-main">
-            <div class="container footer-grid">
-                <div class="footer-col footer-contact">
-                    <h4>Besoin d'aide ?</h4>
-                    <p class="footer-phone">07 98 63 78 31</p>
-                </div>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <div class="container footer-bottom-inner">
-                <p>Copyright © Carvinguard.fr 2026</p>
-                <nav class="footer-links">
-                    <a href="conditions-generales-vente.html">CGV</a>
-                    <span>•</span>
-                    <a href="politique-confidentialite.html">Confidentialité</a>
-                </nav>
-            </div>
-        </div>
-        <div class="footer-disclaimer">
-            <div class="container">Le Site et les Services sont proposés à titre privé. Démarches gratuites sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
-        </div>
+    <footer class="cg-footer">
+        <p>© Carvinguard 2026</p>
+        <nav>
+            <a href="conditions-generales-vente.html">CGV</a>
+            <span>·</span>
+            <a href="politique-confidentialite.html">Confidentialité</a>
+            <span>·</span>
+            <a href="index.html">Accueil</a>
+        </nav>
     </footer>
 
-    <script src="https://js.stripe.com/v3/"></script>
     <script src="js/vehicle-service.js"></script>
-    <script src="js/main.js"></script>
-    <script>
-      (function(){
-        var d = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
-        var form = document.getElementById('checkoutPaymentForm');
-        if (d && form) {
-          var ref = document.getElementById('checkout-ref');
-          if (ref) ref.textContent = d.vin || '—';
-          var tot = document.getElementById('checkout-total');
-          if (tot) tot.textContent = (d.prix !== undefined ? d.prix : 19.90).toFixed(2).replace('.',',') + ' €';
-          if (d.titulaire) {
-            var parts = d.titulaire.trim().split(/\s+/);
-            if (parts.length >= 2) {
-              form.nom && (form.nom.value = parts[0]);
-              form.prenom && (form.prenom.value = parts.slice(1).join(' '));
-            } else if (parts.length === 1) {
-              form.nom && (form.nom.value = parts[0]);
-            }
-          }
-        }
-      })();
-    </script>
-    <script src="js/checkout-payment.js"></script>
+    <script src="js/checkout-links.js"></script>
 </body>
 </html>

@@ -800,6 +800,16 @@ app.get('/api/config', (req, res) => {
   res.json({ stripePublishableKey: pk });
 });
 
+/** Liens Stripe Checkout / Payment Links (page tarifs — redirection directe) */
+app.get('/api/payment-links', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.json({
+    essentiel: process.env.STRIPE_PAYMENT_LINK_ESSENTIEL || '',
+    confort: process.env.STRIPE_PAYMENT_LINK_CONFORT || '',
+    premium: process.env.STRIPE_PAYMENT_LINK_PREMIUM || ''
+  });
+});
+
 // API Création PaymentIntent Stripe
 app.post('/api/create-payment-intent', async (req, res) => {
   if (!stripe) {
