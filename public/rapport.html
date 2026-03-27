@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Votre rapport est prêt | Carvinguard</title>
-    <meta name="description" content="Vos résultats sont prêts. Entrez votre email pour recevoir votre certificat de non-gage.">
+    <title>Votre rapport véhicule | Carvinguard</title>
+    <meta name="description" content="Aperçu de votre rapport de situation administrative. Débloquez le certificat complet en quelques clics.">
     <meta name="robots" content="noindex, follow">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css?v=202603152600">
+    <link rel="stylesheet" href="css/rapport-preview.css?v=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="js/analytics.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
     <script>
@@ -20,7 +21,7 @@
       gtag('config', 'AW-17972633421');
     </script>
 </head>
-<body class="rapport-page">
+<body class="preview-page rapport-page">
     <header class="header header-light">
         <div class="container header-inner">
             <a href="index.html" class="logo">
@@ -33,42 +34,95 @@
         </div>
     </header>
 
-    <main class="rapport-main">
-        <div class="container rapport-container">
-            <div class="rapport-card">
-                <h1 class="rapport-title">LES RÉSULTATS SONT PRÊTS</h1>
-                <p class="rapport-vin" id="rapportVin">—</p>
-                <p class="rapport-vehicle-desc" id="rapportVehicleDesc"></p>
-                <p class="rapport-date">Dernier rapport en date du <span id="rapportDate">—</span></p>
+    <main class="preview-main">
+        <div class="preview-hero">
+            <span class="preview-chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Aperçu gratuit
+            </span>
+            <h1>Rapport de situation administrative</h1>
+            <p class="preview-hero-sub">Extrait certifié à partir du numéro VIN — la majorité des champs est réservée au rapport payant.</p>
+        </div>
+
+        <article class="preview-doc" id="previewDoc">
+            <div class="preview-doc-head">
+                <div class="preview-doc-brand">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                    Certificat — extrait
+                </div>
+                <span class="preview-doc-date" id="previewDocDate">—</span>
             </div>
 
-            <div class="rapport-warning">
-                <span class="rapport-warning-icon" aria-hidden="true">!</span>
-                <div>
-                    <strong>Avant de consulter les résultats...</strong>
-                    <p>Ce rapport peut contenir des informations sur l'historique administratif du véhicule. Préparez-vous à des résultats détaillés sur les gages, oppositions et sinistres.</p>
+            <section class="preview-section" data-reveal>
+                <h2>Identification véhicule</h2>
+                <dl class="preview-dl">
+                    <div><dt>VIN</dt><dd class="preview-vin-mask" id="previewVinDisplay">—</dd></div>
+                    <div><dt>Marque</dt><dd id="previewMake">—</dd></div>
+                    <div><dt>Modèle</dt><dd id="previewModel">—</dd></div>
+                    <div><dt>Année modèle</dt><dd id="previewYear">—</dd></div>
+                    <div id="previewTrimRow" style="display:none;"><dt>Finition</dt><dd id="previewTrim">—</dd></div>
+                </dl>
+            </section>
+
+            <section class="preview-section" data-reveal>
+                <h2>Résumé constructeur</h2>
+                <div class="preview-teaser-line" id="previewSummaryBlock" style="display:none;"></div>
+                <div class="preview-locked" aria-hidden="true">
+                    <div class="preview-locked-inner">
+                        <div class="preview-fake-rows">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <p style="margin-top:10px;font-size:0.85rem;color:#475569;">Historique détaillé des équipements, motorisation complète et codes usine.</p>
+                    </div>
+                    <div class="preview-locked-overlay">
+                        <span class="preview-locked-icon" title="Verrouillé">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-section" data-reveal>
+                <h2>Situation administrative &amp; gages</h2>
+                <div class="preview-locked" style="min-height:96px;">
+                    <div class="preview-locked-inner">
+                        <div class="preview-fake-rows">
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                        <p style="margin-top:12px;font-size:0.85rem;">État des gages, oppositions, restrictions et mentions au fichier national.</p>
+                    </div>
+                    <div class="preview-locked-overlay">
+                        <span class="preview-locked-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-section" data-reveal>
+                <h2>Sinistres &amp; historique</h2>
+                <div class="preview-locked" style="min-height:88px;">
+                    <div class="preview-locked-inner">
+                        <div class="preview-fake-rows"><span></span><span></span><span></span></div>
+                        <p style="margin-top:10px;font-size:0.85rem;">Indicateurs d’accident, sinistres déclarés et événements recensés.</p>
+                    </div>
+                    <div class="preview-locked-overlay">
+                        <span class="preview-locked-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="preview-section" data-reveal style="border-bottom:none;">
+                <div class="preview-hint">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <span><strong>Rapport partiel.</strong> Les données sensibles et le certificat officiel complet sont délivrés après validation du paiement sécurisé.</span>
                 </div>
             </div>
+        </article>
 
-            <div class="rapport-email-block">
-                <h2 class="rapport-email-title">Où devons-nous envoyer votre rapport ?</h2>
-                <form id="rapportForm" class="rapport-form" novalidate>
-                    <div class="rapport-field">
-                        <label for="rapportEmail">E-mail</label>
-                        <input type="email" id="rapportEmail" name="email" placeholder="votre@email.fr" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-rapport-cta">Voir les résultats</button>
-                </form>
-                <p class="rapport-terms">En cliquant sur <strong>Voir les résultats</strong> ci-dessous, vous reconnaissez avoir lu, compris et accepté nos <a href="conditions-generales-vente.html">Conditions générales</a> et notre <a href="politique-confidentialite.html">Politique de confidentialité</a>.</p>
+        <div class="preview-cta-bar" id="previewCtaBar">
+            <div class="preview-cta-inner">
+                <button type="button" class="btn-unlock" id="btnUnlockFull">Débloquer le rapport complet</button>
+                <p class="preview-cta-note">Paiement sécurisé · À partir de <strong id="previewFromPrice">14,99 €</strong> · Choisissez votre formule au paiement</p>
             </div>
-
-            <div class="rapport-divider">
-                <span>Ou continuer avec</span>
-            </div>
-            <button type="button" class="btn btn-google" disabled aria-label="Se connecter avec Google (bientôt disponible)">
-                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                Se connecter avec Google
-            </button>
         </div>
     </main>
 

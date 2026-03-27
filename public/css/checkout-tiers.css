@@ -1,0 +1,161 @@
+/* Checkout — sélection de formule (3 tarifs) */
+
+.checkout-tiers-wrap {
+  margin-bottom: 40px;
+  animation: tierFade 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tierFade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.checkout-tiers-title {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.checkout-tiers-sub {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.checkout-tiers-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .checkout-tiers-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+}
+
+.tier-card {
+  position: relative;
+  text-align: left;
+  padding: 20px 18px;
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.tier-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.12);
+}
+
+.tier-card.is-selected {
+  border-color: #2563eb;
+  box-shadow: 0 12px 32px -10px rgba(37, 99, 235, 0.28);
+  transform: translateY(-2px);
+}
+
+.tier-card:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
+}
+
+.tier-badge {
+  position: absolute;
+  top: -10px;
+  right: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+}
+
+.tier-badge--muted {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.tier-name {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.tier-price {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #2563eb;
+  margin-bottom: 10px;
+  letter-spacing: -0.02em;
+}
+
+.tier-price small {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.tier-desc {
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.tier-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.tier-list li {
+  padding: 4px 0 4px 22px;
+  position: relative;
+}
+
+.tier-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.checkout-main .checkout-title {
+  margin-bottom: 28px;
+}
+
+.checkout-plan-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.checkout-plan-line strong {
+  color: #0f172a;
+  font-weight: 700;
+}

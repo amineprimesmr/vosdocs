@@ -51,6 +51,9 @@
               trim: d.trim || '',
               summary: d.summary || ''
             };
+            vehicleData.vehicleDesc = [vehicleData.year, vehicleData.make, vehicleData.model]
+              .filter(Boolean)
+              .join(' · ');
             if (typeof VehicleService !== 'undefined') {
               VehicleService.saveCommandeData({
                 demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
@@ -59,7 +62,7 @@
                 prix: 19.90
               });
             }
-            window.location.href = 'resultats.html';
+            window.location.href = 'verification.html';
           } else if (result.degraded) {
             if (typeof VehicleService !== 'undefined') {
               VehicleService.saveCommandeData({
@@ -68,7 +71,7 @@
                 prix: 19.90
               });
             }
-            window.location.href = 'resultats.html';
+            window.location.href = 'verification.html';
           } else if (status === 401 || result.code === 'AUTH_REQUIRED') {
             if (formError) {
               formError.innerHTML = 'Connexion requise : <a href="compte.html">créer un compte ou se connecter</a> pour utiliser la recherche VIN (1 crédit par recherche).';

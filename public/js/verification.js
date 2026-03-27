@@ -1,6 +1,6 @@
 /**
  * Carvinguard - Page de vérification longue (style image : barre de progression + liste découverte)
- * Animation : progress bar, spinners → checkmarks, puis redirection vers resultats.html
+ * Animation : progress bar, spinners → checkmarks, puis redirection vers rapport.html
  */
 
 (function() {
@@ -28,8 +28,13 @@
     var vin = (commande && commande.vin) ? commande.vin : 'WBADT43452G123456';
     if (vinEl) vinEl.textContent = vin;
     var descEl = document.getElementById('verificationVehicleDesc');
-    if (descEl && commande && commande.vehicleData && commande.vehicleData.description) {
-      descEl.textContent = commande.vehicleData.description;
+    if (descEl && commande && commande.vehicleData) {
+      var vd = commande.vehicleData;
+      var desc =
+        vd.description ||
+        vd.summary ||
+        [vd.year, vd.make, vd.model].filter(Boolean).join(' ');
+      if (desc) descEl.textContent = desc;
     }
 
     card.classList.add('verification-card-visible');

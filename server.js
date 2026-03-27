@@ -141,6 +141,8 @@ function getOrderEmailContent(order) {
     'Titulaire (C.1): ' + (order.titulaire || '—'),
     'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
     'Date certificat (I): ' + (order.dateCertificat || '—'),
+    'Formule: ' + (order.planLabel || order.planId || '—'),
+    'Volume certificats: ' + (order.packLabel || order.packSize || '—'),
     '',
     '— Adresse (si renseignée) —',
     'CP: ' + (order.cp || '—'),
@@ -238,9 +240,13 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         miseCirculation: m.miseCirculation || '',
         dateCertificat: m.dateCertificat || '',
         cp: m.cp || '',
-        ville: m.ville || ''
-      };
-      saveOrder(order);
+      ville: m.ville || '',
+      planId: m.planId || '',
+      planLabel: m.planLabel || '',
+      packSize: m.packSize || '',
+      packLabel: m.packLabel || ''
+    };
+    saveOrder(order);
       await notifyTeam(order);
       await sendOrderEmail(order);
     }
