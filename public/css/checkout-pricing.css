@@ -176,9 +176,16 @@
 @media (min-width: 960px) {
   .cg-tier-grid {
     flex-direction: row;
+    flex-wrap: wrap;
     max-width: none;
     gap: 20px;
     align-items: stretch;
+    justify-content: center;
+  }
+
+  .cg-tier-grid > .cg-tier-card {
+    flex: 1 1 240px;
+    max-width: 320px;
   }
 }
 
@@ -207,6 +214,9 @@ a.cg-tier-card:nth-child(2) {
 }
 a.cg-tier-card:nth-child(3) {
   animation-delay: 0.24s;
+}
+a.cg-tier-card:nth-child(4) {
+  animation-delay: 0.32s;
 }
 
 a.cg-tier-card:hover {
@@ -249,6 +259,32 @@ a.cg-tier-card[aria-disabled='true']:hover {
   background: var(--cg-green);
   color: #fff;
   white-space: nowrap;
+}
+
+.cg-tier-badge--sub {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.cg-tier-card--subscription {
+  border: 2px solid #c7d2fe;
+  background: linear-gradient(180deg, #fff 0%, #f5f3ff 100%);
+}
+
+.cg-tier-card--subscription:hover {
+  border-color: #a5b4fc;
+}
+
+.cg-tier-price--sub {
+  font-size: 2rem;
+}
+
+.cg-tier-cta--sub {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+}
+
+a.cg-tier-card--subscription:hover .cg-tier-cta--sub {
+  filter: brightness(1.05);
 }
 
 .cg-tier-icon {

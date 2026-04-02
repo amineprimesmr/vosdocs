@@ -103,6 +103,18 @@
           });
           packsContainer.appendChild(btn);
         });
+        if (/offre=abonnement/i.test(window.location.search) && packsContainer) {
+          setTimeout(function () {
+            var subBtn = packsContainer.querySelector('button[data-pack-id="sub_monthly_7"]');
+            if (subBtn) {
+              subBtn.click();
+              var creditsSection = document.getElementById('creditsSection');
+              if (creditsSection) {
+                creditsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }
+          }, 150);
+        }
       }
     });
 
