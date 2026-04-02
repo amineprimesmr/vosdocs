@@ -344,12 +344,12 @@
 }
 
 .cg-tier-cta--sub {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  background: linear-gradient(135deg, var(--cg-green), var(--cg-green-dark));
   color: #fff;
 }
 
 .cg-tier-card--subscription:hover .cg-tier-cta--sub {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
 }
 
 .cg-tier-icon {
@@ -427,21 +427,21 @@ a.cg-tier-cta--sub {
 }
 
 .cg-tier-cta--muted {
-  background: #f3f4f6;
-  color: var(--cg-text);
+  background: linear-gradient(135deg, var(--cg-green), var(--cg-green-dark));
+  color: #fff;
 }
 
 .cg-tier-card:hover .cg-tier-cta--muted {
-  background: #e5e7eb;
+  filter: brightness(1.06);
 }
 
 .cg-tier-cta--primary {
-  background: var(--cg-green);
+  background: linear-gradient(135deg, var(--cg-green), var(--cg-green-dark));
   color: #fff;
 }
 
 .cg-tier-card:hover .cg-tier-cta--primary {
-  background: var(--cg-green-dark);
+  filter: brightness(1.06);
 }
 
 /* Sections */
