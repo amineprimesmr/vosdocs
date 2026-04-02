@@ -971,6 +971,7 @@ app.get('/api/blog/posts', async (req, res) => {
       { loc: baseUrl + '/conditions-generales-utilisation.html', changefreq: 'yearly', priority: '0.5' },
       { loc: baseUrl + '/politique-confidentialite.html', changefreq: 'yearly', priority: '0.5' },
       { loc: baseUrl + '/contact.html', changefreq: 'monthly', priority: '0.8' },
+      { loc: baseUrl + '/resiliation-abonnement.html', changefreq: 'yearly', priority: '0.5' },
       { loc: baseUrl + '/aide.html', changefreq: 'monthly', priority: '0.8' },
       { loc: baseUrl + '/carte-grise.html', changefreq: 'monthly', priority: '0.8' },
       { loc: baseUrl + '/demarches.html', changefreq: 'monthly', priority: '0.9' },

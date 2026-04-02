@@ -9,7 +9,7 @@
     <link rel="canonical" href="https://www.carvinguard.fr/checkout.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/checkout-pricing.css?v=3">
+    <link rel="stylesheet" href="css/checkout-pricing.css?v=4">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="js/analytics.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
@@ -84,17 +84,25 @@
                     <span class="cg-tier-cta cg-tier-cta--muted">Payer <span aria-hidden="true">→</span></span>
                 </a>
 
-                <a class="cg-tier-card cg-tier-card--subscription" href="compte.html?offre=abonnement" id="pay-link-abonnement" rel="noopener noreferrer">
-                    <span class="cg-tier-badge cg-tier-badge--sub">Abonnement</span>
+                <div class="cg-tier-card cg-tier-card--subscription" role="group" aria-labelledby="tier-pack-mensuel">
+                    <div class="cg-tier-badges">
+                        <span class="cg-tier-badge cg-tier-badge--sub">Abonnement</span>
+                        <span class="cg-tier-badge cg-tier-badge--deal">Le best deal</span>
+                    </div>
                     <span class="cg-tier-icon" aria-hidden="true">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
                     </span>
-                    <span class="cg-tier-name">Pack mensuel</span>
+                    <span class="cg-tier-name" id="tier-pack-mensuel">Pack mensuel</span>
                     <span class="cg-tier-sub">7 rapports VIN par mois, renouvelés chaque cycle (1 recherche = 1 rapport).</span>
-                    <span class="cg-tier-price cg-tier-price--sub">1&nbsp;€</span>
-                    <span class="cg-tier-unit">puis <strong>49,99&nbsp;€</strong>/mois · résiliable</span>
-                    <span class="cg-tier-cta cg-tier-cta--sub">Souscrire sur mon compte <span aria-hidden="true">→</span></span>
-                </a>
+                    <div class="cg-tier-price-row">
+                        <span class="cg-tier-price cg-tier-price--sub">1&nbsp;€</span>
+                        <span class="cg-tier-price-hint">/ 1 rapport</span>
+                    </div>
+                    <p class="cg-tier-unit cg-tier-unit--sub">
+                        puis <strong>49,99&nbsp;€</strong>/mois · résiliable à tout moment en <a class="cg-tier-inline-link" href="resiliation-abonnement.html">cliquant ici</a>.
+                    </p>
+                    <a class="cg-tier-cta cg-tier-cta--sub" href="compte.html?offre=abonnement" id="pay-link-abonnement">Payer <span aria-hidden="true">→</span></a>
+                </div>
             </div>
         </section>
 
