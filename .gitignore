@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 ENV-VERCEL.txt
+STRIPE-COLLER-VERCEL.txt
+.stripe-setup-result.json
 
 # Données clients (ne pas commiter)
 data/commandes.json

@@ -1,7 +1,7 @@
 {
   "name": "carvinguard",
   "version": "1.0.0",
-  "description": "Certificat de situation administrative détaillée (NON GAGE)",
+  "description": "Rapport historique véhicule par numéro VIN (Carvinguard)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -14,7 +14,11 @@
     "db:push": "prisma db push",
     "db:seed": "node scripts/seed-blog-db.js",
     "gen:jwt-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
-    "saas:check": "node scripts/check-saas-ready.js"
+    "saas:check": "node scripts/check-saas-ready.js",
+    "saas:check:prod": "node scripts/check-saas-ready.js --prod",
+    "stripe:setup": "node scripts/stripe-create-catalog.js",
+    "stripe:tout": "node scripts/stripe-tout-en-un.js",
+    "verify": "node scripts/verify-deploy.js"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

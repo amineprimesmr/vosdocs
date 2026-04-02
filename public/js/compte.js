@@ -85,11 +85,12 @@
           btn.type = 'button';
           btn.className = 'btn btn-primary credit-pack-btn';
           btn.dataset.packId = p.id;
+          var display = p.displayPrice ? p.displayPrice : eur(p.priceCents);
           btn.innerHTML =
             '<strong>' +
             p.label +
             '</strong><br><span class="pack-price">' +
-            eur(p.priceCents) +
+            display +
             '</span>';
           btn.addEventListener('click', function () {
             selectedPackId = p.id;

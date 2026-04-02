@@ -7,21 +7,21 @@
   var PLANS = {
     essentiel: {
       price: 14.99,
-      label: 'Certificat unique',
+      label: 'Rapport VIN unique',
       packSize: 1,
-      packLabel: '1 certificat'
+      packLabel: '1 rapport VIN'
     },
     confort: {
       price: 29.99,
       label: 'Meilleur rapport qualité-prix',
       packSize: 3,
-      packLabel: '3 certificats'
+      packLabel: '3 rapports VIN'
     },
     premium: {
       price: 69.99,
       label: 'Pack Pro',
       packSize: 10,
-      packLabel: '10 certificats'
+      packLabel: '10 rapports VIN'
     }
   };
 
@@ -206,7 +206,7 @@
       };
       if (digitsOnly(miseCirculation).length < 8 || digitsOnly(dateCertificat).length < 8 || !titulaire) {
         showError(
-          'Veuillez remplir la date de 1ère immatriculation, la date du certificat et le titulaire.'
+          'Veuillez remplir la date de 1ère immatriculation, la date (case I) sur la carte grise et le titulaire.'
         );
         return;
       }

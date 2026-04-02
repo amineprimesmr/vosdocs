@@ -61,7 +61,7 @@ Toutes les URLs listées dans `sitemap.xml` doivent correspondre à des pages qu
 - `contact.html`, `aide.html`, `carte-grise.html`, `demarches.html`
 - `prix-carte-grise.html`, `prix-cheval-fiscal.html`, `papiers.html`
 - `mentions-legales.html`, `guides.html`
-- et les guides (certificat-non-gage-obligatoire, vendre-voiture-documents-obligatoires, etc.)
+- et les guides (guide-rapport-vin-achat, vendre-voiture-documents-obligatoires, etc.)
 
 Si une URL du sitemap renvoie 404 en production, il faut soit créer la page soit la retirer du sitemap.
 

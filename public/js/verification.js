@@ -77,7 +77,7 @@
     setTimeout(function() {
       if (isDemo && typeof VehicleService !== 'undefined') {
         VehicleService.saveCommandeData({
-          demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
+          demarche: 'Rapport historique véhicule (VIN)',
           vin: 'WBADT43452G123456',
           prix: 19.90
         });

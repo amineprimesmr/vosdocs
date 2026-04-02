@@ -1018,9 +1018,9 @@ img { max-width: 100%; height: auto; }
   line-height: 1.5;
   margin: 0;
 }
-.vehicle-btn.label-nongage { position: relative; }
-.vehicle-btn.label-nongage::before {
-  content: 'NON GAGE';
+.vehicle-btn.label-rapport-vin { position: relative; }
+.vehicle-btn.label-rapport-vin::before {
+  content: 'VIN';
   position: absolute;
   top: 0;
   left: 0;

@@ -43,7 +43,7 @@ async function main() {
         title: a.title || 'Sans titre',
         description: a.description || '',
         bodyHtml: a.bodyHtml || '<p>Contenu à venir.</p>',
-        category: a.category || 'certificat-non-gage',
+        category: a.category || 'rapport-vin',
         readingTime: a.readingTime || '4 min',
         keywords: a.keywords || [],
         publishedAt: a.date ? new Date(a.date) : new Date()

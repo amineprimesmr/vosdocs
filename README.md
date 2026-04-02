@@ -1,11 +1,11 @@
-# Carvinguard - Certificat de situation administrative détaillée (NON GAGE)
+# Carvinguard - Rapport historique véhicule (VIN)
 
-Site **100% fonctionnel** pour une agence prestataire proposant l'obtention du **Certificat de situation administrative détaillée (NON GAGE)** à 19,90 €.
+Site **100% fonctionnel** pour une agence prestataire proposant un **rapport historique véhicule** à partir du numéro VIN (à partir de 19,90 € selon formule).
 
 ## Structure du site
 
 ### Pages principales
-- **index.html** - Page d'accueil (certificat non-gage)
+- **index.html** - Page d'accueil (recherche VIN / rapport)
 - **recapitulatif.html** - Récapitulatif (dates, titulaire, email)
 - **checkout.html** - Infos client + paiement Stripe
 - **confirmation.html** - Confirmation de commande

@@ -1,18 +1,17 @@
 [
   {
     "slug": "difference-csa-carte-grise",
-    "title": "Certificat de non-gage et carte grise : quelles différences ?",
-    "description": "CSA et carte grise sont deux documents distincts. On vous explique leur rôle respectif lors de la vente ou l'achat d'un véhicule.",
+    "title": "Carte grise et rapport VIN : quelles différences ?",
+    "description": "Le titre d'immatriculation et un rapport historique VIN ont des rôles différents pour préparer une vente ou un achat.",
     "category": "documents",
     "keywords": [
-      "CSA",
       "carte grise",
-      "certificat non-gage",
-      "certificat immatriculation",
+      "rapport VIN",
+      "titre immatriculation",
       "documents"
     ],
     "readingTime": "4 min",
-    "bodyHtml": "<p><strong>La carte grise</strong> (certificat d'immatriculation) prouve que le véhicule est immatriculé et identifie son titulaire. Le <strong>certificat de situation administrative</strong> (CSA, ou « certificat de non-gage ») indique s'il existe des inscriptions (gage, opposition) qui empêcheraient la vente.</p><h2>Deux documents complémentaires</h2><p>Lors d'une vente, le vendeur remet les deux : la carte grise (signée au verso) et le certificat de non-gage de moins de 15 jours. La carte grise permet à l'acheteur de faire la demande de sa propre carte grise à son nom ; le CSA rassure l'acheteur sur l'absence d'empêchement.</p><h2>Où les obtenir ?</h2><p>La carte grise se demande à l'ANTS ou en préfecture. Le certificat de non-gage peut être obtenu en ligne en quelques minutes sur <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p>"
+    "bodyHtml": "<p><strong>La carte grise</strong> (titre d'immatriculation) prouve que le véhicule est immatriculé et identifie son titulaire. Un <strong>rapport VIN</strong> synthétise des informations à partir du numéro de châssis pour aider à décider en connaissance de cause.</p><h2>Deux outils complémentaires</h2><p>Pour la cession, les pièces officielles prévues par la réglementation restent indispensables (voir <a href=\"https://www.service-public.fr\" target=\"_blank\" rel=\"noopener\">service-public.fr</a>). Le rapport VIN apporte une couche d'information sur l'historique connu.</p><h2>Où les obtenir ?</h2><p>La carte grise se gère auprès de l'ANTS ou en préfecture. Un rapport VIN peut être commandé en quelques minutes sur <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p>"
   },
   {
     "slug": "vendre-voiture-sans-carte-grise",
@@ -27,7 +26,7 @@
       "documents"
     ],
     "readingTime": "4 min",
-    "bodyHtml": "<p>En principe, pour vendre un véhicule, vous devez être en possession de la <strong>carte grise</strong> (certificat d'immatriculation) au votre nom. Sans elle, la cession est compliquée.</p><h2>Si vous avez perdu la carte grise</h2><p>Vous pouvez demander un <strong>duplicata</strong> auprès de l'ANTS. Une fois reçu, vous pourrez procéder à la vente normalement en fournissant aussi un certificat de non-gage à jour. Obtenez votre certificat de non-gage en 5 minutes sur <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p><h2>Si la carte grise est au nom d'un précédent propriétaire</h2><p>La situation doit être régularisée avant toute vente : le titulaire actuel doit avoir fait la demande de carte grise à son nom. Vendre « sans carte grise » ou avec des documents incohérents expose à des nullités et des litiges.</p>"
+    "bodyHtml": "<p>En principe, pour vendre un véhicule, vous devez être en possession de la <strong>carte grise</strong> (titre d'immatriculation) à votre nom. Sans elle, la cession est compliquée.</p><h2>Si vous avez perdu la carte grise</h2><p>Vous pouvez demander un <strong>duplicata</strong> auprès de l'ANTS. Une fois reçu, vous pourrez procéder à la vente en fournissant les autres pièces administratives requises. Pour une synthèse historique par VIN en complément, voir <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p><h2>Si la carte grise est au nom d'un précédent propriétaire</h2><p>La situation doit être régularisée avant toute vente : le titulaire actuel doit avoir fait la demande de carte grise à son nom. Vendre avec des documents incohérents expose à des litiges.</p>"
   },
   {
     "slug": "demarches-vente-vehicule-entre-particuliers",
@@ -42,6 +41,6 @@
       "procédure"
     ],
     "readingTime": "6 min",
-    "bodyHtml": "<p>Vendre ou acheter une voiture <strong>entre particuliers</strong> implique des étapes claires pour sécuriser la transaction.</p><h2>Préparer les documents (vendeur)</h2><p>Réunissez : carte grise, certificat de non-gage de moins de 15 jours (obtenable en 5 min sur <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>), pièce d'identité. Vérifiez que le véhicule est à jour (contrôle technique, assurance).</p><h2>Lors de la vente</h2><p>Remplissez et signez le formulaire de cession (cerfa). Remettez à l'acheteur la carte grise signée au verso, le certificat de non-gage et une copie du procès-verbal de cession. L'acheteur dispose d'un mois pour demander sa carte grise à son nom.</p><h2>Assurance</h2><p>En tant que vendeur, vous pouvez résilier votre assurance après la cession. L'acheteur doit assurer le véhicule dès la prise de possession.</p>"
+    "bodyHtml": "<p>Vendre ou acheter une voiture <strong>entre particuliers</strong> implique des étapes claires pour sécuriser la transaction.</p><h2>Préparer les documents (vendeur)</h2><p>Réunissez : carte grise, <strong>documents administratifs obligatoires</strong> pour la vente (situation administrative à jour via l'administration), pièce d'identité. Vérifiez que le véhicule est à jour (contrôle technique, assurance). Un <a href=\"https://www.carvinguard.fr/\">rapport VIN</a> peut rassurer l'acheteur en complément.</p><h2>Lors de la vente</h2><p>Remplissez et signez le formulaire de cession (cerfa). Remettez à l'acheteur la carte grise signée au verso et les pièces prévues par la loi. L'acheteur dispose d'un mois pour demander sa carte grise à son nom.</p><h2>Assurance</h2><p>En tant que vendeur, vous pouvez résilier votre assurance après la cession. L'acheteur doit assurer le véhicule dès la prise de possession.</p>"
   }
 ]

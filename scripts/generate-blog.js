@@ -289,8 +289,8 @@ ${headBlock(title, article.description, canonical, true, article)}
           ${article.bodyHtml}
         </div>
         <div class="blog-article-cta">
-          <p>Besoin d'un certificat de non-gage à jour ?</p>
-          <a href="../index.html" class="btn btn-primary btn-lg">Obtenir mon certificat — 19,90 €</a>
+          <p>Besoin d'un rapport VIN à jour ?</p>
+          <a href="../index.html" class="btn btn-primary btn-lg">Commander mon rapport — 19,90 €</a>
         </div>
         ${relatedHtml}
       </div>

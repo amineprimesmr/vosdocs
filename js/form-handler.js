@@ -55,7 +55,7 @@
               .join(' · ');
             if (typeof VehicleService !== 'undefined') {
               VehicleService.saveCommandeData({
-                demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
+                demarche: 'Rapport historique véhicule (VIN)',
                 vin: vin.toUpperCase(),
                 vehicleData: vehicleData,
                 prix: 19.90
@@ -65,7 +65,7 @@
           } else if (result.degraded) {
             if (typeof VehicleService !== 'undefined') {
               VehicleService.saveCommandeData({
-                demarche: 'Certificat de situation administrative détaillée (NON GAGE)',
+                demarche: 'Rapport historique véhicule (VIN)',
                 vin: vin.toUpperCase(),
                 prix: 19.90
               });

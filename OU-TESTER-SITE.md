@@ -41,7 +41,7 @@
 ### 5. **Page Checkout / Paiement** (`checkout.html`)
 - Bloc récap : Démarche, Numéro VIN
 - **Ligne Véhicule** (si données API) : ex. « 2006 Dodge Stratus SXT »
-- Formulaire certificat (dates, type, titulaire)
+- Formulaire commande (dates carte grise, type, titulaire)
 - Formulaire coordonnées (nom, prénom, tél, email)
 - Paiement Stripe
 

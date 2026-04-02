@@ -1,4 +1,4 @@
-/* Rapport — aperçu certificat (partiel + zones floutées) */
+/* Rapport — aperçu (partiel + zones floutées) */
 
 .preview-page {
   min-height: 100vh;
@@ -305,16 +305,6 @@
 
 .preview-cta-bar .btn-unlock:active {
   transform: translateY(0);
-}
-
-.preview-cta-note {
-  text-align: center;
-  font-size: 0.8rem;
-  color: #64748b;
-}
-
-.preview-cta-note strong {
-  color: #0f172a;
 }
 
 .preview-section[data-reveal] {

@@ -19,7 +19,7 @@ Ouvre ce fichier pour voir la liste des commandes. Chaque entrée contient :
 - `nom`, `prenom` – Identité
 - `email`, `phone` – Contact
 - `vin` – Numéro VIN du véhicule (17 caractères)
-- `titulaire`, `miseCirculation`, `dateCertificat` – Infos certificat
+- `titulaire`, `miseCirculation`, `dateCertificat` – Infos carte grise (case I, etc.)
 - `cp`, `ville` – Adresse
 - `montant` – Montant payé
 

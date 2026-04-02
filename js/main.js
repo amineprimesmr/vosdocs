@@ -1,5 +1,5 @@
 /**
- * Carvinguard - Certificat de situation administrative détaillée (NON GAGE)
+ * Carvinguard - Rapport historique véhicule (VIN)
  * Script principal - Animations et interactions
  */
 

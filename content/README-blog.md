@@ -16,7 +16,7 @@ Le blog est généré à partir de fichiers JSON. Les pages sont créées dans `
 
 ## Catégories (blog-config.json)
 
-- `certificat-non-gage` → Certificat de non-gage  
+- `rapport-vin` → Rapport VIN  
 - `carte-grise` → Carte grise  
 - `vente-vehicule` → Vente de véhicule  
 - `achat-occasion` → Achat d'occasion  
@@ -39,7 +39,7 @@ Tu peux en ajouter en modifiant `blog-config.json` (clé `categories`).
   "title": "Titre de l’article",
   "description": "Résumé court pour SEO et cartes (150–160 caractères).",
   "date": "2026-03-01",
-  "category": "certificat-non-gage",
+  "category": "rapport-vin",
   "keywords": ["mot-clé 1", "mot-clé 2"],
   "readingTime": "4 min",
   "bodyHtml": "<p>Contenu en HTML…</p><h2>Sous-titre</h2><p>…</p>"
@@ -90,4 +90,4 @@ Tous les **3 jours**, le workflow GitHub Actions exécute `publish-next-blog.js`
 - **category** : une des clés de `blog-config.json` → `categories`.  
 - **bodyHtml** : corps de l’article en **HTML** (paragraphes `<p>`, titres `<h2>`, listes `<ul>/<li>`, liens `<a href="…">`).  
 
-Les pages générées incluent : fil d’Ariane, catégorie, date, temps de lecture, CTA « Obtenir mon certificat », articles similaires et balises SEO / schema Article.
+Les pages générées incluent : fil d’Ariane, catégorie, date, temps de lecture, CTA « Commander mon rapport », articles similaires et balises SEO / schema Article.

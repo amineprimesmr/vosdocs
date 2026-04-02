@@ -1,10 +1,10 @@
 {
   "title": "Blog & Actualités",
-  "subtitle": "Certificat de non-gage, carte grise, vente et achat de véhicule : conseils, démarches et actualités.",
+  "subtitle": "Rapport VIN, carte grise, vente et achat de véhicule : conseils, démarches et actualités.",
   "baseUrl": "https://www.carvinguard.fr",
   "blogPath": "/blog",
   "categories": {
-    "certificat-non-gage": "Certificat de non-gage",
+    "rapport-vin": "Rapport VIN",
     "carte-grise": "Carte grise",
     "vente-vehicule": "Vente de véhicule",
     "achat-occasion": "Achat d'occasion",
@@ -13,7 +13,7 @@
   },
   "pagination": { "perPage": 12 },
   "seo": {
-    "indexTitle": "Blog & Actualités | Certificat de non-gage, véhicule | Carvinguard",
-    "indexDescription": "Articles et conseils sur le certificat de non-gage, la vente et l'achat de véhicule, la carte grise. Restez informé avec Carvinguard."
+    "indexTitle": "Blog & Actualités | Rapport VIN, véhicule | Carvinguard",
+    "indexDescription": "Articles et conseils sur le rapport VIN, la vente et l'achat de véhicule, la carte grise. Restez informé avec Carvinguard."
   }
 }

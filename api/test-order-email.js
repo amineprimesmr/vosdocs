@@ -22,7 +22,7 @@ function getOrderEmailContent(order) {
     'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
     'Titulaire (C.1): ' + (order.titulaire || '—'),
     'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
-    'Date certificat (I): ' + (order.dateCertificat || '—'),
+    'Date case (I) carte grise: ' + (order.dateCertificat || '—'),
     '',
     '— Adresse (si renseignée) —',
     'CP: ' + (order.cp || '—'),

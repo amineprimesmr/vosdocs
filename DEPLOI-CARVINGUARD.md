@@ -48,12 +48,34 @@ Dans **Vercel** → **Settings** → **Environment Variables**, configure :
 | Variable | Valeur | Description |
 |----------|--------|-------------|
 | `BASE_URL` | `https://www.carvinguard.fr` | URL de production |
+| `VEHICLEDATABASES_API_KEY` | (ta clé API) | Décodage VIN |
 | `STRIPE_SECRET_KEY` | (ta clé Stripe) | Paiements |
 | `STRIPE_PUBLISHABLE_KEY` | (ta clé Stripe) | Paiements |
 | `STRIPE_WEBHOOK_SECRET` | (ta clé webhook) | Paiements |
 | `RESEND_API_KEY` | (ta clé Resend) | Emails commandes |
 | `MAIL_TO` | `contact@carvinguard.fr` | Email de réception |
 | `DATABASE_URL` | (si Auto-Blog) | Connexion Postgres |
+| `STRIPE_PAYMENT_LINK_ESSENTIEL` | (URL du lien Stripe) | Checkout — généré par `npm run stripe:tout` |
+| `STRIPE_PAYMENT_LINK_CONFORT` | (URL du lien Stripe) | Idem |
+| `STRIPE_PAYMENT_LINK_PREMIUM` | (URL du lien Stripe) | Idem |
+| `SUBSCRIPTION_PRICE_INITIAL_ID` | (price Stripe 1€) | Abonnement : paiement initial |
+| `SUBSCRIPTION_PRICE_MONTHLY_ID` | (price Stripe 49,99€/mois) | Abonnement : paiement mensuel |
+| `SUBSCRIPTION_CREDITS_PER_CYCLE` | `7` | Crédits ajoutés par cycle mensuel |
+| `SUBSCRIPTION_TRIAL_DAYS` | `1` | Facturation du mensuel au lendemain |
+| `SUBSCRIPTION_INITIAL_CENTS_FOR_DISPLAY` | `100` | Juste pour l’affichage (1€) |
+| `SUBSCRIPTION_MONTHLY_CENTS_FOR_DISPLAY` | `4999` | Juste pour l’affichage (49,99€) |
+
+#### Remplir Stripe sans te perdre
+
+1. En local, dans un fichier **`.env`** à la racine du projet : `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `BASE_URL` (clés **Live** sur [Stripe → Développeurs → Clés API](https://dashboard.stripe.com/apikeys)).
+2. Lance **`npm run stripe:tout`** : le script explique les étapes en français, crée les 3 Payment Links, et écrit **`STRIPE-COLLER-VERCEL.txt`** (modèle pour coller sur Vercel — ce fichier ne doit pas être commité).
+3. Crée le **webhook** Stripe (même mode Live) : URL `https://www.carvinguard.fr/api/stripe-webhook`, événements :
+   - **`payment_intent.succeeded`** (paiement initial 1€)
+   - **`invoice.payment_succeeded`** (renouvellement mensuel)
+   puis copie **`STRIPE_WEBHOOK_SECRET`** (`whsec_…`) dans `.env` et sur Vercel.
+4. Vérifie : **`npm run saas:check:prod`**, puis redéploie Vercel.
+
+Côté code (sans secrets) : **`npm run verify`** (Prisma + syntaxe du serveur).
 
 ### 5. Email contact@carvinguard.fr
 

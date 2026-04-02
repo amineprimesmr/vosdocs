@@ -1,7 +1,7 @@
-# Audit SEO VosDocs.fr - Analyse complète
+# Audit SEO Carvinguard.fr - Analyse complète
 
 **Date :** 13 février 2026  
-**Site :** vosdocs.fr
+**Site :** carvinguard.fr
 
 **→ Guide opérationnel (Google Analytics, Search Console, sitemap, indexation) :** voir **[GUIDE-GOOGLE-SEO-COMPLET.md](GUIDE-GOOGLE-SEO-COMPLET.md)**.
 
@@ -14,7 +14,7 @@ Google signale jusqu’à quatre motifs : **« Introuvable (404) »**, **« Bloq
 ### Explication
 
 1. **Page avec redirection**  
-   Le sitemap contenait à la fois `https://www.vosdocs.fr/` et `https://www.vosdocs.fr/index.html`. Une des deux redirige vers l’autre → alerte « Page avec redirection ».
+   Le sitemap contenait à la fois `https://www.carvinguard.fr/` et `https://www.carvinguard.fr/index.html`. Une des deux redirige vers l’autre → alerte « Page avec redirection ».
 
 2. **Exclue par noindex**  
    Les pages **checkout**, **récapitulatif**, **confirmation** et **404** ont volontairement `noindex`. Elles étaient dans le sitemap → Google les crawlait puis les excluait → alerte « Exclue par noindex ».
@@ -27,8 +27,8 @@ Google signale jusqu’à quatre motifs : **« Introuvable (404) »**, **« Bloq
 
 ### Actions effectuées
 
-- **Sitemap** : une seule URL d’accueil (`https://www.vosdocs.fr/`), retrait de `recapitulatif.html` et `checkout.html` du sitemap.
-- **Canonical / Open Graph / JSON-LD** : URL d’accueil unifiée en `https://www.vosdocs.fr/`.
+- **Sitemap** : une seule URL d’accueil (`https://www.carvinguard.fr/`), retrait de `recapitulatif.html` et `checkout.html` du sitemap.
+- **Canonical / Open Graph / JSON-LD** : URL d’accueil unifiée en `https://www.carvinguard.fr/`.
 - **Redirection** : dans `vercel.json`, 301 de `/index.html` vers `/`.
 - **robots.txt** : **`Disallow: /api/`** pour que Google ne tente plus de crawler les routes API → moins de 403/404 dans le rapport d’indexation.
 
@@ -50,7 +50,7 @@ Résultat attendu : réduction des quatre motifs après le prochain crawl. Pour 
 - **Open Graph** : og:type, og:url, og:title, og:description, og:image, og:locale, og:site_name
 - **Twitter Card** : summary_large_image avec title, description, image
 - **Schema.org JSON-LD** : Organization, Product, WebPage, FAQPage
-- **Structure H1** : Un seul H1 ("Certificat de non-gage : obtention en ligne en 5 minutes !")
+- **Structure H1** : Un seul H1 (positionné sur l’historique véhicule / recherche VIN)
 - **Structure H2-H3** : Hiérarchie logique
 
 ### Sitemap & robots.txt
@@ -58,7 +58,7 @@ Résultat attendu : réduction des quatre motifs après le prochain crawl. Pour 
 - **robots.txt** : Allow /, Sitemap déclaré
 
 ### Images
-- **Logo** : Alt="VosDocs" sur toutes les images logo
+- **Logo** : Alt="Carvinguard" sur toutes les images logo
 
 ### Accessibilité
 - **Skip link** : "Aller au contenu" sur la page d'accueil
@@ -69,14 +69,14 @@ Résultat attendu : réduction des quatre motifs après le prochain crawl. Pour 
 ## ⚠️ PROBLÈMES À CORRIGER
 
 ### 1. **og-image.png manquant** (CRITIQUE)
-- Les balises og:image et twitter:image pointent vers `https://www.vosdocs.fr/og-image.png`
+- Les balises og:image et twitter:image pointent vers `https://www.carvinguard.fr/og-image.png`
 - **Ce fichier n'existe pas** → image cassée lors du partage Facebook/LinkedIn/Twitter
 - **Solution** : Créer og-image.png (1200×630 px) ou utiliser logo.png en temporaire
 
 ### 2. **Canonical carte-grise.html erroné**
 - Actuellement : `canonical` → index.html
 - **Problème** : La page carte-grise a son propre contenu, elle doit pointer vers elle-même
-- **Solution** : `canonical` → https://www.vosdocs.fr/carte-grise.html
+- **Solution** : `canonical` → https://www.carvinguard.fr/carte-grise.html
 
 ### 3. **Canonical confirmation.html manquant**
 - La page confirmation n'a pas de balise canonical
@@ -95,7 +95,7 @@ Résultat attendu : réduction des quatre motifs après le prochain crawl. Pour 
 
 ### 6. **Sitemap : doublon / et index.html** — CORRIGÉ (fév. 2026)
 - Les deux URLs pointaient vers la même page (priority 1.0) → Google signalait « Page avec redirection »
-- **Correction** : Une seule URL d’accueil dans le sitemap (`https://www.vosdocs.fr/`), canonical et og:url alignés sur `/`, redirection 301 `/index.html` → `/` dans vercel.json
+- **Correction** : Une seule URL d’accueil dans le sitemap (`https://www.carvinguard.fr/`), canonical et og:url alignés sur `/`, redirection 301 `/index.html` → `/` dans vercel.json
 
 ### 7. **404.html : pas de meta description**
 - Impact faible pour une page d'erreur (noindex)

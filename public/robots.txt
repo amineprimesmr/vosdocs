@@ -1,5 +1,5 @@
 # Carvinguard - robots.txt
-# Certificat de non-gage - https://www.carvinguard.fr
+# Carvinguard — rapport VIN / historique véhicule - https://www.carvinguard.fr
 
 User-agent: *
 Allow: /

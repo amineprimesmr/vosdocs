@@ -23,6 +23,16 @@ app.use(cors({ origin: true, credentials: true }));
 // Webhook Stripe doit recevoir le body brut AVANT express.json()
 const ORDERS_FILE = path.join(__dirname, 'data', 'commandes.json');
 
+function orderAlreadyInFile(paymentIntentId) {
+  if (!paymentIntentId || !fs.existsSync(ORDERS_FILE)) return false;
+  try {
+    const orders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+    return Array.isArray(orders) && orders.some((o) => o.id === paymentIntentId);
+  } catch (e) {
+    return false;
+  }
+}
+
 function saveOrder(order) {
   try {
     let orders = [];
@@ -40,46 +50,295 @@ function saveOrder(order) {
 /** Achat de crédits via Stripe (idempotent par payment_intent) */
 async function handleStripeCreditPurchase(pi) {
   const m = pi.metadata || {};
-  if (m.purpose !== 'credit_purchase') {
-    return false;
-  }
   const prisma = getPrisma();
   if (!prisma) {
-    console.warn('credit_purchase ignoré: pas de DATABASE_URL');
+    console.warn('handleStripeCreditPurchase ignoré: pas de DATABASE_URL');
     return true;
   }
-  const userId = m.userId;
-  const credits = parseInt(String(m.credits || '0'), 10);
-  if (!userId || credits < 1) {
-    console.warn('Métadonnées credit_purchase invalides', pi.id);
+
+  // 1) Achat ponctuel de crédits (pack 5 / pack 20)
+  if (m.purpose === 'credit_purchase') {
+    const userId = m.userId;
+    const credits = parseInt(String(m.credits || '0'), 10);
+    if (!userId || credits < 1) {
+      console.warn('Métadonnées credit_purchase invalides', pi.id);
+      return true;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const dup = await tx.creditTransaction.findUnique({
+          where: { stripePaymentIntentId: pi.id }
+        });
+        if (dup) return;
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { credits: { increment: credits } }
+        });
+
+        await tx.creditTransaction.create({
+          data: {
+            userId,
+            delta: credits,
+            reason: 'purchase',
+            stripePaymentIntentId: pi.id,
+            meta: JSON.stringify({
+              eur: (pi.amount / 100).toFixed(2),
+              packId: m.packId || ''
+            })
+          }
+        });
+      });
+    } catch (e) {
+      console.error('Webhook crédits:', e);
+    }
     return true;
   }
-  try {
-    await prisma.$transaction(async (tx) => {
-      const dup = await tx.creditTransaction.findUnique({
+
+  // 2) Initial d’abonnement : 1€ puis création d’un abonnement mensuel
+  if (m.purpose === 'subscription_initial') {
+    const userId = m.userId;
+    const creditsPerCycle = parseInt(String(m.creditsPerCycle || '7'), 10);
+    const subscriptionMonthlyPriceId = String(m.subscriptionMonthlyPriceId || '');
+    const trialDays = parseInt(String(m.trialDays || '1'), 10);
+
+    if (!userId || creditsPerCycle < 1 || !subscriptionMonthlyPriceId || trialDays < 0) {
+      console.warn('Métadonnées subscription_initial invalides', pi.id);
+      return true;
+    }
+
+    // Idempotence (paiement initial)
+    const dup = await prisma.creditTransaction.findUnique({
+      where: { stripePaymentIntentId: pi.id }
+    });
+    if (dup) return true;
+
+    // Récup email utilisateur pour créer/reprendre un customer Stripe
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true }
+    });
+    if (!user?.email) {
+      console.warn('subscription_initial: user introuvable', userId);
+      return true;
+    }
+
+    // Crée ou récupère le customer Stripe
+    const existingCustomers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customer =
+      existingCustomers.data && existingCustomers.data.length > 0
+        ? existingCustomers.data[0]
+        : await stripe.customers.create({ email: user.email });
+
+    // Associer le moyen de paiement du PaymentIntent au customer
+    if (pi.payment_method) {
+      try {
+        await stripe.paymentMethods.attach(pi.payment_method, { customer: customer.id });
+      } catch (_) {
+        /* si déjà attaché, on ignore */
+      }
+      await stripe.customers.update(customer.id, {
+        invoice_settings: { default_payment_method: pi.payment_method }
+      });
+    }
+
+    // Crée l’abonnement mensuel avec trial jusqu’au lendemain
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ price: subscriptionMonthlyPriceId, quantity: 1 }],
+      trial_period_days: Math.max(0, trialDays),
+      payment_behavior: 'default_incomplete',
+      metadata: {
+        purpose: 'subscription_monthly_credits',
+        userId: String(userId),
+        creditsPerCycle: String(creditsPerCycle)
+      },
+    });
+
+    // Reset crédits = 7 au moment de l’essai (et on journalise)
+    try {
+      await prisma.$transaction(async (tx) => {
+        const current = await tx.user.findUnique({
+          where: { id: userId },
+          select: { credits: true }
+        });
+        if (!current) return;
+
+        // Double-check idempotence au cas où le webhook rejoue pendant la création abonnement
+        const dup2 = await tx.creditTransaction.findUnique({
+          where: { stripePaymentIntentId: pi.id }
+        });
+        if (dup2) return;
+
+        const delta = creditsPerCycle - (current.credits || 0);
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { credits: creditsPerCycle }
+        });
+
+        await tx.creditTransaction.create({
+          data: {
+            userId,
+            delta,
+            reason: 'subscription_initial_grant',
+            stripePaymentIntentId: pi.id,
+            meta: JSON.stringify({
+              subscriptionId: subscription.id
+            })
+          }
+        });
+      });
+    } catch (e) {
+      console.error('subscription_initial_grant:', e);
+    }
+
+    return true;
+  }
+
+  // 3) Paiement one-shot via Payment Links (checkout.html) :
+  // - carvinguard_plan/amount -> crédits
+  // - crédit sur le compte correspondant via receipt_email (ou customer email)
+  if ((m && (m.carvinguard_plan || m.app === 'carvinguard')) || pi.amount) {
+    try {
+      const emailFromReceipt = (pi.receipt_email || '').trim().toLowerCase();
+      let email = emailFromReceipt;
+
+      // Si receipt_email est absent, on tente via customer.
+      if (!email && pi.customer) {
+        try {
+          const customer = await stripe.customers.retrieve(pi.customer);
+          email = (customer && customer.email ? String(customer.email) : '').trim().toLowerCase();
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      // On ne peut pas créditer sans email (association au compte utilisateur).
+      if (!email) return false;
+
+      let creditsToAdd = null;
+      const plan = m.carvinguard_plan;
+      if (plan === 'essentiel') creditsToAdd = 1;
+      if (plan === 'confort') creditsToAdd = 3;
+      if (plan === 'premium') creditsToAdd = 10;
+
+      // Fallback robuste : déduire des montants (en centimes).
+      if (!creditsToAdd) {
+        if (pi.amount === 1499) creditsToAdd = 1;
+        else if (pi.amount === 2999) creditsToAdd = 3;
+        else if (pi.amount === 6999) creditsToAdd = 10;
+      }
+
+      if (!creditsToAdd) return false;
+
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) return false;
+
+      // Idempotence par payment_intent
+      const dup = await prisma.creditTransaction.findUnique({
         where: { stripePaymentIntentId: pi.id }
       });
-      if (dup) return;
+      if (dup) return false;
+
+      await prisma.$transaction(async (tx) => {
+        const dup2 = await tx.creditTransaction.findUnique({
+          where: { stripePaymentIntentId: pi.id }
+        });
+        if (dup2) return;
+
+        await tx.user.update({
+          where: { id: user.id },
+          data: { credits: { increment: creditsToAdd } }
+        });
+
+        await tx.creditTransaction.create({
+          data: {
+            userId: user.id,
+            delta: creditsToAdd,
+            reason: 'payment_one_shot',
+            stripePaymentIntentId: pi.id,
+            meta: JSON.stringify({
+              carvinguard_plan: plan || '',
+              eur: (pi.amount / 100).toFixed(2)
+            })
+          }
+        });
+      });
+    } catch (e) {
+      console.error('handleStripeCreditPurchase one-shot:', e);
+    }
+    // On renvoie false pour continuer le flux "commande + email"
+    return false;
+  }
+
+  return false;
+}
+
+async function handleSubscriptionInvoicePayment(invoice) {
+  const prisma = getPrisma();
+  if (!prisma) return true;
+  if (!stripe) return true;
+
+  if (!invoice) return true;
+  const paymentIntentId = invoice.payment_intent && invoice.payment_intent.id ? invoice.payment_intent.id : invoice.payment_intent;
+  if (!paymentIntentId) return true;
+
+  const dup = await prisma.creditTransaction.findUnique({
+    where: { stripePaymentIntentId: paymentIntentId }
+  });
+  if (dup) return true;
+
+  const subscriptionId = invoice.subscription;
+  if (!subscriptionId) return true;
+
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  const md = sub.metadata || {};
+  if (md.purpose !== 'subscription_monthly_credits') return true;
+
+  const userId = md.userId;
+  const creditsPerCycle = parseInt(String(md.creditsPerCycle || '7'), 10);
+  if (!userId || creditsPerCycle < 1) return true;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Double-check idempotence pendant les rejouements webhook
+      const dup2 = await tx.creditTransaction.findUnique({
+        where: { stripePaymentIntentId: paymentIntentId }
+      });
+      if (dup2) return;
+
+      const current = await tx.user.findUnique({
+        where: { id: userId },
+        select: { credits: true }
+      });
+      if (!current) return;
+
+      const delta = creditsPerCycle - (current.credits || 0);
+
       await tx.user.update({
         where: { id: userId },
-        data: { credits: { increment: credits } }
+        data: { credits: creditsPerCycle }
       });
+
       await tx.creditTransaction.create({
         data: {
           userId,
-          delta: credits,
-          reason: 'purchase',
-          stripePaymentIntentId: pi.id,
+          delta,
+          reason: 'subscription_cycle_reset',
+          stripePaymentIntentId: paymentIntentId,
           meta: JSON.stringify({
-            eur: (pi.amount / 100).toFixed(2),
-            packId: m.packId || ''
+            subscriptionId: sub.id,
+            invoiceId: invoice.id
           })
         }
       });
     });
   } catch (e) {
-    console.error('Webhook crédits:', e);
+    console.error('subscription_cycle_reset:', e);
   }
+
   return true;
 }
 
@@ -140,9 +399,9 @@ function getOrderEmailContent(order) {
     'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
     'Titulaire (C.1): ' + (order.titulaire || '—'),
     'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
-    'Date certificat (I): ' + (order.dateCertificat || '—'),
+    'Date case (I) carte grise: ' + (order.dateCertificat || '—'),
     'Formule: ' + (order.planLabel || order.planId || '—'),
-    'Volume certificats: ' + (order.packLabel || order.packSize || '—'),
+    'Volume rapports: ' + (order.packLabel || order.packSize || '—'),
     '',
     '— Adresse (si renseignée) —',
     'CP: ' + (order.cp || '—'),
@@ -213,7 +472,10 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!endpointSecret) {
-    return res.status(200).send('ok');
+    console.error(
+      'STRIPE_WEBHOOK_SECRET manquant : les paiements ne peuvent pas être validés côté serveur. Ajoute whsec_… sur Vercel (Production).'
+    );
+    return res.status(503).send('webhook non configuré');
   }
   let event;
   try {
@@ -226,6 +488,9 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     const pi = event.data.object;
     const isCreditPurchase = await handleStripeCreditPurchase(pi);
     if (!isCreditPurchase) {
+      if (orderAlreadyInFile(pi.id)) {
+        return res.status(200).send('ok');
+      }
       const m = pi.metadata || {};
       const order = {
         id: pi.id,
@@ -240,16 +505,19 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         miseCirculation: m.miseCirculation || '',
         dateCertificat: m.dateCertificat || '',
         cp: m.cp || '',
-      ville: m.ville || '',
-      planId: m.planId || '',
-      planLabel: m.planLabel || '',
-      packSize: m.packSize || '',
-      packLabel: m.packLabel || ''
-    };
-    saveOrder(order);
+        ville: m.ville || '',
+        planId: m.planId || '',
+        planLabel: m.planLabel || '',
+        packSize: m.packSize || '',
+        packLabel: m.packLabel || ''
+      };
+      saveOrder(order);
       await notifyTeam(order);
       await sendOrderEmail(order);
     }
+  } else if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
+    const invoice = event.data.object;
+    await handleSubscriptionInvoicePayment(invoice);
   }
   res.status(200).send('ok');
 });
@@ -257,37 +525,41 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
 app.use(cookieParser());
 app.use(express.json());
 
-// --- ROUTE TEST TEMPORAIRE (à supprimer ensuite) ---
-app.get('/api/email-status', (req, res) => {
-  res.json({
-    resendConfigured: !!process.env.RESEND_API_KEY,
-    mailTo: process.env.MAIL_TO || 'infos.carvinguard@gmail.com'
+// Diagnostics de test : désactivés en prod (Vercel ou NODE_ENV)
+const cgProdRuntime =
+  process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+if (!cgProdRuntime) {
+  app.get('/api/email-status', (req, res) => {
+    res.json({
+      resendConfigured: !!process.env.RESEND_API_KEY,
+      mailTo: process.env.MAIL_TO || 'infos.carvinguard@gmail.com'
+    });
   });
-});
 
-app.post('/api/test-order-email', async (req, res) => {
-  const fakeOrder = {
-    id: 'pi_test_' + Date.now(),
-    montant: '19,90 €',
-    nom: (req.body && req.body.nom) || 'Dupont',
-    prenom: (req.body && req.body.prenom) || 'Jean',
-    email: (req.body && req.body.email) || 'test@example.com',
-    phone: (req.body && req.body.phone) || '06 12 34 56 78',
-    vin: (req.body && req.body.vin) || 'WBADT43452G123456',
-    titulaire: (req.body && req.body.titulaire) || 'DUPONT Jean',
-    typePersonne: (req.body && req.body.typePersonne) || 'particulier',
-    miseCirculation: (req.body && req.body.miseCirculation) || '01/01/2020',
-    dateCertificat: (req.body && req.body.dateCertificat) || new Date().toLocaleDateString('fr-FR'),
-    cp: (req.body && req.body.cp) || '',
-    ville: (req.body && req.body.ville) || ''
-  };
-  const result = await sendOrderEmail(fakeOrder);
-  res.json({
-    ok: result.sent,
-    emailSent: result.sent,
-    error: result.error || null
+  app.post('/api/test-order-email', async (req, res) => {
+    const fakeOrder = {
+      id: 'pi_test_' + Date.now(),
+      montant: '19,90 €',
+      nom: (req.body && req.body.nom) || 'Dupont',
+      prenom: (req.body && req.body.prenom) || 'Jean',
+      email: (req.body && req.body.email) || 'test@example.com',
+      phone: (req.body && req.body.phone) || '06 12 34 56 78',
+      vin: (req.body && req.body.vin) || 'WBADT43452G123456',
+      titulaire: (req.body && req.body.titulaire) || 'DUPONT Jean',
+      typePersonne: (req.body && req.body.typePersonne) || 'particulier',
+      miseCirculation: (req.body && req.body.miseCirculation) || '01/01/2020',
+      dateCertificat: (req.body && req.body.dateCertificat) || new Date().toLocaleDateString('fr-FR'),
+      cp: (req.body && req.body.cp) || '',
+      ville: (req.body && req.body.ville) || ''
+    };
+    const result = await sendOrderEmail(fakeOrder);
+    res.json({
+      ok: result.sent,
+      emailSent: result.sent,
+      error: result.error || null
+    });
   });
-});
+}
 
 // ---------- SaaS : comptes, crédits, achat Stripe ----------
 function saaSAuthReady() {
@@ -297,23 +569,49 @@ function saaSAuthReady() {
 app.get('/api/saas-config', (req, res) => {
   const prisma = getPrisma();
   const vinApi = !!process.env.VEHICLEDATABASES_API_KEY;
+  const creditsPacks = [
+    {
+      id: 'pack_5',
+      credits: 5,
+      priceCents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10),
+      label: '5 recherches VIN',
+      type: 'credit_purchase'
+    },
+    {
+      id: 'pack_20',
+      credits: 20,
+      priceCents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10),
+      label: '20 recherches VIN',
+      type: 'credit_purchase'
+    }
+  ];
+
+  // Abonnement mensuel "7 rapports/mois (reset)" : piloté par des variables d’env.
+  // - On charge 1€ au départ (initial price)
+  // - Puis on crée un abonnement mensuel avec trial de 1 jour
+  // - À chaque renouvellement : on reset le compteur à 7 crédits
+  if (process.env.SUBSCRIPTION_PRICE_INITIAL_ID && process.env.SUBSCRIPTION_PRICE_MONTHLY_ID) {
+    const creditsPerCycle = parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10);
+    const trialDays = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10);
+    const monthlyCentsForDisplay = parseInt(process.env.SUBSCRIPTION_MONTHLY_CENTS_FOR_DISPLAY || '4999', 10);
+    const initialCentsForDisplay = parseInt(process.env.SUBSCRIPTION_INITIAL_CENTS_FOR_DISPLAY || '100', 10);
+
+    creditsPacks.push({
+      id: 'sub_monthly_7',
+      type: 'subscription_initial',
+      credits: creditsPerCycle,
+      priceCents: initialCentsForDisplay,
+      label: 'Abonnement (7 rapports/mois)',
+      displayPrice: '1 € puis ' + (monthlyCentsForDisplay / 100).toFixed(2).replace('.', ',') + ' €/mois',
+      subscriptionMonthlyPriceId: process.env.SUBSCRIPTION_PRICE_MONTHLY_ID,
+      trialDays
+    });
+  }
+
   res.json({
     vinRequiresAccount: !!(prisma && vinApi),
     authAvailable: saaSAuthReady(),
-    creditPacks: [
-      {
-        id: 'pack_5',
-        credits: 5,
-        priceCents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10),
-        label: '5 recherches VIN'
-      },
-      {
-        id: 'pack_20',
-        credits: 20,
-        priceCents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10),
-        label: '20 recherches VIN'
-      }
-    ]
+    creditPacks: creditsPacks
   });
 });
 
@@ -430,29 +728,59 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
   const packId = req.body && req.body.packId;
   const packs = {
     pack_5: {
+      type: 'credit_purchase',
       credits: 5,
       cents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10)
     },
     pack_20: {
+      type: 'credit_purchase',
       credits: 20,
       cents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10)
+    },
+    sub_monthly_7: {
+      type: 'subscription_initial',
+      creditsPerCycle: parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10),
+      initialPriceId: process.env.SUBSCRIPTION_PRICE_INITIAL_ID || '',
+      subscriptionMonthlyPriceId: process.env.SUBSCRIPTION_PRICE_MONTHLY_ID || '',
+      trialDays: parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10)
     }
   };
   const p = packs[packId];
-  if (!p || p.cents < 50) {
+  if (!p || (p.type === 'credit_purchase' && p.cents < 50)) {
     return res.status(400).json({ error: 'Forfait inconnu.' });
   }
   try {
+    let amountCents = p.cents;
+    if (p.type === 'subscription_initial') {
+      if (!p.initialPriceId || !p.subscriptionMonthlyPriceId) {
+        return res.status(400).json({ error: 'Abonnement non configuré (variables env manquantes).' });
+      }
+      const initialPrice = await stripe.prices.retrieve(p.initialPriceId);
+      amountCents = initialPrice.unit_amount;
+      if (!amountCents || amountCents < 50 || initialPrice.currency !== 'eur') {
+        return res.status(400).json({ error: 'Initial price invalide sur Stripe (attendu EUR).' });
+      }
+    }
+
+    const metadata = {
+      purpose: p.type,
+      userId: String(userId),
+    };
+    if (p.type === 'credit_purchase') {
+      metadata.credits = String(p.credits);
+      metadata.packId = String(packId);
+    }
+    if (p.type === 'subscription_initial') {
+      metadata.creditsPerCycle = String(p.creditsPerCycle);
+      metadata.subscriptionMonthlyPriceId = String(p.subscriptionMonthlyPriceId);
+      metadata.trialDays = String(p.trialDays);
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: p.cents,
+      amount: amountCents,
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
-      metadata: {
-        purpose: 'credit_purchase',
-        userId,
-        credits: String(p.credits),
-        packId: String(packId)
-      }
+      metadata
     });
     return res.json({
       clientSecret: paymentIntent.client_secret,

@@ -71,7 +71,7 @@ Checklist rapide :
 
 - [ ] Ouvrir `https://www.carvinguard.fr/` en navigation privée : la page s’affiche correctement.
 - [ ] Pas de message d’erreur dans la console du navigateur (F12).
-- [ ] Liens « Obtenir mon certificat », « Contact », « Mentions légales » fonctionnent.
+- [ ] Liens « Commander mon rapport », « Contact », « Mentions légales » fonctionnent.
 - [ ] Données structurées : test Rich Results OK (étape 1).
 - [ ] Search Console : validation de la correction demandée (étape 2).
 

@@ -43,7 +43,7 @@
     initDateInput('recap-date-immat');
     initDateInput('recap-date-cert');
 
-    // Pré-remplir la date du certificat avec aujourd'hui (JJ/MM/AAAA)
+    // Pré-remplir la date case (I) avec aujourd'hui (JJ/MM/AAAA)
     var todayEl = document.getElementById('recap-date-cert');
     if (todayEl && !todayEl.value) {
       var d = new Date();

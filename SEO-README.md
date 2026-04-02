@@ -22,10 +22,10 @@ Toutes les optimisations SEO ont été implémentées sur le site. Ce document r
 
 ### Schema.org JSON-LD
 - **Organization** : nom, logo, contact (téléphone, horaires)
-- **Product** : certificat non-gage, prix 19,90€, avis (4.6/5)
+- **Product** : rapport VIN / historique véhicule, prix à partir de 19,90€, avis (4.6/5)
 - **WebPage** : URL, breadcrumb
 - **FAQPage** : 3 questions fréquentes
-- **BreadcrumbList** : Carte Grise > Démarches > Certificat non-gage
+- **BreadcrumbList** : Accueil > Démarches > Rapport VIN
 
 ### Structure HTML
 - Balise `<main>` pour le contenu principal
@@ -76,13 +76,13 @@ Si vous avez une adresse physique :
 
 ## Mots-clés ciblés
 
-- certificat de non-gage
-- certificat situation administrative
-- non gage voiture
-- CSA véhicule
+- rapport VIN
+- historique véhicule
+- numéro VIN voiture
+- achat voiture occasion
 - vente voiture occasion
 - carte grise
-- document officiel véhicule
+- décoder VIN
 
 ## Checklist avant lancement
 
