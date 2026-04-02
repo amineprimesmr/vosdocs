@@ -9,39 +9,8 @@
     <link rel="canonical" href="https://www.carvinguard.fr/compte.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/compte.css?v=1">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        .compte-wrap { max-width: 520px; margin: 0 auto; padding: 48px 20px 80px; }
-        .compte-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
-        .compte-tabs button {
-            flex: 1; padding: 12px; border: 1px solid var(--border); background: var(--bg-light);
-            border-radius: var(--radius); font-weight: 600; cursor: pointer; font-family: inherit;
-        }
-        .compte-tabs button.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .compte-form .form-group { margin-bottom: 16px; }
-        .compte-form label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; }
-        .compte-form input {
-            width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
-            font-family: inherit; font-size: 1rem;
-        }
-        .form-error-inline { color: var(--red); font-size: 0.9rem; margin-top: 8px; display: none; }
-        .compte-card {
-            background: var(--bg-light); border-radius: var(--radius-lg); padding: 28px;
-            margin-bottom: 24px; border: 1px solid var(--border);
-        }
-        .compte-balance { font-size: 2rem; font-weight: 800; color: var(--primary); }
-        .credit-packs { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
-        .credit-pack-btn {
-            flex: 1; min-width: 140px; text-align: left; padding: 16px !important; height: auto !important;
-            background: #fff !important; color: var(--text) !important; border: 2px solid var(--border) !important;
-            box-shadow: none !important;
-        }
-        .credit-pack-btn.is-selected { border-color: var(--btn-green) !important; background: #f0fdf4 !important; }
-        .credit-pack-btn .pack-price { font-size: 1.1rem; color: var(--btn-green); font-weight: 700; }
-        #creditPaymentContainer { margin: 16px 0; min-height: 24px; }
-        .saas-banner { display: none; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; font-size: 0.95rem; }
-        #creditsMessage { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; }
-    </style>
     <script src="js/analytics.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
     <script>
@@ -51,7 +20,7 @@
       gtag('config', 'AW-17972633421');
     </script>
 </head>
-<body>
+<body class="compte-page">
     <header class="header header-light">
         <div class="container header-inner">
             <a href="index.html" class="logo">
@@ -68,75 +37,106 @@
     </header>
 
     <main class="compte-wrap">
-        <nav class="breadcrumb" style="margin-bottom: 24px;">
+        <nav class="compte-breadcrumb breadcrumb" aria-label="Fil d’Ariane">
             <a href="index.html">Accueil</a> &gt; <span>Mon compte</span>
         </nav>
-        <h1 style="margin-bottom: 8px;">Mon compte</h1>
-        <p class="section-subtitle" style="margin-bottom: 28px;">Crédits pour les recherches d’historique véhicule (VIN)</p>
+
+        <header class="compte-hero">
+            <h1>Mon compte</h1>
+            <p class="compte-hero-lead">Gérez vos crédits pour obtenir des rapports d’historique véhicule à partir du numéro VIN (17 caractères).</p>
+        </header>
 
         <p id="saasUnavailable" class="saas-banner" role="alert"></p>
 
         <div id="compteGuest">
-            <div class="compte-tabs">
-                <button type="button" class="is-active" data-compte-tab="login">Connexion</button>
-                <button type="button" data-compte-tab="register">Inscription</button>
+            <div class="compte-auth-seg" role="tablist" aria-label="Connexion ou inscription">
+                <button type="button" class="is-active" data-compte-tab="login" role="tab" aria-selected="true">Connexion</button>
+                <button type="button" data-compte-tab="register" role="tab" aria-selected="false">Inscription</button>
             </div>
-            <div class="compte-panel" data-panel="login">
-                <form id="formLogin" class="compte-form compte-card">
+            <div class="compte-panel" data-panel="login" role="tabpanel">
+                <form id="formLogin" class="compte-form compte-form-card" autocomplete="on">
                     <div class="form-group">
                         <label for="loginEmail">Email</label>
-                        <input id="loginEmail" name="email" type="email" autocomplete="email" required>
+                        <input id="loginEmail" name="email" type="email" autocomplete="email" required placeholder="vous@exemple.fr">
                     </div>
                     <div class="form-group">
                         <label for="loginPassword">Mot de passe</label>
                         <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
                     </div>
-                    <p id="loginError" class="form-error-inline"></p>
-                    <button type="submit" class="btn btn-primary" style="width:100%;">Se connecter</button>
+                    <p id="loginError" class="form-error-inline" role="alert"></p>
+                    <button type="submit" class="btn btn-primary">Se connecter</button>
                 </form>
             </div>
-            <div class="compte-panel" data-panel="register" style="display:none;">
-                <form id="formRegister" class="compte-form compte-card">
+            <div class="compte-panel" data-panel="register" style="display:none;" role="tabpanel">
+                <form id="formRegister" class="compte-form compte-form-card" autocomplete="on">
                     <div class="form-group">
                         <label for="regEmail">Email</label>
-                        <input id="regEmail" name="email" type="email" autocomplete="email" required>
+                        <input id="regEmail" name="email" type="email" autocomplete="email" required placeholder="vous@exemple.fr">
                     </div>
                     <div class="form-group">
-                        <label for="regPassword">Mot de passe (min. 8 caractères)</label>
-                        <input id="regPassword" name="password" type="password" autocomplete="new-password" minlength="8" required>
+                        <label for="regPassword">Mot de passe</label>
+                        <input id="regPassword" name="password" type="password" autocomplete="new-password" minlength="8" required placeholder="Au moins 8 caractères">
                     </div>
-                    <p id="registerError" class="form-error-inline"></p>
-                    <button type="submit" class="btn btn-primary" style="width:100%;">Créer mon compte</button>
+                    <p id="registerError" class="form-error-inline" role="alert"></p>
+                    <button type="submit" class="btn btn-primary">Créer mon compte</button>
                 </form>
             </div>
         </div>
 
-        <div id="compteUser" style="display:none;">
+        <div id="compteUser" style="display:none;" class="compte-dash">
             <p id="creditsMessage"></p>
-            <div class="compte-card">
-                <p style="color:var(--text-light); margin-bottom:8px;">Connecté en tant que <strong id="userEmailDisplay"></strong></p>
-                <p style="margin-bottom:4px;">Solde crédits</p>
-                <p class="compte-balance" id="creditBalance">0</p>
-                <p style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">1 crédit = 1 recherche VIN avec décodage complet.</p>
-                <button type="button" id="btnLogout" class="btn" style="margin-top:16px; background:var(--border);">Déconnexion</button>
-            </div>
-            <div class="compte-card" id="creditsSection">
-                <h2 style="font-size:1.15rem; margin-bottom:12px;">Recharger</h2>
-                <div id="creditPacks" class="credit-packs"></div>
-                <div id="creditPaySection" style="display:none;">
-                    <button type="button" id="btnPrepareCreditPay" class="btn btn-primary">Préparer le paiement</button>
-                    <form id="formCreditPay" style="margin-top:20px;">
-                        <div id="creditPaymentContainer"></div>
-                        <p id="creditPayError" class="form-error-inline"></p>
-                        <button type="submit" id="creditPaySubmit" class="btn btn-primary" style="width:100%; margin-top:12px;">Payer</button>
-                    </form>
+
+            <section class="compte-card compte-card--balance" aria-labelledby="balanceHeading">
+                <div class="compte-card-inner">
+                    <div class="compte-user-row">
+                        <p class="compte-user-email">Connecté en tant que <strong id="userEmailDisplay"></strong></p>
+                        <button type="button" id="btnLogout" class="compte-logout">Déconnexion</button>
+                    </div>
+                    <div class="compte-balance-block">
+                        <span id="balanceHeading" class="compte-balance-label">Crédits disponibles</span>
+                        <p class="compte-balance" id="creditBalance" aria-live="polite">0</p>
+                        <p class="compte-balance-hint">1 crédit = 1 recherche VIN avec décodage complet (rapport PDF).</p>
+                    </div>
                 </div>
-            </div>
-            <p><a href="index.html">← Retour à la recherche VIN</a></p>
+            </section>
+
+            <section class="compte-card" id="creditsSection" aria-labelledby="rechargeHeading">
+                <div class="compte-recharge-head">
+                    <h2 id="rechargeHeading">Recharger ou s’abonner</h2>
+                    <p class="compte-recharge-lead">Choisissez un forfait ci-dessous — le formulaire de paiement s’affiche tout de suite, sans étape intermédiaire.</p>
+                </div>
+                <div id="creditPacks" class="compte-pack-grid"></div>
+
+                <div id="creditPaySection" style="display:none;">
+                    <div class="compte-pay-inner">
+                        <h3 class="compte-pay-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            Paiement sécurisé
+                        </h3>
+                        <p class="compte-pay-sub">Paiement traité par Stripe · Carte bancaire et autres moyens selon votre navigateur</p>
+
+                        <div id="payStripeLoading" class="compte-stripe-loading" aria-busy="true" aria-label="Préparation du paiement">
+                            <div class="compte-skeleton" role="presentation"></div>
+                            <p>Préparation du paiement sécurisé…</p>
+                        </div>
+
+                        <form id="formCreditPay" class="is-hidden" novalidate>
+                            <div id="creditPaymentContainer"></div>
+                            <p id="creditPayHint" class="compte-pay-hint">
+                                Une icône sur le moyen de paiement peut indiquer une vérification (3-D Secure) ou un détail à corriger — suivez les indications à l’écran.
+                            </p>
+                            <p id="creditPayError" class="form-error-inline" role="alert" aria-live="polite"></p>
+                            <button type="submit" id="creditPaySubmit" class="btn btn-primary">Confirmer le paiement</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <p class="compte-back"><a href="index.html">← Retour à la recherche VIN</a></p>
         </div>
     </main>
 
     <script src="https://js.stripe.com/v3/"></script>
-    <script src="js/compte.js"></script>
+    <script src="js/compte.js?v=2"></script>
 </body>
 </html>

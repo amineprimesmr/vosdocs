@@ -1,0 +1,543 @@
+/**
+ * Espace compte — UX / design (Carvinguard)
+ */
+body.compte-page {
+  background: linear-gradient(165deg, #f8fafc 0%, #f1f5f9 45%, #eef2ff 100%);
+  min-height: 100vh;
+}
+
+.compte-wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 32px 20px 96px;
+}
+
+.compte-breadcrumb {
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+.compte-breadcrumb a {
+  color: var(--text-light);
+}
+.compte-breadcrumb a:hover {
+  color: var(--primary);
+}
+
+.compte-hero {
+  margin-bottom: 32px;
+  animation: compte-fade-up 0.55s var(--ease-out) both;
+}
+
+.compte-hero h1 {
+  font-size: clamp(1.65rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+.compte-hero-lead {
+  font-size: 1.05rem;
+  color: var(--text-light);
+  line-height: 1.55;
+  max-width: 42ch;
+}
+
+/* ----- Bannières ----- */
+.saas-banner {
+  display: none;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  animation: compte-fade-up 0.4s var(--ease-out) both;
+}
+
+#creditsMessage {
+  display: none;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  color: #065f46;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  border: 1px solid #6ee7b7;
+  animation: compte-fade-up 0.45s var(--ease-out) both;
+}
+
+/* ----- Auth (invité) ----- */
+.compte-auth-seg {
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+  background: var(--border);
+  border-radius: 999px;
+  margin-bottom: 24px;
+  max-width: 100%;
+  animation: compte-fade-up 0.5s var(--ease-out) 0.05s both;
+}
+
+.compte-auth-seg button {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: background 0.25s var(--ease-out), color 0.25s, box-shadow 0.25s;
+}
+
+.compte-auth-seg button.is-active {
+  background: var(--white);
+  color: var(--primary);
+  box-shadow: var(--shadow-card);
+}
+
+.compte-auth-seg button:focus-visible {
+  outline: 2px solid var(--cta-blue);
+  outline-offset: 2px;
+}
+
+.compte-form-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  border: 1px solid rgba(0, 35, 149, 0.08);
+  box-shadow: var(--shadow-card);
+  animation: compte-fade-up 0.55s var(--ease-out) 0.1s both;
+}
+
+.compte-form .form-group {
+  margin-bottom: 18px;
+}
+
+.compte-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-dark);
+}
+
+.compte-form input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 1rem;
+  background: var(--bg-light);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.compte-form input:hover {
+  border-color: #cbd5e1;
+}
+
+.compte-form input:focus {
+  outline: none;
+  border-color: var(--cta-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: var(--white);
+}
+
+.form-error-inline {
+  color: var(--red);
+  font-size: 0.9rem;
+  margin-top: 10px;
+  display: none;
+  line-height: 1.4;
+}
+
+.compte-form .btn-primary {
+  width: 100%;
+  padding: 15px;
+  font-size: 1rem;
+  border-radius: var(--radius);
+  margin-top: 4px;
+}
+
+/* ----- Utilisateur connecté ----- */
+.compte-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.compte-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 0;
+  border: 1px solid rgba(0, 35, 149, 0.07);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  animation: compte-fade-up 0.55s var(--ease-out) both;
+}
+
+.compte-card--balance {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.compte-card-inner {
+  padding: 24px 24px 22px;
+}
+
+.compte-user-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compte-user-email {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  word-break: break-all;
+}
+
+.compte-user-email strong {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+
+.compte-logout {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-light);
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.compte-logout:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.compte-balance-block {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.compte-balance-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.compte-balance {
+  font-size: clamp(2.75rem, 8vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-variant-numeric: tabular-nums;
+}
+
+.compte-balance-hint {
+  font-size: 0.875rem;
+  color: var(--text-light);
+  margin-top: 12px;
+  line-height: 1.45;
+}
+
+/* ----- Recharger ----- */
+.compte-recharge-head {
+  padding: 22px 24px 8px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.compte-recharge-head h2 {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 6px;
+}
+
+.compte-recharge-lead {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+.compte-pack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+  padding: 20px 24px 24px;
+}
+
+.credit-pack-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  min-height: 108px;
+  padding: 16px 16px 14px !important;
+  border-radius: var(--radius-lg) !important;
+  border: 2px solid var(--border) !important;
+  background: var(--bg-light) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.2s var(--ease-out), border-color 0.2s, box-shadow 0.2s, background 0.2s !important;
+}
+
+.credit-pack-btn:hover {
+  border-color: #cbd5e1 !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover) !important;
+}
+
+.credit-pack-btn.is-selected {
+  border-color: var(--btn-green) !important;
+  background: linear-gradient(145deg, #f0fdf4 0%, #ecfdf5 100%) !important;
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2) !important;
+}
+
+.credit-pack-btn:focus-visible {
+  outline: 2px solid var(--cta-blue);
+  outline-offset: 2px;
+}
+
+.credit-pack-btn strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.35;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.credit-pack-btn .pack-price {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.05rem;
+  color: var(--btn-green);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.credit-pack-btn--sub strong {
+  color: var(--text-dark);
+}
+
+.credit-pack-btn--sub.is-selected {
+  border-color: #7c3aed !important;
+  background: linear-gradient(145deg, #faf5ff 0%, #f3e8ff 40%, #f0fdf4 100%) !important;
+}
+
+.credit-pack-btn--sub.is-selected .pack-price {
+  color: #6d28d9;
+}
+
+/* Paiement Stripe */
+#creditPaySection {
+  border-top: 1px solid var(--border);
+  padding: 0;
+  animation: compte-fade-up 0.4s var(--ease-out) both;
+}
+
+.compte-pay-inner {
+  padding: 22px 24px 28px;
+}
+
+.compte-pay-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compte-pay-title svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.compte-pay-sub {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+.compte-stripe-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 16px 40px;
+  text-align: center;
+}
+
+.compte-stripe-loading.is-visible {
+  display: flex;
+}
+
+.compte-stripe-loading p {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.compte-skeleton {
+  width: 100%;
+  max-width: 320px;
+  height: 120px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 0%,
+    #f1f5f9 50%,
+    #e2e8f0 100%
+  );
+  background-size: 200% 100%;
+  animation: compte-shimmer 1.2s ease-in-out infinite;
+}
+
+#formCreditPay {
+  margin: 0;
+}
+
+#formCreditPay.is-hidden {
+  display: none !important;
+}
+
+#creditPaymentContainer {
+  margin: 0 0 16px;
+  min-height: 8px;
+}
+
+.compte-pay-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--bg-light);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--cta-blue);
+}
+
+#creditPayError {
+  margin-bottom: 12px;
+}
+
+#creditPaySubmit {
+  width: 100%;
+  padding: 16px 20px !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  border-radius: var(--radius-lg) !important;
+  margin-top: 4px;
+}
+
+#creditPaySubmit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.compte-back {
+  text-align: center;
+  margin-top: 28px;
+  animation: compte-fade-up 0.5s var(--ease-out) 0.15s both;
+}
+
+.compte-back a {
+  font-weight: 600;
+  color: var(--text-light);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.compte-back a:hover {
+  color: var(--primary);
+  text-decoration: none;
+  transform: translateX(-2px);
+}
+
+@keyframes compte-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes compte-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compte-hero,
+  .compte-card,
+  .compte-form-card,
+  .saas-banner,
+  #creditsMessage,
+  #creditPaySection,
+  .compte-back,
+  .credit-pack-btn {
+    animation: none !important;
+  }
+  .credit-pack-btn:hover {
+    transform: none;
+  }
+  .compte-skeleton {
+    animation: none;
+    background: #e2e8f0;
+  }
+}
+
+@media (min-width: 640px) {
+  .compte-wrap {
+    padding-top: 48px;
+  }
+  .compte-pack-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .credit-pack-btn:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}

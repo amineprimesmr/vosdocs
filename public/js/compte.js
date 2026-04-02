@@ -1,5 +1,6 @@
 /**
  * Espace compte : inscription, connexion, solde crédits, achat Stripe
+ * Le paiement se prépare automatiquement dès qu’un forfait est choisi.
  */
 (function () {
   var api = function (path, opts) {
@@ -29,7 +30,9 @@
           p.style.display = p.getAttribute('data-panel') === tab ? 'block' : 'none';
         });
         document.querySelectorAll('[data-compte-tab]').forEach(function (b) {
-          b.classList.toggle('is-active', b.getAttribute('data-compte-tab') === tab);
+          var active = b.getAttribute('data-compte-tab') === tab;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-selected', active ? 'true' : 'false');
         });
       });
     });
@@ -46,14 +49,28 @@
     var payContainer = document.getElementById('creditPaymentContainer');
     var payError = document.getElementById('creditPayError');
     var payBtn = document.getElementById('creditPaySubmit');
+    var payForm = document.getElementById('formCreditPay');
+    var payLoading = document.getElementById('payStripeLoading');
     var selectedPackId = null;
+    var paymentSeq = 0;
 
     var stripe = null;
     var elements = null;
     var clientSecret = null;
 
     function show(el, on) {
-      if (el) el.style.display = on ? '' : 'none';
+      if (el) el.style.display = on ? 'block' : 'none';
+    }
+
+    function setPayLoading(on) {
+      if (payLoading) {
+        payLoading.classList.toggle('is-visible', on);
+        payLoading.setAttribute('aria-hidden', on ? 'false' : 'true');
+      }
+    }
+
+    function setPayFormVisible(on) {
+      if (payForm) payForm.classList.toggle('is-hidden', !on);
     }
 
     function renderUser(user) {
@@ -66,6 +83,96 @@
     function renderGuest() {
       show(elGuest, true);
       show(elUser, false);
+    }
+
+    function startPaymentIntent() {
+      if (!selectedPackId) {
+        if (payError) {
+          payError.textContent = 'Choisissez un forfait.';
+          payError.style.display = 'block';
+        }
+        return;
+      }
+      paymentSeq += 1;
+      var seq = paymentSeq;
+
+      if (payError) {
+        payError.textContent = '';
+        payError.style.display = 'none';
+      }
+      setPayLoading(true);
+      setPayFormVisible(false);
+      if (payBtn) payBtn.disabled = true;
+      if (payContainer) payContainer.innerHTML = '';
+      elements = null;
+      clientSecret = null;
+
+      api('/api/config')
+        .then(function (r) {
+          if (seq !== paymentSeq) return null;
+          if (!r.data.stripePublishableKey) throw new Error('Stripe non configuré');
+          if (typeof Stripe === 'undefined') throw new Error('Stripe.js non chargé');
+          stripe = Stripe(r.data.stripePublishableKey);
+          return api('/api/create-credit-purchase-intent', {
+            method: 'POST',
+            body: { packId: selectedPackId }
+          });
+        })
+        .then(function (r) {
+          if (r === null) return;
+          if (seq !== paymentSeq) return;
+          if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur création paiement');
+          clientSecret = r.data.clientSecret;
+          if (payContainer) payContainer.innerHTML = '';
+          elements = stripe.elements({
+            clientSecret: clientSecret,
+            appearance: {
+              theme: 'stripe',
+              variables: {
+                colorPrimary: '#16a34a',
+                colorBackground: '#ffffff',
+                colorText: '#1f2937',
+                borderRadius: '8px',
+                fontFamily: 'Source Sans 3, -apple-system, BlinkMacSystemFont, sans-serif'
+              }
+            }
+          });
+          elements.create('payment').mount(payContainer);
+          setPayLoading(false);
+          setPayFormVisible(true);
+          if (payBtn) payBtn.disabled = false;
+        })
+        .catch(function (err) {
+          if (seq !== paymentSeq) return;
+          setPayLoading(false);
+          setPayFormVisible(false);
+          if (payError) {
+            payError.textContent = err.message || 'Erreur';
+            payError.style.display = 'block';
+          }
+          if (payBtn) payBtn.disabled = false;
+        });
+    }
+
+    function selectPack(p, btn) {
+      selectedPackId = p.id;
+      document.querySelectorAll('.credit-pack-btn').forEach(function (b) {
+        b.classList.remove('is-selected');
+      });
+      if (btn) btn.classList.add('is-selected');
+      show(paySection, true);
+      if (payError) {
+        payError.textContent = '';
+        payError.style.display = 'none';
+      }
+      startPaymentIntent();
+
+      var creditsSection = document.getElementById('creditsSection');
+      if (creditsSection && window.matchMedia('(max-width: 639px)').matches) {
+        setTimeout(function () {
+          paySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      }
     }
 
     api('/api/saas-config').then(function (r) {
@@ -84,22 +191,19 @@
           var btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'btn btn-primary credit-pack-btn';
+          if (p.type === 'subscription_initial') {
+            btn.classList.add('credit-pack-btn--sub');
+          }
           btn.dataset.packId = p.id;
           var display = p.displayPrice ? p.displayPrice : eur(p.priceCents);
           btn.innerHTML =
             '<strong>' +
             p.label +
-            '</strong><br><span class="pack-price">' +
+            '</strong><span class="pack-price">' +
             display +
             '</span>';
           btn.addEventListener('click', function () {
-            selectedPackId = p.id;
-            document.querySelectorAll('.credit-pack-btn').forEach(function (b) {
-              b.classList.remove('is-selected');
-            });
-            btn.classList.add('is-selected');
-            show(paySection, true);
-            if (payError) payError.style.display = 'none';
+            selectPack(p, btn);
           });
           packsContainer.appendChild(btn);
         });
@@ -113,7 +217,7 @@
                 creditsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
             }
-          }, 150);
+          }, 180);
         }
       }
     });
@@ -140,7 +244,7 @@
             renderUser(r.data.user);
           } else {
             if (elErrorRegister) {
-              elErrorRegister.textContent = r.data.error || 'Erreur';
+              elErrorRegister.textContent = (r.data && r.data.error) || 'Erreur';
               elErrorRegister.style.display = 'block';
             }
           }
@@ -162,7 +266,7 @@
             renderUser(r.data.user);
           } else {
             if (elErrorLogin) {
-              elErrorLogin.textContent = r.data.error || 'Erreur';
+              elErrorLogin.textContent = (r.data && r.data.error) || 'Erreur';
               elErrorLogin.style.display = 'block';
             }
           }
@@ -175,6 +279,13 @@
       btnLogout.addEventListener('click', function () {
         api('/api/auth/logout', { method: 'POST' }).then(function () {
           renderGuest();
+          show(paySection, false);
+          selectedPackId = null;
+          if (packsContainer) {
+            packsContainer.querySelectorAll('.credit-pack-btn').forEach(function (b) {
+              b.classList.remove('is-selected');
+            });
+          }
         });
       });
     }
@@ -200,62 +311,18 @@
       }, 2500);
     }
 
-    function initStripePayment() {
-      if (!selectedPackId) {
-        if (payError) {
-          payError.textContent = 'Choisissez un forfait.';
-          payError.style.display = 'block';
-        }
-        return;
-      }
-      if (payError) payError.style.display = 'none';
-      if (payBtn) payBtn.disabled = true;
-      api('/api/config')
-        .then(function (r) {
-          if (!r.data.stripePublishableKey) throw new Error('Stripe non configuré');
-          if (typeof Stripe === 'undefined') throw new Error('Stripe.js non chargé');
-          stripe = Stripe(r.data.stripePublishableKey);
-          return api('/api/create-credit-purchase-intent', {
-            method: 'POST',
-            body: { packId: selectedPackId }
-          });
-        })
-        .then(function (r) {
-          if (!r.ok) throw new Error(r.data.error || 'Erreur création paiement');
-          clientSecret = r.data.clientSecret;
-          if (payContainer) payContainer.innerHTML = '';
-          elements = stripe.elements({
-            clientSecret: clientSecret,
-            appearance: { theme: 'stripe', variables: { colorPrimary: '#0d9488' } }
-          });
-          elements.create('payment').mount(payContainer);
-          if (payBtn) payBtn.disabled = false;
-        })
-        .catch(function (err) {
-          if (payError) {
-            payError.textContent = err.message || 'Erreur';
-            payError.style.display = 'block';
-          }
-          if (payBtn) payBtn.disabled = false;
-        });
-    }
-
-    var btnPreparePay = document.getElementById('btnPrepareCreditPay');
-    if (btnPreparePay) {
-      btnPreparePay.addEventListener('click', initStripePayment);
-    }
-
-    var formPay = document.getElementById('formCreditPay');
-    if (formPay) {
-      formPay.addEventListener('submit', function (ev) {
+    if (payForm) {
+      payForm.addEventListener('submit', function (ev) {
         ev.preventDefault();
         if (!stripe || !elements || !clientSecret) {
           if (payError) {
-            payError.textContent = 'Cliquez d’abord sur « Préparer le paiement ».';
+            payError.textContent =
+              'Le formulaire de paiement n’est pas prêt. Attendez la fin du chargement ou choisissez à nouveau un forfait.';
             payError.style.display = 'block';
           }
           return;
         }
+        if (payError) payError.style.display = 'none';
         if (payBtn) payBtn.disabled = true;
         stripe
           .confirmPayment({
