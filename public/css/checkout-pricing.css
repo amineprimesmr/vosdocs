@@ -261,46 +261,35 @@
   white-space: nowrap;
 }
 
-.cg-tier-badge--sub {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-}
-
-.cg-tier-badges {
-  position: absolute;
-  top: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.cg-tier-badges .cg-tier-badge {
-  position: static;
-  transform: none;
-  left: auto;
-  top: auto;
-}
-
 .cg-tier-badge--deal {
-  background: linear-gradient(135deg, #fbbf24, #ea580c);
+  top: -14px;
+  padding: 8px 18px;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  background: linear-gradient(145deg, #a78bfa 0%, #7c3aed 45%, #5b21b6 100%);
   color: #fff;
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
+  box-shadow:
+    0 4px 16px rgba(91, 33, 182, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .cg-tier-card--subscription {
   border: 2px solid #c7d2fe;
   background: linear-gradient(180deg, #fff 0%, #f5f3ff 100%);
-  padding-top: 40px;
+  padding-top: 30px;
   cursor: default;
 }
 
 .cg-tier-card--subscription:hover {
   border-color: #a5b4fc;
+}
+
+.cg-tier-card--subscription:hover .cg-tier-badge--deal {
+  filter: brightness(1.06);
+  box-shadow:
+    0 6px 20px rgba(91, 33, 182, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.25) inset;
 }
 
 .cg-tier-price--sub {
