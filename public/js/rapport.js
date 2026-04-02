@@ -1,5 +1,5 @@
 /**
- * Rapport — aperçu partiel (données VIN visibles, reste flouté) → checkout
+ * Rapport — présentation type « vehicle history » (données API branchées plus tard)
  */
 
 (function () {
@@ -14,6 +14,26 @@
     return vin.slice(0, 4) + ' ········· ·' + vin.slice(14);
   }
 
+  function buildHeroTitle(vd) {
+    var y = vd.year && String(vd.year).trim() && vd.year !== '—' ? String(vd.year) : '';
+    var mk = vd.make && vd.make !== '—' ? String(vd.make) : '';
+    var mo = vd.model && vd.model !== '—' ? String(vd.model) : '';
+    var tr = vd.trim ? String(vd.trim) : '';
+    var parts = [y, mk, mo, tr].filter(function (p) {
+      return p && p.length > 0;
+    });
+    if (parts.length) return parts.join(' ').toUpperCase();
+    return 'RAPPORT HISTORIQUE VÉHICULE';
+  }
+
+  function fillOdoDemo(tbody) {
+    if (!tbody) return;
+    tbody.innerHTML =
+      '<tr><td>12/03/2022</td><td>38&nbsp;200 km</td></tr>' +
+      '<tr><td>08/11/2023</td><td>41&nbsp;050 km</td></tr>' +
+      '<tr><td>—</td><td>—</td></tr>';
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     var commande = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
     if (!commande) {
@@ -26,6 +46,9 @@
 
     var vinEl = document.getElementById('previewVinDisplay');
     if (vinEl) vinEl.textContent = maskVin(vin);
+
+    var heroTitle = document.getElementById('rptHeroTitle');
+    if (heroTitle) heroTitle.textContent = buildHeroTitle(vd);
 
     var make = vd.make || '—';
     var model = vd.model || '—';
@@ -46,6 +69,16 @@
       if (trimEl) trimEl.textContent = trim;
     }
 
+    var eng = vd.engine || vd.engineDescription || '';
+    var trans = vd.transmission || vd.drivetrain || '';
+    var odo = vd.odometer || vd.odometerMiles || vd.mileage || '';
+    var elE = document.getElementById('rptEngine');
+    var elT = document.getElementById('rptTransmission');
+    var elO = document.getElementById('rptOdometer');
+    if (elE) elE.textContent = eng || '—';
+    if (elT) elT.textContent = trans || '—';
+    if (elO) elO.textContent = odo || '—';
+
     var summaryText = vd.summary || vd.description || '';
     var sumBlock = document.getElementById('previewSummaryBlock');
     if (sumBlock) {
@@ -61,7 +94,16 @@
     var dateEl = document.getElementById('previewDocDate');
     if (dateEl) dateEl.textContent = formatFrDate();
 
-    document.querySelectorAll('.preview-section[data-reveal]').forEach(function (el) {
+    var valEl = document.getElementById('rptValueDisplay');
+    if (valEl && (!vd.estimatedValue || vd.estimatedValue === '—')) {
+      valEl.textContent = '—';
+    } else if (valEl && vd.estimatedValue) {
+      valEl.textContent = vd.estimatedValue;
+    }
+
+    fillOdoDemo(document.getElementById('rptOdoTableBody'));
+
+    document.querySelectorAll('.rpt-section[data-reveal]').forEach(function (el) {
       var io = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (e) {

@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Votre rapport véhicule | Carvinguard</title>
-    <meta name="description" content="Aperçu de votre rapport véhicule (VIN). Débloquez le rapport complet en quelques clics.">
+    <meta name="description" content="Rapport historique véhicule (VIN). Synthèse, alertes et détails — débloquez le rapport complet.">
     <meta name="robots" content="noindex, follow">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css?v=202603152600">
-    <link rel="stylesheet" href="css/rapport-preview.css?v=1">
+    <link rel="stylesheet" href="css/rapport-preview.css?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -21,8 +21,8 @@
       gtag('config', 'AW-17972633421');
     </script>
 </head>
-<body class="preview-page rapport-page">
-    <header class="header header-light">
+<body class="rpt-page">
+    <header class="header header-light rpt-site-header">
         <div class="container header-inner">
             <a href="index.html" class="logo">
                 <span class="logo-icon">
@@ -34,93 +34,190 @@
         </div>
     </header>
 
-    <main class="preview-main">
-        <div class="preview-hero">
-            <span class="preview-chip">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <main class="rpt-main">
+        <p class="rpt-eyebrow">
+            <span class="rpt-eyebrow-pill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 Aperçu gratuit
             </span>
-            <h1>Rapport historique véhicule</h1>
-            <p class="preview-hero-sub">Extrait à partir du numéro VIN — la majorité des champs est réservée au rapport payant.</p>
-        </div>
+        </p>
 
-        <article class="preview-doc" id="previewDoc">
-            <div class="preview-doc-head">
-                <div class="preview-doc-brand">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-                    Rapport — extrait
-                </div>
-                <span class="preview-doc-date" id="previewDocDate">—</span>
+        <article class="rpt-report" id="rptReport" aria-labelledby="rptHeroTitle">
+            <!-- Bandeau type rapport US : marque du document -->
+            <div class="rpt-topbar">
+                <span class="rpt-topbar-title">Rapport historique véhicule</span>
+                <span class="rpt-topbar-brand">Carvinguard</span>
             </div>
 
-            <section class="preview-section" data-reveal>
-                <h2>Identification véhicule</h2>
-                <dl class="preview-dl">
-                    <div><dt>VIN</dt><dd class="preview-vin-mask" id="previewVinDisplay">—</dd></div>
-                    <div><dt>Marque</dt><dd id="previewMake">—</dd></div>
-                    <div><dt>Modèle</dt><dd id="previewModel">—</dd></div>
-                    <div><dt>Année modèle</dt><dd id="previewYear">—</dd></div>
-                    <div id="previewTrimRow" style="display:none;"><dt>Finition</dt><dd id="previewTrim">—</dd></div>
-                </dl>
+            <!-- Bloc identité véhicule -->
+            <div class="rpt-hero">
+                <div class="rpt-hero-main">
+                    <h1 class="rpt-hero-title" id="rptHeroTitle">Rapport véhicule</h1>
+                    <p class="rpt-hero-vin">N° VIN <strong id="previewVinDisplay" class="rpt-vin">—</strong></p>
+                    <ul class="rpt-hero-specs" id="rptHeroSpecs">
+                        <li><span class="rpt-spec-label">Motorisation</span> <span class="rpt-spec-val" id="rptEngine">—</span></li>
+                        <li><span class="rpt-spec-label">Transmission</span> <span class="rpt-spec-val" id="rptTransmission">—</span></li>
+                        <li><span class="rpt-spec-label">Kilométrage (indicatif)</span> <span class="rpt-spec-val" id="rptOdometer">—</span></li>
+                    </ul>
+                    <dl class="rpt-id-grid" aria-label="Identification détaillée">
+                        <div><dt>Marque</dt><dd id="previewMake">—</dd></div>
+                        <div><dt>Modèle</dt><dd id="previewModel">—</dd></div>
+                        <div><dt>Année</dt><dd id="previewYear">—</dd></div>
+                        <div id="previewTrimRow" style="display:none;"><dt>Finition</dt><dd id="previewTrim">—</dd></div>
+                    </dl>
+                </div>
+                <div class="rpt-hero-visual" aria-hidden="true">
+                    <div class="rpt-hero-photo">
+                        <svg class="rpt-hero-svg" viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="rptCarBg" x1="0" y1="0" x2="320" y2="200" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/>
+                                </linearGradient>
+                            </defs>
+                            <rect width="320" height="200" rx="12" fill="url(#rptCarBg)"/>
+                            <path d="M40 130 Q80 95 140 100 L200 98 Q260 92 290 120 L295 145 L35 145 Z" fill="#94a3b8" opacity=".35"/>
+                            <ellipse cx="95" cy="152" rx="22" ry="22" fill="#475569"/>
+                            <ellipse cx="230" cy="150" rx="24" ry="24" fill="#475569"/>
+                            <path d="M75 118 L245 112 L255 125 L70 128 Z" fill="#64748b" opacity=".5"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Synthèse rapide -->
+            <section class="rpt-section" data-reveal>
+                <div class="rpt-section-bar">Synthèse rapide</div>
+                <div class="rpt-quick-grid" id="rptQuickGrid" role="list">
+                    <div class="rpt-q rpt-q--ok" role="listitem">
+                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span class="rpt-q-txt">Aucun antécédent de vol recensé</span>
+                    </div>
+                    <div class="rpt-q rpt-q--ok" role="listitem">
+                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span class="rpt-q-txt">Titre non sali (indicatif)</span>
+                    </div>
+                    <div class="rpt-q rpt-q--ok" role="listitem">
+                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span class="rpt-q-txt">Pas d’historique « épave » signalé</span>
+                    </div>
+                    <div class="rpt-q rpt-q--ok" role="listitem">
+                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span class="rpt-q-txt">Cohérence kilométrique (sources)</span>
+                    </div>
+                    <div class="rpt-q rpt-q--ok" role="listitem">
+                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span class="rpt-q-txt">Rappels constructeur : rien d’ouvert</span>
+                    </div>
+                    <div class="rpt-q rpt-q--warn" role="listitem">
+                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg></span>
+                        <span class="rpt-q-txt">Élément à vérifier : sinistre (détail dans rapport complet)</span>
+                    </div>
+                </div>
             </section>
 
-            <section class="preview-section" data-reveal>
-                <h2>Résumé constructeur</h2>
+            <div class="rpt-cols">
+                <div class="rpt-col">
+                    <section class="rpt-section rpt-section--flush" data-reveal>
+                        <div class="rpt-section-bar rpt-section-bar--danger">Sinistres &amp; événements <span class="rpt-bar-tag">extrait</span></div>
+                        <div class="rpt-card rpt-card--alert">
+                            <p class="rpt-card-kicker">Exemple de ligne (données complètes après déblocage)</p>
+                            <ul class="rpt-alert-list">
+                                <li><span class="rpt-al-ic" aria-hidden="true">📅</span> <strong>Date</strong> — selon sources</li>
+                                <li><span class="rpt-al-ic" aria-hidden="true">⚠️</span> <strong>Type</strong> — à consulter dans le rapport payant</li>
+                                <li><span class="rpt-al-ic" aria-hidden="true">🔧</span> <strong>Gravité / airbags</strong> — détail réservé</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section class="rpt-section" data-reveal>
+                        <div class="rpt-section-bar">Relevés kilométriques (aperçu)</div>
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead><tr><th>Date</th><th>Kilométrage</th></tr></thead>
+                                <tbody id="rptOdoTableBody">
+                                    <tr><td>—</td><td>—</td></tr>
+                                    <tr><td>—</td><td>—</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="rpt-micro">Les relevés complets sont fournis dans le rapport débloqué.</p>
+                    </section>
+                </div>
+
+                <div class="rpt-col">
+                    <section class="rpt-section" data-reveal>
+                        <div class="rpt-section-bar">Titulaires &amp; usage</div>
+                        <ul class="rpt-owner-list" id="rptOwnerList">
+                            <li class="rpt-owner-item">
+                                <span class="rpt-owner-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                                <div><strong>Titulaire 1</strong><span class="rpt-owner-sub">Période — détail dans le rapport complet</span></div>
+                            </li>
+                            <li class="rpt-owner-item">
+                                <span class="rpt-owner-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                                <div><strong>Titulaire 2</strong><span class="rpt-owner-sub">—</span></div>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="rpt-section" data-reveal>
+                        <div class="rpt-section-bar">Titre &amp; statut (indicateurs)</div>
+                        <ul class="rpt-checklist">
+                            <li class="rpt-checkline rpt-checkline--ok"><span class="rpt-cl-ic">✓</span> Synthèse titre (sources agrégées)</li>
+                            <li class="rpt-checkline rpt-checkline--ok"><span class="rpt-cl-ic">✓</span> Alertes administratives recensées</li>
+                            <li class="rpt-checkline rpt-checkline--muted"><span class="rpt-cl-ic">○</span> Détail réservé au rapport complet</li>
+                        </ul>
+                    </section>
+
+                    <section class="rpt-section rpt-value-section" data-reveal>
+                        <div class="rpt-value-box">
+                            <span class="rpt-value-label">Fourchette de valeur (indicatif)</span>
+                            <span class="rpt-value-amt" id="rptValueDisplay">—</span>
+                            <span class="rpt-value-note">Estimation à titre informatif — données détaillées après commande.</span>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Zones verrouillées (style cohérent) -->
+            <section class="rpt-section" data-reveal>
+                <div class="rpt-section-bar">Résumé constructeur</div>
                 <div class="preview-teaser-line" id="previewSummaryBlock" style="display:none;"></div>
-                <div class="preview-locked" aria-hidden="true">
-                    <div class="preview-locked-inner">
-                        <div class="preview-fake-rows">
-                            <span></span><span></span><span></span>
-                        </div>
-                        <p style="margin-top:10px;font-size:0.85rem;color:#475569;">Historique détaillé des équipements, motorisation complète et codes usine.</p>
-                    </div>
-                    <div class="preview-locked-overlay">
-                        <span class="preview-locked-icon" title="Verrouillé">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        </span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="preview-section" data-reveal>
-                <h2>Alertes fichier &amp; mentions</h2>
-                <div class="preview-locked" style="min-height:96px;">
-                    <div class="preview-locked-inner">
-                        <div class="preview-fake-rows">
-                            <span></span><span></span><span></span><span></span>
-                        </div>
-                        <p style="margin-top:12px;font-size:0.85rem;">Alertes et mentions recensées sur les sources disponibles pour ce VIN.</p>
-                    </div>
-                    <div class="preview-locked-overlay">
-                        <span class="preview-locked-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="preview-section" data-reveal>
-                <h2>Sinistres &amp; historique</h2>
-                <div class="preview-locked" style="min-height:88px;">
-                    <div class="preview-locked-inner">
+                <div class="rpt-locked" aria-hidden="true">
+                    <div class="rpt-locked-inner">
                         <div class="preview-fake-rows"><span></span><span></span><span></span></div>
-                        <p style="margin-top:10px;font-size:0.85rem;">Indicateurs d’accident, sinistres déclarés et événements recensés.</p>
+                        <p class="rpt-locked-caption">Motorisation, finitions, équipements et codes usine — rapport complet.</p>
                     </div>
-                    <div class="preview-locked-overlay">
-                        <span class="preview-locked-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                    <div class="rpt-locked-overlay">
+                        <span class="rpt-locked-icon" title="Contenu réservé"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
                     </div>
                 </div>
             </section>
 
-            <div class="preview-section" data-reveal style="border-bottom:none;">
-                <div class="preview-hint">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                    <span><strong>Rapport partiel.</strong> Les données détaillées et le rapport complet sont délivrés après validation du paiement sécurisé.</span>
+            <section class="rpt-section" data-reveal>
+                <div class="rpt-section-bar">Alertes fichier &amp; mentions détaillées</div>
+                <div class="rpt-locked">
+                    <div class="rpt-locked-inner">
+                        <div class="preview-fake-rows"><span></span><span></span><span></span><span></span></div>
+                        <p class="rpt-locked-caption">Mentions consolidées sur les sources disponibles pour ce VIN.</p>
+                    </div>
+                    <div class="rpt-locked-overlay">
+                        <span class="rpt-locked-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="rpt-section rpt-section--last" data-reveal>
+                <div class="rpt-hint">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <span><strong>Aperçu partiel.</strong> Les jeux de données complets, l’historique détaillé et les pièces PDF sont fournis après validation du paiement sécurisé.</span>
+                </div>
+                <p class="rpt-doc-meta">Document généré le <time id="previewDocDate">—</time></p>
+            </section>
         </article>
 
-        <div class="preview-cta-bar" id="previewCtaBar">
-            <div class="preview-cta-inner">
-                <button type="button" class="btn-unlock" id="btnUnlockFull">Débloquer le rapport complet</button>
+        <div class="rpt-cta-bar" id="previewCtaBar">
+            <div class="rpt-cta-inner">
+                <button type="button" class="rpt-btn-unlock" id="btnUnlockFull">Débloquer le rapport complet</button>
             </div>
         </div>
     </main>
