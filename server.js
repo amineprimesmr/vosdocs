@@ -365,6 +365,60 @@ async function refundVinDecodeCredit(userId, vinMasked) {
   }
 }
 
+/** CarAPI.dev (prioritaire) ou Vehicle Databases — voir .env.example */
+function getVinDecodeProvider() {
+  const carapi = String(process.env.CARAPI_TOKEN || process.env.CARAPI_API_KEY || '').trim();
+  if (carapi) return { id: 'carapi', apiKey: carapi };
+  const vd = String(process.env.VEHICLEDATABASES_API_KEY || '').trim();
+  if (vd) return { id: 'vehicledatabases', apiKey: vd };
+  return null;
+}
+
+/**
+ * Normalise la réponse CarAPI ({ success, data }) vers le format attendu par le front (status + data).
+ * @see https://docs.carapi.dev/endpoints/vin-decode
+ */
+function normalizeCarApiVinResponse(body) {
+  if (!body || typeof body !== 'object') {
+    return { ok: false, httpStatus: 502, message: 'Réponse VIN invalide' };
+  }
+  if (body.success === true && body.data && typeof body.data === 'object') {
+    const d = body.data;
+    const year = d.year != null ? String(d.year) : '';
+    const detailParts = [d.engine, d.body_type, d.transmission, d.fuel_type, d.drive_type].filter(
+      (x) => x != null && String(x).trim() !== ''
+    );
+    const summary =
+      detailParts.length > 0
+        ? detailParts.join(' · ')
+        : String(d.manufacturer || d.country || '').trim();
+    return {
+      ok: true,
+      json: {
+        status: 'success',
+        data: {
+          make: String(d.make || '').trim(),
+          model: String(d.model || '').trim(),
+          year,
+          trim: String(d.trim || d.body_type || '').trim(),
+          summary
+        }
+      }
+    };
+  }
+  const msg = String(
+    body.message || (typeof body.error === 'string' ? body.error : body.error?.message) || ''
+  ).trim();
+  const quota =
+    /quota|limit|429/i.test(msg) ||
+    /quota|limit/i.test(String(body.error || ''));
+  return {
+    ok: false,
+    httpStatus: quota ? 429 : 400,
+    message: msg || 'VIN introuvable ou invalide'
+  };
+}
+
 async function notifyTeam(order) {
   const url = process.env.ORDERS_WEBHOOK_URL;
   if (!url) return;
@@ -568,7 +622,7 @@ function saaSAuthReady() {
 
 app.get('/api/saas-config', (req, res) => {
   const prisma = getPrisma();
-  const vinApi = !!process.env.VEHICLEDATABASES_API_KEY;
+  const vinApi = !!getVinDecodeProvider();
   const creditsPacks = [
     {
       id: 'pack_5',
@@ -1006,10 +1060,10 @@ function escapeXml(s) {
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API VIN Decode (Vehicle Databases - proxy ; crédits si DB + clé API)
+// API VIN Decode — proxy CarAPI.dev (prioritaire) ou Vehicle Databases ; crédits si DB + clé API
 app.get('/api/vin-decode/:vin', async (req, res) => {
   const prisma = getPrisma();
-  const apiKey = process.env.VEHICLEDATABASES_API_KEY;
+  const provider = getVinDecodeProvider();
   const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
   const vinMasked = vin.slice(0, 11) + '…';
 
@@ -1017,7 +1071,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
   }
 
-  const requireAccountForVin = !!(prisma && apiKey);
+  const requireAccountForVin = !!(prisma && provider);
   let userId = null;
 
   if (requireAccountForVin) {
@@ -1067,7 +1121,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     }
   }
 
-  if (!apiKey) {
+  if (!provider) {
     return res.status(503).json({
       status: 'error',
       error: 'Service VIN non configuré',
@@ -1076,9 +1130,39 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
   }
 
   try {
+    if (provider.id === 'carapi') {
+      const url = `https://api.carapi.dev/v1/vin-decode/${encodeURIComponent(vin)}?token=${encodeURIComponent(provider.apiKey)}`;
+      const extRes = await fetch(url);
+      let data = {};
+      try {
+        data = await extRes.json();
+      } catch (_) {
+        data = {};
+      }
+      if (!extRes.ok) {
+        if (requireAccountForVin) {
+          await refundVinDecodeCredit(userId, vinMasked);
+        }
+        const msg =
+          (data && (data.message || data.error)) ||
+          (extRes.status === 429 ? 'Quota API VIN dépassé. Réessayez plus tard.' : null) ||
+          'VIN introuvable';
+        const statusOut = extRes.status >= 400 && extRes.status < 600 ? extRes.status : 502;
+        return res.status(statusOut).json({ status: 'error', message: String(msg) });
+      }
+      const norm = normalizeCarApiVinResponse(data);
+      if (!norm.ok) {
+        if (requireAccountForVin) {
+          await refundVinDecodeCredit(userId, vinMasked);
+        }
+        return res.status(norm.httpStatus).json({ status: 'error', message: norm.message });
+      }
+      return res.json(norm.json);
+    }
+
     const extRes = await fetch(
       `https://api.vehicledatabases.com/advanced-vin-decode/v2/${vin}`,
-      { headers: { 'x-authkey': apiKey } }
+      { headers: { 'x-authkey': provider.apiKey } }
     );
     const data = await extRes.json();
     if (!extRes.ok) {

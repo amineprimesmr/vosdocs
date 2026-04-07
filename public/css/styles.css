@@ -2630,9 +2630,19 @@ img.hero-media-logo:hover {
 .verification-vin-block,
 .verification-immat-block {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   margin-bottom: 24px;
+}
+.verification-vin-main {
+  flex: 1;
+  min-width: 0;
+}
+.verification-vin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .verification-vin-avatar,
 .verification-immat-avatar {
@@ -2656,6 +2666,42 @@ img.hero-media-logo:hover {
 .verification-padlock {
   color: #f59e0b;
   flex-shrink: 0;
+}
+.verification-vehicle-desc {
+  margin: 8px 0 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cta-blue);
+  line-height: 1.35;
+}
+.verification-vehicle-desc[hidden] {
+  display: none !important;
+}
+.verification-skip-wrap {
+  margin: -4px 0 20px 0;
+  text-align: center;
+}
+.verification-skip-btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cta-blue);
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-radius: var(--radius-sm, 6px);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.verification-skip-btn:hover {
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.08);
+}
+.verification-skip-btn:focus-visible {
+  outline: 2px solid var(--cta-blue);
+  outline-offset: 2px;
 }
 .verification-vin-avatar svg,
 .verification-immat-avatar svg { width: 28px; height: 28px; }
@@ -2750,7 +2796,7 @@ img.hero-media-logo:hover {
 .verification-search-item.verification-search-item-done .verification-search-spinner { display: none; }
 .verification-search-item.verification-search-item-done .verification-search-check { display: flex; }
 .verification-search-item.verification-search-item-done {
-  animation: verificationItemDone 0.4s var(--ease-out) forwards;
+  animation: verificationItemDone 0.28s var(--ease-out) forwards;
 }
 @keyframes verificationSpin {
   to { transform: rotate(360deg); }

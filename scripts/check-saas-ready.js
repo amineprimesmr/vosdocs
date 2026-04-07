@@ -15,7 +15,8 @@ const checks = [
   ['JWT_SECRET', 'Sessions / inscription (npm run gen:jwt-secret)'],
   ['STRIPE_SECRET_KEY', 'Paiements Stripe'],
   ['STRIPE_PUBLISHABLE_KEY', 'Stripe côté navigateur'],
-  ['VEHICLEDATABASES_API_KEY', 'Décodage VIN (optionnel sans clé = mode dégradé)']
+  ['VEHICLEDATABASES_API_KEY', 'Décodage VIN legacy (optionnel)'],
+  ['CARAPI_TOKEN', 'Décodage VIN CarAPI.dev (optionnel — prioritaire sur Vehicle Databases)']
 ];
 
 const linkVars = [
@@ -34,7 +35,7 @@ console.log('Carvinguard — vérification SaaS' + (prod ? ' (PRODUCTION)' : '')
 for (const [key, desc] of checks) {
   const v = process.env[key];
   const set = v && String(v).trim().length > 0;
-  if (!set && key !== 'VEHICLEDATABASES_API_KEY') ok = false;
+  if (!set && key !== 'VEHICLEDATABASES_API_KEY' && key !== 'CARAPI_TOKEN') ok = false;
   console.log(set ? '✓' : '✗', key, '—', desc);
 }
 

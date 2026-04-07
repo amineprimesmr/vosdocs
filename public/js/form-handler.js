@@ -1,6 +1,6 @@
 /**
  * Carvinguard - Gestion du formulaire de recherche véhicule (VIN uniquement)
- * Intégration API Vehicle Databases pour décoder le VIN et récupérer les infos véhicule
+ * Décodage VIN via /api/vin-decode (proxy serveur : CarAPI.dev ou Vehicle Databases)
  */
 
 (function() {
