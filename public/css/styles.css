@@ -2674,6 +2674,10 @@ img.hero-media-logo:hover {
   color: var(--cta-blue);
   line-height: 1.35;
 }
+.verification-vehicle-desc--locked {
+  font-weight: 500;
+  color: #64748b;
+}
 .verification-vehicle-desc[hidden] {
   display: none !important;
 }

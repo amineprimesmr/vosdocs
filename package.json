@@ -18,7 +18,9 @@
     "saas:check:prod": "node scripts/check-saas-ready.js --prod",
     "stripe:setup": "node scripts/stripe-create-catalog.js",
     "stripe:tout": "node scripts/stripe-tout-en-un.js",
-    "verify": "node scripts/verify-deploy.js"
+    "verify": "node scripts/verify-deploy.js",
+    "deploy:check": "node --check server.js && node scripts/verify-deploy.js",
+    "deploy:vercel": "vercel --prod"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

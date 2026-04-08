@@ -81,6 +81,10 @@
     <script>
         (function() {
             var data = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
+            if (data && typeof VehicleService !== 'undefined') {
+                VehicleService.saveCommandeData(Object.assign({}, data, { reportUnlocked: true }));
+                data = VehicleService.getCommandeData();
+            }
             if (data) {
                 var ref = document.getElementById('ref');
                 var montant = document.getElementById('montant');

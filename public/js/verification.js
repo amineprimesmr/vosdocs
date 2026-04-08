@@ -87,16 +87,23 @@
     if (vinEl) vinEl.textContent = vin;
 
     var descEl = document.getElementById('verificationVehicleDesc');
+    var unlocked = commande && commande.reportUnlocked === true;
     if (descEl && commande && commande.vehicleData) {
       var vd = commande.vehicleData;
-      var desc =
-        vd.vehicleDesc ||
-        vd.description ||
-        vd.summary ||
-        [vd.year, vd.make, vd.model].filter(Boolean).join(' ');
-      if (desc) {
-        descEl.textContent = desc;
+      if (unlocked) {
+        var desc =
+          vd.vehicleDesc ||
+          vd.description ||
+          vd.summary ||
+          [vd.year, vd.make, vd.model].filter(Boolean).join(' ');
+        if (desc) {
+          descEl.textContent = desc;
+          descEl.hidden = false;
+        }
+      } else {
+        descEl.textContent = 'Véhicule identifié — détails complets après paiement sécurisé.';
         descEl.hidden = false;
+        descEl.classList.add('verification-vehicle-desc--locked');
       }
     }
 

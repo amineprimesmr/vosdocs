@@ -43,12 +43,18 @@
 
     var vd = commande.vehicleData || {};
     var vin = commande.vin || '';
+    var reportUnlocked = commande.reportUnlocked === true;
 
     var vinEl = document.getElementById('previewVinDisplay');
     if (vinEl) vinEl.textContent = maskVin(vin);
 
     var heroTitle = document.getElementById('rptHeroTitle');
-    if (heroTitle) heroTitle.textContent = buildHeroTitle(vd);
+    var identityEl = document.getElementById('rpt-identity');
+    if (identityEl) identityEl.classList.toggle('rpt-identity--locked', !reportUnlocked);
+
+    if (heroTitle) {
+      heroTitle.textContent = reportUnlocked ? buildHeroTitle(vd) : 'RAPPORT HISTORIQUE VÉHICULE';
+    }
 
     var make = vd.make || '—';
     var model = vd.model || '—';
@@ -58,15 +64,15 @@
     var elMake = document.getElementById('previewMake');
     var elModel = document.getElementById('previewModel');
     var elYear = document.getElementById('previewYear');
-    if (elMake) elMake.textContent = make;
-    if (elModel) elModel.textContent = model;
-    if (elYear) elYear.textContent = year;
+    if (elMake) elMake.textContent = reportUnlocked ? make : '••••••';
+    if (elModel) elModel.textContent = reportUnlocked ? model : '••••••';
+    if (elYear) elYear.textContent = reportUnlocked ? year : '••••';
 
     if (trim) {
       var trimRow = document.getElementById('previewTrimRow');
       var trimEl = document.getElementById('previewTrim');
       if (trimRow) trimRow.style.display = '';
-      if (trimEl) trimEl.textContent = trim;
+      if (trimEl) trimEl.textContent = reportUnlocked ? trim : '••••••';
     }
 
     var eng = vd.engine || vd.engineDescription || '';
@@ -75,19 +81,25 @@
     var elE = document.getElementById('rptEngine');
     var elT = document.getElementById('rptTransmission');
     var elO = document.getElementById('rptOdometer');
-    if (elE) elE.textContent = eng || '—';
-    if (elT) elT.textContent = trans || '—';
-    if (elO) elO.textContent = odo || '—';
+    if (elE) elE.textContent = reportUnlocked ? (eng || '—') : '••••••';
+    if (elT) elT.textContent = reportUnlocked ? (trans || '—') : '••••••';
+    if (elO) elO.textContent = reportUnlocked ? (odo || '—') : '••••••';
 
     var summaryText = vd.summary || vd.description || '';
     var sumBlock = document.getElementById('previewSummaryBlock');
     if (sumBlock) {
       sumBlock.style.display = '';
-      if (summaryText) {
-        sumBlock.textContent = summaryText.length > 280 ? summaryText.slice(0, 277) + '…' : summaryText;
+      if (reportUnlocked) {
+        if (summaryText) {
+          sumBlock.textContent = summaryText.length > 280 ? summaryText.slice(0, 277) + '…' : summaryText;
+        } else {
+          sumBlock.textContent =
+            'Les données constructeur détaillées (motorisation, finitions, équipements) sont disponibles dans le rapport complet après déblocage.';
+        }
       } else {
         sumBlock.textContent =
-          'Les données constructeur détaillées (motorisation, finitions, équipements) sont disponibles dans le rapport complet après déblocage.';
+          'Les données constructeur détaillées (motorisation, finitions, équipements) sont disponibles dans le rapport complet après paiement.';
+        sumBlock.classList.add('rpt-summary-locked');
       }
     }
 
@@ -95,10 +107,14 @@
     if (dateEl) dateEl.textContent = formatFrDate();
 
     var valEl = document.getElementById('rptValueDisplay');
-    if (valEl && (!vd.estimatedValue || vd.estimatedValue === '—')) {
-      valEl.textContent = '—';
-    } else if (valEl && vd.estimatedValue) {
-      valEl.textContent = vd.estimatedValue;
+    if (valEl) {
+      if (!reportUnlocked) {
+        valEl.textContent = '••••••';
+      } else if (!vd.estimatedValue || vd.estimatedValue === '—') {
+        valEl.textContent = '—';
+      } else {
+        valEl.textContent = vd.estimatedValue;
+      }
     }
 
     fillOdoDemo(document.getElementById('rptOdoTableBody'));
@@ -117,8 +133,11 @@
       io.observe(el);
     });
 
+    var ctaBar = document.getElementById('previewCtaBar');
+    if (ctaBar) ctaBar.style.display = reportUnlocked ? 'none' : '';
+
     var btn = document.getElementById('btnUnlockFull');
-    if (btn) {
+    if (btn && !reportUnlocked) {
       btn.addEventListener('click', function () {
         window.location.href = 'checkout.html?plan=confort';
       });

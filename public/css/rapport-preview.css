@@ -140,6 +140,17 @@
   color: #0f172a;
 }
 
+/* Avant paiement : identité masquée (données API présentes côté session mais non affichées en clair) */
+.rpt-identity--locked .rpt-id-grid dd {
+  letter-spacing: 0.08em;
+  user-select: none;
+}
+
+.rpt-summary-locked {
+  color: #64748b;
+  font-style: italic;
+}
+
 .rpt-vin-box {
   display: inline-flex;
   flex-direction: column;

@@ -663,7 +663,7 @@ app.get('/api/saas-config', (req, res) => {
   }
 
   res.json({
-    vinRequiresAccount: !!(prisma && vinApi),
+    vinRequiresAccount: false,
     authAvailable: saaSAuthReady(),
     creditPacks: creditsPacks
   });
@@ -1060,18 +1060,21 @@ function escapeXml(s) {
 // Fichiers statiques : public/ (obligatoire pour Vercel, qui sert public/ via CDN)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API VIN Decode — proxy CarAPI.dev (prioritaire) ou Vehicle Databases ; crédits si DB + clé API
+// API VIN Decode — proxy CarAPI.dev (prioritaire) ou Vehicle Databases
+// ?preview=1 : décodage public (page d'accueil) — pas de compte ni de crédit ; le rapport détaillé reste derrière le paiement côté UI
 app.get('/api/vin-decode/:vin', async (req, res) => {
   const prisma = getPrisma();
   const provider = getVinDecodeProvider();
   const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
   const vinMasked = vin.slice(0, 11) + '…';
+  const q = req.query || {};
+  const isPreview = q.preview === '1' || q.preview === 'true';
 
   if (vin.length !== 17) {
     return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
   }
 
-  const requireAccountForVin = !!(prisma && provider);
+  const requireAccountForVin = !!(prisma && provider) && !isPreview;
   let userId = null;
 
   if (requireAccountForVin) {
@@ -1157,7 +1160,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         }
         return res.status(norm.httpStatus).json({ status: 'error', message: norm.message });
       }
-      return res.json(norm.json);
+      const outCar = Object.assign({}, norm.json);
+      if (isPreview) outCar.access = 'preview';
+      return res.json(outCar);
     }
 
     const extRes = await fetch(
@@ -1183,7 +1188,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         message: data.message || 'VIN introuvable ou invalide'
       });
     }
-    res.json(data);
+    const outVd = typeof data === 'object' && data !== null ? Object.assign({}, data) : data;
+    if (isPreview && outVd && typeof outVd === 'object') outVd.access = 'preview';
+    res.json(outVd);
   } catch (e) {
     console.error('VIN decode:', e.message);
     if (requireAccountForVin) {

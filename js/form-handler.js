@@ -34,9 +34,10 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Recherche...'; }
 
       var apiBase = window.location.origin;
-      fetch(apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()), {
-        credentials: 'include'
-      })
+      fetch(
+        apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()) + '?preview=1',
+        { credentials: 'include' }
+      )
         .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
         .then(function(out) {
           var result = out.data;
@@ -58,7 +59,8 @@
                 demarche: 'Rapport historique véhicule (VIN)',
                 vin: vin.toUpperCase(),
                 vehicleData: vehicleData,
-                prix: 19.90
+                prix: 19.90,
+                reportUnlocked: false
               });
             }
             window.location.href = 'verification.html';
@@ -67,22 +69,11 @@
               VehicleService.saveCommandeData({
                 demarche: 'Rapport historique véhicule (VIN)',
                 vin: vin.toUpperCase(),
-                prix: 19.90
+                prix: 19.90,
+                reportUnlocked: false
               });
             }
             window.location.href = 'verification.html';
-          } else if (status === 401 || result.code === 'AUTH_REQUIRED') {
-            if (formError) {
-              formError.innerHTML = 'Connexion requise : <a href="compte.html">créer un compte ou se connecter</a> pour utiliser la recherche VIN (1 crédit par recherche).';
-              formError.style.display = 'block';
-            }
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
-          } else if (status === 402 || result.code === 'INSUFFICIENT_CREDITS') {
-            if (formError) {
-              formError.innerHTML = 'Crédits insuffisants. <a href="compte.html">Recharger votre compte</a>.';
-              formError.style.display = 'block';
-            }
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
           } else {
             if (formError) {
               formError.textContent = result.message || result.error || 'Ce VIN n\'a pas été reconnu. Vérifiez le numéro (17 caractères sur la carte grise ou le véhicule).';
