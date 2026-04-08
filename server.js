@@ -382,7 +382,7 @@ function normalizeCarApiVinResponse(body) {
   if (!body || typeof body !== 'object') {
     return { ok: false, httpStatus: 502, message: 'Réponse VIN invalide' };
   }
-  if (body.success === true && body.data && typeof body.data === 'object') {
+  if ((body.success === true || body.success === 'true') && body.data && typeof body.data === 'object') {
     const d = body.data;
     const year = d.year != null ? String(d.year) : '';
     const detailParts = [d.engine, d.body_type, d.transmission, d.fuel_type, d.drive_type].filter(
@@ -417,6 +417,68 @@ function normalizeCarApiVinResponse(body) {
     httpStatus: quota ? 429 : 400,
     message: msg || 'VIN introuvable ou invalide'
   };
+}
+
+/**
+ * Repli gratuit : API publique NHTSA VPIC (sans clé). Couvre beaucoup de VIN (dont US / exemples doc).
+ * @see https://vpic.nhtsa.dot.gov/api/
+ */
+function normalizeNhtsaVinResponse(body) {
+  if (!body || typeof body !== 'object' || !Array.isArray(body.Results) || !body.Results[0]) {
+    return { ok: false };
+  }
+  const r = body.Results[0];
+  const make = String(r.Make || '').trim();
+  const model = String(r.Model || '').trim();
+  const year = r.ModelYear != null ? String(r.ModelYear).trim() : '';
+  // VPIC renvoie souvent ErrorCode ≠ 0 (clé de contrôle, données partielles) tout en remplissant Make / Model / Year
+  const hasIdentity = (make && !/^not applicable$/i.test(make)) || (model && !/^not applicable$/i.test(model)) || year;
+  if (!hasIdentity) {
+    const errText = String(r.ErrorText || '').trim();
+    return {
+      ok: false,
+      message: errText ? errText.split(';')[0].trim() : 'VIN introuvable ou invalide'
+    };
+  }
+  if (/^invalid/i.test(make) || /^invalid/i.test(model)) {
+    return { ok: false };
+  }
+  const detailParts = [r.VehicleType, r.BodyClass].filter(
+    (x) => x != null && String(x).trim() !== '' && String(x).trim() !== 'Not Applicable'
+  );
+  const summary =
+    detailParts.length > 0 ? detailParts.join(' · ') : String(r.PlantCountry || '').trim();
+  return {
+    ok: true,
+    json: {
+      status: 'success',
+      data: {
+        make,
+        model,
+        year,
+        trim: String(r.Trim || '').trim(),
+        summary
+      },
+      source: 'nhtsa'
+    }
+  };
+}
+
+async function decodeVinViaNhtsa(vin) {
+  try {
+    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${encodeURIComponent(vin)}?format=json`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'Carvinguard/1.0' }
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    const norm = normalizeNhtsaVinResponse(body);
+    if (!norm.ok) return null;
+    return norm.json;
+  } catch (e) {
+    console.error('NHTSA VIN decode:', e.message);
+    return null;
+  }
 }
 
 async function notifyTeam(order) {
@@ -1125,6 +1187,12 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
   }
 
   if (!provider) {
+    const nhtsaOnly = await decodeVinViaNhtsa(vin);
+    if (nhtsaOnly && nhtsaOnly.status === 'success') {
+      const out = Object.assign({}, nhtsaOnly);
+      if (isPreview) out.access = 'preview';
+      return res.json(out);
+    }
     return res.status(503).json({
       status: 'error',
       error: 'Service VIN non configuré',
@@ -1142,10 +1210,28 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       } catch (_) {
         data = {};
       }
-      if (!extRes.ok) {
-        if (requireAccountForVin) {
-          await refundVinDecodeCredit(userId, vinMasked);
+
+      if (extRes.ok) {
+        const norm = normalizeCarApiVinResponse(data);
+        if (norm.ok) {
+          const outCar = Object.assign({}, norm.json);
+          if (isPreview) outCar.access = 'preview';
+          return res.json(outCar);
         }
+      }
+
+      if (requireAccountForVin) {
+        await refundVinDecodeCredit(userId, vinMasked);
+      }
+
+      const nhtsaCar = await decodeVinViaNhtsa(vin);
+      if (nhtsaCar && nhtsaCar.status === 'success') {
+        const out = Object.assign({}, nhtsaCar);
+        if (isPreview) out.access = 'preview';
+        return res.json(out);
+      }
+
+      if (!extRes.ok) {
         const msg =
           (data && (data.message || data.error)) ||
           (extRes.status === 429 ? 'Quota API VIN dépassé. Réessayez plus tard.' : null) ||
@@ -1153,16 +1239,8 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         const statusOut = extRes.status >= 400 && extRes.status < 600 ? extRes.status : 502;
         return res.status(statusOut).json({ status: 'error', message: String(msg) });
       }
-      const norm = normalizeCarApiVinResponse(data);
-      if (!norm.ok) {
-        if (requireAccountForVin) {
-          await refundVinDecodeCredit(userId, vinMasked);
-        }
-        return res.status(norm.httpStatus).json({ status: 'error', message: norm.message });
-      }
-      const outCar = Object.assign({}, norm.json);
-      if (isPreview) outCar.access = 'preview';
-      return res.json(outCar);
+      const normFail = normalizeCarApiVinResponse(data);
+      return res.status(normFail.httpStatus).json({ status: 'error', message: normFail.message });
     }
 
     const extRes = await fetch(
@@ -1174,6 +1252,12 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       if (requireAccountForVin) {
         await refundVinDecodeCredit(userId, vinMasked);
       }
+      const nhtsaVd = await decodeVinViaNhtsa(vin);
+      if (nhtsaVd && nhtsaVd.status === 'success') {
+        const out = Object.assign({}, nhtsaVd);
+        if (isPreview) out.access = 'preview';
+        return res.json(out);
+      }
       return res.status(extRes.status).json({
         status: 'error',
         message: data.message || data.error || 'VIN introuvable'
@@ -1182,6 +1266,12 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     if (data.status === 'error') {
       if (requireAccountForVin) {
         await refundVinDecodeCredit(userId, vinMasked);
+      }
+      const nhtsaErr = await decodeVinViaNhtsa(vin);
+      if (nhtsaErr && nhtsaErr.status === 'success') {
+        const out = Object.assign({}, nhtsaErr);
+        if (isPreview) out.access = 'preview';
+        return res.json(out);
       }
       return res.status(400).json({
         status: 'error',
