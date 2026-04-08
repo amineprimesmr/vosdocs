@@ -26,7 +26,7 @@
       var vin = vinInput ? vinInput.value.trim() : '';
       if (!vin || vin.length !== 17) {
         if (formError) {
-          formError.textContent = 'Veuillez saisir un numéro VIN valide (17 caractères, ex: WBADT43452G123456)';
+          formError.textContent = 'Veuillez saisir un numéro VIN valide (17 caractères, zone E de la carte grise).';
           formError.style.display = 'block';
         }
         return;
@@ -64,7 +64,11 @@
               model: d.model || '',
               year: d.year || '',
               trim: d.trim || '',
-              summary: d.summary || ''
+              summary: d.summary || '',
+              engine: d.engine || '',
+              transmission: d.transmission || '',
+              fuel_type: d.fuel_type || '',
+              drivetrain: d.drivetrain || d.drive_type || ''
             };
             vehicleData.vehicleDesc = [vehicleData.year, vehicleData.make, vehicleData.model]
               .filter(Boolean)

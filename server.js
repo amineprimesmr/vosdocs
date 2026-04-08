@@ -392,6 +392,10 @@ function normalizeCarApiVinResponse(body) {
       detailParts.length > 0
         ? detailParts.join(' · ')
         : String(d.manufacturer || d.country || '').trim();
+    const engine = d.engine != null ? String(d.engine).trim() : '';
+    const transmission = d.transmission != null ? String(d.transmission).trim() : '';
+    const fuelType = d.fuel_type != null ? String(d.fuel_type).trim() : '';
+    const driveType = d.drive_type != null ? String(d.drive_type).trim() : '';
     return {
       ok: true,
       json: {
@@ -401,7 +405,11 @@ function normalizeCarApiVinResponse(body) {
           model: String(d.model || '').trim(),
           year,
           trim: String(d.trim || d.body_type || '').trim(),
-          summary
+          summary,
+          engine,
+          transmission,
+          fuel_type: fuelType,
+          drivetrain: driveType
         }
       }
     };
@@ -448,6 +456,12 @@ function normalizeNhtsaVinResponse(body) {
   );
   const summary =
     detailParts.length > 0 ? detailParts.join(' · ') : String(r.PlantCountry || '').trim();
+  const engParts = [r.DisplacementL, r.EngineCylinders, r.EngineModel]
+    .filter((x) => x != null && String(x).trim() !== '');
+  const engine = engParts.length ? engParts.map((x) => String(x).trim()).join(' ') : '';
+  const transmission = r.TransmissionStyle != null ? String(r.TransmissionStyle).trim() : '';
+  const fuelType = r.FuelTypePrimary != null ? String(r.FuelTypePrimary).trim() : '';
+  const driveType = r.DriveType != null ? String(r.DriveType).trim() : '';
   return {
     ok: true,
     json: {
@@ -457,7 +471,11 @@ function normalizeNhtsaVinResponse(body) {
         model,
         year,
         trim: String(r.Trim || '').trim(),
-        summary
+        summary,
+        engine,
+        transmission,
+        fuel_type: fuelType,
+        drivetrain: driveType
       },
       source: 'nhtsa'
     }

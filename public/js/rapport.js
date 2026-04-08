@@ -1,5 +1,5 @@
 /**
- * Rapport — présentation type « vehicle history » (données API branchées plus tard)
+ * Rapport — données véhicule issues du décodage VIN (session) ; pas de marque/modèle inventés.
  */
 
 (function () {
@@ -26,12 +26,12 @@
     return 'RAPPORT HISTORIQUE VÉHICULE';
   }
 
-  function fillOdoDemo(tbody) {
+  /** Pas de kilométrage factice : les relevés détaillés viennent du rapport commandé / sources agrégées */
+  function fillOdoPlaceholder(tbody) {
     if (!tbody) return;
     tbody.innerHTML =
-      '<tr><td>12/03/2022</td><td>38&nbsp;200 km</td></tr>' +
-      '<tr><td>08/11/2023</td><td>41&nbsp;050 km</td></tr>' +
-      '<tr><td>—</td><td>—</td></tr>';
+      '<tr><td>—</td><td>—</td></tr>' +
+      '<tr><td colspan="2" style="font-size:0.9em;color:#64748b;">Relevés complets dans le rapport après commande.</td></tr>';
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -76,6 +76,9 @@
     }
 
     var eng = vd.engine || vd.engineDescription || '';
+    if (vd.fuel_type && eng.indexOf(String(vd.fuel_type)) === -1) {
+      eng = eng ? eng + ' · ' + vd.fuel_type : String(vd.fuel_type);
+    }
     var trans = vd.transmission || vd.drivetrain || '';
     var odo = vd.odometer || vd.odometerMiles || vd.mileage || '';
     var elE = document.getElementById('rptEngine');
@@ -117,7 +120,7 @@
       }
     }
 
-    fillOdoDemo(document.getElementById('rptOdoTableBody'));
+    fillOdoPlaceholder(document.getElementById('rptOdoTableBody'));
 
     document.querySelectorAll('.rpt-section[data-reveal]').forEach(function (el) {
       var io = new IntersectionObserver(

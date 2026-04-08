@@ -43,14 +43,20 @@
     return id;
   }
 
+  /** VIN factice réservé au mode démo (?demo=1) — ne remplace jamais un vrai VIN utilisateur */
+  var DEMO_VIN_PLACEHOLDER = 'DEMO0000000000001';
+
   function goToReport(isDemo) {
     skipped = true;
     clearAllTimeouts();
     if (isDemo && typeof VehicleService !== 'undefined') {
       VehicleService.saveCommandeData({
         demarche: 'Rapport historique véhicule (VIN)',
-        vin: 'WBADT43452G123456',
-        prix: 19.9
+        vin: DEMO_VIN_PLACEHOLDER,
+        vehicleData: {},
+        prix: 19.9,
+        isDemo: true,
+        reportUnlocked: false
       });
     }
     window.location.href = 'rapport.html';
@@ -83,7 +89,12 @@
     var redirectShowAt = lastItemAt + 90;
     var totalTime = lastItemAt + t.redirectDelay + 320;
 
-    var vin = commande && commande.vin ? commande.vin : 'WBADT43452G123456';
+    var vin =
+      commande && commande.vin
+        ? commande.vin
+        : isDemo
+          ? DEMO_VIN_PLACEHOLDER
+          : '—';
     if (vinEl) vinEl.textContent = vin;
 
     var descEl = document.getElementById('verificationVehicleDesc');
