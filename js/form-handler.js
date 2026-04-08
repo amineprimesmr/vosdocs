@@ -12,6 +12,7 @@
 
     if (!form) return;
 
+    // Formatage VIN en temps réel : 17 caractères alphanumériques (sans I, O, Q)
     if (vinInput) {
       vinInput.addEventListener('input', function() {
         var v = this.value.replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
@@ -34,11 +35,25 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Recherche...'; }
 
       var apiBase = window.location.origin;
-      fetch(
-        apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()) + '?preview=1',
-        { credentials: 'include' }
-      )
-        .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+      var vinUrl =
+        apiBase + '/api/vin-decode/' + encodeURIComponent(vin.toUpperCase()) + '?preview=1';
+      var fetchOpts = { credentials: 'include' };
+      var tmo;
+      if (typeof AbortController !== 'undefined') {
+        var ac = new AbortController();
+        tmo = setTimeout(function() {
+          ac.abort();
+        }, 28000);
+        fetchOpts.signal = ac.signal;
+      }
+      // preview=1 : décodage API réel sans débit de crédit (déblocage complet du rapport après paiement)
+      fetch(vinUrl, fetchOpts)
+        .then(function(res) {
+          if (tmo) clearTimeout(tmo);
+          return res.json().then(function(data) {
+            return { res: res, data: data };
+          });
+        })
         .then(function(out) {
           var result = out.data;
           var status = out.res.status;
@@ -60,7 +75,8 @@
                 vin: vin.toUpperCase(),
                 vehicleData: vehicleData,
                 prix: 19.90,
-                reportUnlocked: false
+                reportUnlocked: false,
+                partialDecode: !!result.partialDecode
               });
             }
             window.location.href = 'verification.html';
@@ -82,9 +98,13 @@
             if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
           }
         })
-        .catch(function() {
+        .catch(function(err) {
+          if (tmo) clearTimeout(tmo);
           if (formError) {
-            formError.textContent = 'Erreur de connexion. Vérifiez votre connexion ou réessayez dans un instant.';
+            formError.textContent =
+              err && err.name === 'AbortError'
+                ? 'Délai dépassé. Réessayez dans un instant.'
+                : 'Erreur de connexion. Vérifiez votre connexion ou réessayez dans un instant.';
             formError.style.display = 'block';
           }
           if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }

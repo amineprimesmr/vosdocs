@@ -464,19 +464,62 @@ function normalizeNhtsaVinResponse(body) {
   };
 }
 
+/** Timeout fetch (Node 18+ / Vercel) — évite « Recherche… » infinie si API bloque */
+function fetchTimeoutSignal(ms) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(ms);
+  }
+  return undefined;
+}
+
+/**
+ * Dernier recours page d'accueil (?preview=1) : VIN au format ISO valide mais APIs indispo ou VIN EU peu couvert.
+ */
+function previewPartialVinJson() {
+  return {
+    status: 'success',
+    data: {
+      make: '',
+      model: '',
+      year: '',
+      trim: '',
+      summary:
+        'VIN enregistré. Les informations détaillées (marque, modèle, millésime) seront complétées dans votre rapport après commande.'
+    },
+    access: 'preview',
+    partialDecode: true
+  };
+}
+
 async function decodeVinViaNhtsa(vin) {
   try {
     const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${encodeURIComponent(vin)}?format=json`;
     const res = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'Carvinguard/1.0' }
+      headers: { Accept: 'application/json', 'User-Agent': 'Carvinguard/1.0' },
+      signal: fetchTimeoutSignal(10000)
     });
     if (!res.ok) return null;
-    const body = await res.json();
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('json')) {
+      return null;
+    }
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      return null;
+    }
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch (_) {
+      return null;
+    }
     const norm = normalizeNhtsaVinResponse(body);
     if (!norm.ok) return null;
     return norm.json;
   } catch (e) {
-    console.error('NHTSA VIN decode:', e.message);
+    if (e.name !== 'AbortError') {
+      console.error('NHTSA VIN decode:', e.message);
+    }
     return null;
   }
 }
@@ -1193,6 +1236,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       if (isPreview) out.access = 'preview';
       return res.json(out);
     }
+    if (isPreview) {
+      return res.json(previewPartialVinJson());
+    }
     return res.status(503).json({
       status: 'error',
       error: 'Service VIN non configuré',
@@ -1203,7 +1249,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
   try {
     if (provider.id === 'carapi') {
       const url = `https://api.carapi.dev/v1/vin-decode/${encodeURIComponent(vin)}?token=${encodeURIComponent(provider.apiKey)}`;
-      const extRes = await fetch(url);
+      const extRes = await fetch(url, { signal: fetchTimeoutSignal(12000) });
       let data = {};
       try {
         data = await extRes.json();
@@ -1232,6 +1278,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       }
 
       if (!extRes.ok) {
+        if (isPreview && extRes.status !== 429) {
+          return res.json(previewPartialVinJson());
+        }
         const msg =
           (data && (data.message || data.error)) ||
           (extRes.status === 429 ? 'Quota API VIN dépassé. Réessayez plus tard.' : null) ||
@@ -1240,14 +1289,22 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         return res.status(statusOut).json({ status: 'error', message: String(msg) });
       }
       const normFail = normalizeCarApiVinResponse(data);
+      if (isPreview) {
+        return res.json(previewPartialVinJson());
+      }
       return res.status(normFail.httpStatus).json({ status: 'error', message: normFail.message });
     }
 
     const extRes = await fetch(
       `https://api.vehicledatabases.com/advanced-vin-decode/v2/${vin}`,
-      { headers: { 'x-authkey': provider.apiKey } }
+      { headers: { 'x-authkey': provider.apiKey }, signal: fetchTimeoutSignal(12000) }
     );
-    const data = await extRes.json();
+    let data = {};
+    try {
+      data = await extRes.json();
+    } catch (_) {
+      data = {};
+    }
     if (!extRes.ok) {
       if (requireAccountForVin) {
         await refundVinDecodeCredit(userId, vinMasked);
@@ -1257,6 +1314,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         const out = Object.assign({}, nhtsaVd);
         if (isPreview) out.access = 'preview';
         return res.json(out);
+      }
+      if (isPreview) {
+        return res.json(previewPartialVinJson());
       }
       return res.status(extRes.status).json({
         status: 'error',
@@ -1273,6 +1333,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         if (isPreview) out.access = 'preview';
         return res.json(out);
       }
+      if (isPreview) {
+        return res.json(previewPartialVinJson());
+      }
       return res.status(400).json({
         status: 'error',
         message: data.message || 'VIN introuvable ou invalide'
@@ -1285,6 +1348,9 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     console.error('VIN decode:', e.message);
     if (requireAccountForVin) {
       await refundVinDecodeCredit(userId, vinMasked);
+    }
+    if (isPreview) {
+      return res.json(previewPartialVinJson());
     }
     res.status(500).json({ status: 'error', message: 'Erreur service VIN' });
   }
