@@ -1,0 +1,10 @@
+---
+description: Pousser sur main après les changements pour déclencher le déploiement Vercel
+alwaysApply: true
+---
+
+# Déploiement à chaque modification
+
+- Le dépôt est prévu pour **Vercel** : quand le projet est **connecté à GitHub** (import Git sur [vercel.com](https://vercel.com)), **chaque push sur `main` déclenche un déploiement** automatiquement. Aucun `vercel deploy` manuel n’est nécessaire dans ce cas.
+- Après avoir **terminé une modification de code** demandée par l’utilisateur (et vérifié `node --check server.js` ou `npm run verify` si pertinent), **commit puis `git push origin main`** pour que la prod soit à jour, **sauf** si l’utilisateur a explicitement demandé de ne pas pousser.
+- Ne pas créer de commits vides ; messages de commit en français, phrase complète, liés au changement.
