@@ -566,7 +566,16 @@ app.get('/api/stripe-webhook', (req, res) => {
   });
 });
 
-app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+/** GET diagnostic — même message que /api/stripe-webhook (alias chemin). */
+app.get('/api/webhook', (req, res) => {
+  res.status(200).json({
+    ok: true,
+    message: 'Alias /api/webhook — préférez /api/stripe-webhook dans Stripe. POST signé identique.',
+    canonical: '/api/stripe-webhook'
+  });
+});
+
+async function handleStripeWebhookPost(req, res) {
   if (!stripe) {
     return res.status(500).send('Stripe non configuré');
   }
@@ -602,7 +611,11 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     await handleSubscriptionInvoicePayment(invoice);
   }
   res.status(200).send('ok');
-});
+}
+
+const stripeWebhookRaw = express.raw({ type: 'application/json' });
+app.post('/api/stripe-webhook', stripeWebhookRaw, handleStripeWebhookPost);
+app.post('/api/webhook', stripeWebhookRaw, handleStripeWebhookPost);
 
 app.use(cookieParser());
 app.use(express.json());
