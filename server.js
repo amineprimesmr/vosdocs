@@ -9,11 +9,12 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const Stripe = require('stripe');
-const nodemailer = require('nodemailer');
-const { Resend } = require('resend');
 const cookieParser = require('cookie-parser');
 const { getPrisma } = require('./lib/prisma');
 const authLib = require('./lib/auth');
+const { fulfillGuestVinOrder, paymentIntentToOrder, appBaseUrl } = require('./lib/fulfill-vin-order');
+const { sendTeamOrderEmail } = require('./lib/order-emails');
+const { generateReportPdfBuffer } = require('./lib/report-pdf');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ function orderAlreadyInFile(paymentIntentId) {
 
 function saveOrder(order) {
   try {
+    if (order.id && orderAlreadyInFile(order.id)) return;
     let orders = [];
     if (fs.existsSync(ORDERS_FILE)) {
       orders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
@@ -51,13 +53,13 @@ function saveOrder(order) {
 async function handleStripeCreditPurchase(pi) {
   const m = pi.metadata || {};
   const prisma = getPrisma();
-  if (!prisma) {
-    console.warn('handleStripeCreditPurchase ignoré: pas de DATABASE_URL');
-    return true;
-  }
 
   // 1) Achat ponctuel de crédits (pack 5 / pack 20)
   if (m.purpose === 'credit_purchase') {
+    if (!prisma) {
+      console.warn('credit_purchase: DATABASE_URL requis');
+      return false;
+    }
     const userId = m.userId;
     const credits = parseInt(String(m.credits || '0'), 10);
     if (!userId || credits < 1) {
@@ -98,6 +100,10 @@ async function handleStripeCreditPurchase(pi) {
 
   // 2) Initial d’abonnement : 1€ puis création d’un abonnement mensuel
   if (m.purpose === 'subscription_initial') {
+    if (!prisma) {
+      console.warn('subscription_initial: DATABASE_URL requis');
+      return false;
+    }
     const userId = m.userId;
     const creditsPerCycle = parseInt(String(m.creditsPerCycle || '7'), 10);
     const subscriptionMonthlyPriceId = String(m.subscriptionMonthlyPriceId || '');
@@ -201,6 +207,9 @@ async function handleStripeCreditPurchase(pi) {
   // - carvinguard_plan/amount -> crédits
   // - crédit sur le compte correspondant via receipt_email (ou customer email)
   if ((m && (m.carvinguard_plan || m.app === 'carvinguard')) || pi.amount) {
+    if (!prisma) {
+      return false;
+    }
     try {
       const emailFromReceipt = (pi.receipt_email || '').trim().toLowerCase();
       let email = emailFromReceipt;
@@ -542,106 +551,6 @@ async function decodeVinViaNhtsa(vin) {
   }
 }
 
-async function notifyTeam(order) {
-  const url = process.env.ORDERS_WEBHOOK_URL;
-  if (!url) return;
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(order)
-    });
-  } catch (e) {
-    console.error('Erreur webhook équipe:', e);
-  }
-}
-
-/** Envoi email à l'équipe (infos.carvinguard@gmail.com) avec le détail de la commande */
-function getOrderEmailContent(order) {
-  const lines = [
-    'Nouvelle commande Carvinguard – Paiement validé',
-    '-------------------------------------------',
-    'Référence Stripe: ' + (order.id || '—'),
-    'Montant: ' + (order.montant || '—'),
-    '',
-    '— Client —',
-    'Nom: ' + (order.nom || '—'),
-    'Prénom: ' + (order.prenom || '—'),
-    'Email: ' + (order.email || '—'),
-    'Téléphone: ' + (order.phone || '—'),
-    '',
-    '— Véhicule / démarche —',
-    'VIN: ' + (order.vin || '—'),
-    'Véhicule: ' + (order.vehicleDesc || '—'),
-    'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
-    'Titulaire (C.1): ' + (order.titulaire || '—'),
-    'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
-    'Date case (I) carte grise: ' + (order.dateCertificat || '—'),
-    'Formule: ' + (order.planLabel || order.planId || '—'),
-    'Volume rapports: ' + (order.packLabel || order.packSize || '—'),
-    '',
-    '— Adresse (si renseignée) —',
-    'CP: ' + (order.cp || '—'),
-    'Ville: ' + (order.ville || '—'),
-    '',
-    'Envoyé le ' + new Date().toLocaleString('fr-FR')
-  ];
-  return lines.join('\n');
-}
-
-/** @returns {Promise<{ sent: boolean, error?: string }>} */
-async function sendOrderEmail(order) {
-  const to = process.env.MAIL_TO || 'infos.carvinguard@gmail.com';
-  const subject = 'Carvinguard – Nouvelle commande ' + (order.vin || order.id || '');
-  const text = getOrderEmailContent(order);
-
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const from = process.env.MAIL_FROM || 'onboarding@resend.dev';
-    const { data, error } = await resend.emails.send({
-      from,
-      to,
-      subject,
-      text,
-      replyTo: order.email || undefined
-    });
-    if (error) {
-      console.error('Erreur Resend:', error.message || error);
-      return { sent: false, error: error.message || String(error) };
-    }
-    console.log('Email commande envoyé à', to, '(Resend)', data?.id || '');
-    return { sent: true };
-  }
-
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) {
-    console.warn('Email non envoyé: définir RESEND_API_KEY ou SMTP_* dans .env / Vercel');
-    return { sent: false, error: 'RESEND_API_KEY non configurée (Vercel → Settings → Environment Variables)' };
-  }
-  try {
-    const transporter = nodemailer.createTransport({
-      host,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user, pass }
-    });
-    await transporter.sendMail({
-      from: process.env.MAIL_FROM || user,
-      to,
-      subject,
-      text,
-      replyTo: order.email || undefined
-    });
-    console.log('Email commande envoyé à', to, '(SMTP)');
-    return { sent: true };
-  } catch (e) {
-    console.error('Erreur envoi email commande:', e);
-    return { sent: false, error: e.message || String(e) };
-  }
-}
-
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) {
     return res.status(500).send('Stripe non configuré');
@@ -665,32 +574,13 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     const pi = event.data.object;
     const isCreditPurchase = await handleStripeCreditPurchase(pi);
     if (!isCreditPurchase) {
-      if (orderAlreadyInFile(pi.id)) {
-        return res.status(200).send('ok');
-      }
-      const m = pi.metadata || {};
-      const order = {
-        id: pi.id,
-        montant: (pi.amount / 100).toFixed(2) + ' €',
-        nom: m.nom || '',
-        prenom: m.prenom || '',
-        email: m.email || pi.receipt_email || '',
-        phone: m.phone || '',
-        vin: m.vin || '',
-        titulaire: m.titulaire || '',
-        typePersonne: m.typePersonne || 'particulier',
-        miseCirculation: m.miseCirculation || '',
-        dateCertificat: m.dateCertificat || '',
-        cp: m.cp || '',
-        ville: m.ville || '',
-        planId: m.planId || '',
-        planLabel: m.planLabel || '',
-        packSize: m.packSize || '',
-        packLabel: m.packLabel || ''
-      };
+      const order = paymentIntentToOrder(pi);
       saveOrder(order);
-      await notifyTeam(order);
-      await sendOrderEmail(order);
+      try {
+        await fulfillGuestVinOrder(stripe, pi);
+      } catch (e) {
+        console.error('fulfillGuestVinOrder:', e);
+      }
     }
   } else if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
     const invoice = event.data.object;
@@ -729,7 +619,7 @@ if (!cgProdRuntime) {
       cp: (req.body && req.body.cp) || '',
       ville: (req.body && req.body.ville) || ''
     };
-    const result = await sendOrderEmail(fakeOrder);
+    const result = await sendTeamOrderEmail(fakeOrder);
     res.json({
       ok: result.sent,
       emailSent: result.sent,
@@ -737,6 +627,110 @@ if (!cgProdRuntime) {
     });
   });
 }
+
+// ——— Commandes rapport VIN (statut + consultation sécurisée) ———
+app.get('/api/order-status', async (req, res) => {
+  try {
+    const piId = req.query.payment_intent;
+    if (!piId || typeof piId !== 'string') {
+      return res.status(400).json({ error: 'payment_intent requis' });
+    }
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.json({
+        status: 'pending',
+        message: 'Finalisation en cours — vous recevrez un email avec le PDF.'
+      });
+    }
+    const row = await prisma.vinOrder.findUnique({
+      where: { stripePaymentIntentId: piId }
+    });
+    if (!row) {
+      return res.json({ status: 'pending' });
+    }
+    const base = appBaseUrl();
+    const ready = !!row.customerEmailSentAt;
+    return res.json({
+      status: ready ? 'ready' : 'pending',
+      token: row.accessToken,
+      reportUrl: row.accessToken
+        ? `${base}/mon-rapport.html?token=${encodeURIComponent(row.accessToken)}`
+        : null
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Erreur' });
+  }
+});
+
+app.get('/api/rapport/session/:token', async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.status(503).json({ error: 'Service indisponible' });
+    }
+    const token = (req.params.token || '').trim();
+    if (token.length < 16) {
+      return res.status(400).json({ error: 'Jeton invalide' });
+    }
+    const row = await prisma.vinOrder.findUnique({ where: { accessToken: token } });
+    if (!row) {
+      return res.status(404).json({ error: 'Lien invalide ou expiré' });
+    }
+    let vehicleData = {};
+    try {
+      const parsed = JSON.parse(row.vehicleDataJson || '{}');
+      vehicleData = parsed.vehicleData || {};
+    } catch (_) {}
+    const prix = row.amountCents / 100;
+    const commande = {
+      demarche: 'Rapport historique véhicule (VIN)',
+      vin: row.vin,
+      vehicleData,
+      prix,
+      reportUnlocked: true,
+      planId: row.planId,
+      planLabel: row.planLabel,
+      email: row.email,
+      nom: row.nom,
+      prenom: row.prenom
+    };
+    res.json({ ok: true, commande });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Erreur' });
+  }
+});
+
+app.get('/api/rapport/session/:token/pdf', async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.status(503).send('Service indisponible');
+    }
+    const token = (req.params.token || '').trim();
+    const row = await prisma.vinOrder.findUnique({ where: { accessToken: token } });
+    if (!row) {
+      return res.status(404).send('Not found');
+    }
+    let vehicleData = {};
+    try {
+      const parsed = JSON.parse(row.vehicleDataJson || '{}');
+      vehicleData = parsed.vehicleData || {};
+    } catch (_) {}
+    const montantEur = (row.amountCents / 100).toFixed(2).replace('.', ',') + ' €';
+    const pdfBuffer = await generateReportPdfBuffer(vehicleData, row.vin, {
+      prenom: row.prenom,
+      nom: row.nom,
+      email: row.email,
+      planLabel: row.planLabel || row.planId,
+      montantEur
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="rapport-vin-carvinguard.pdf"');
+    res.send(pdfBuffer);
+  } catch (e) {
+    res.status(500).send('Erreur');
+  }
+});
 
 // ---------- SaaS : comptes, crédits, achat Stripe ----------
 function saaSAuthReady() {

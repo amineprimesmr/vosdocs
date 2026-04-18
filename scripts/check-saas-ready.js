@@ -87,6 +87,22 @@ if (prod) {
     console.log('✓ BASE_URL —', base);
   }
 
+  const appOrigin = (process.env.APP_ORIGIN || '').trim();
+  if (!appOrigin.startsWith('https://')) {
+    console.log('○ APP_ORIGIN — optionnel ; sinon les liens email utilisent VERCEL_URL. Recommandé : même URL que le site (ex. https://www.carvinguard.fr)');
+  } else {
+    console.log('✓ APP_ORIGIN —', appOrigin);
+  }
+
+  const resend = process.env.RESEND_API_KEY;
+  const smtp = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+  if (!resend && !smtp) {
+    console.log('✗ PROD : RESEND_API_KEY (ou SMTP_*) requis pour envoyer le PDF aux clients et l’alerte équipe');
+    ok = false;
+  } else {
+    console.log(resend ? '✓ RESEND_API_KEY — envoi email (rapport client + équipe)' : '✓ SMTP — envoi email');
+  }
+
   // Abonnement mensuel : si activé, on exige les deux prix
   const subInitial = process.env.SUBSCRIPTION_PRICE_INITIAL_ID;
   const subMonthly = process.env.SUBSCRIPTION_PRICE_MONTHLY_ID;

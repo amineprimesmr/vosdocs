@@ -19,11 +19,20 @@ try {
   process.exit(1);
 }
 
-try {
-  execSync('node --check server.js', { stdio: 'inherit' });
-} catch (e) {
-  console.error('\n✗ server.js : erreur de syntaxe.\n');
-  process.exit(1);
+const libChecks = [
+  'server.js',
+  'lib/fulfill-vin-order.js',
+  'lib/order-emails.js',
+  'lib/report-pdf.js',
+  'lib/vin-decode-core.js'
+];
+for (const rel of libChecks) {
+  try {
+    execSync(`node --check "${rel}"`, { stdio: 'inherit', cwd: root });
+  } catch (e) {
+    console.error(`\n✗ ${rel} : erreur de syntaxe.\n`);
+    process.exit(1);
+  }
 }
 
 if (process.env.VERIFY_WITH_GENERATE === '1') {

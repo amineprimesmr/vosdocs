@@ -33,7 +33,7 @@
 <body>
     <header class="header header-light">
         <div class="container header-inner">
-            <a href="index.html" class="logo"><img src="/logo.png" alt="Carvinguard"></a>
+            <a href="index.html" class="logo"><img src="/logo.png" alt="CarVINGuard"></a>
             <a href="contact.html" class="btn btn-contact">Contact</a>
         </div>
     </header>
@@ -48,7 +48,11 @@
                 <p><strong>Montant :</strong> <span id="montant">19,90 €</span></p>
                 <p><strong>Délai :</strong> Traitement en 5 minutes</p>
             </div>
-            <p style="font-size: 0.9rem;">Vous recevrez un email de confirmation et votre rapport au format PDF dès que votre dossier sera traité.</p>
+            <p id="confirmEmailHint" style="font-size: 0.9rem;">Vous recevez un email avec votre <strong>rapport PDF</strong> (vérifiez vos spams). Le lien ci-dessous s’affiche dès que le paiement est finalisé côté serveur.</p>
+            <div id="confirmReportCta" style="display:none;margin-top:20px;">
+                <a id="confirmReportLink" class="btn btn-primary" href="#">Voir mon rapport en ligne</a>
+            </div>
+            <p id="confirmPollStatus" style="font-size:0.85rem;color:#64748b;margin-top:12px;"></p>
             <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 32px;">
                 <a href="index.html" class="btn btn-primary">Retour à l'accueil</a>
                 <a href="aide.html" class="btn btn-outline">Besoin d'aide ?</a>
@@ -91,6 +95,50 @@
                 if (ref && data.vin) ref.textContent = data.vin;
                 if (montant && data.prix) montant.textContent = (data.prix || 19.90).toFixed(2).replace('.', ',') + ' €';
             }
+
+            var params = new URLSearchParams(window.location.search);
+            var pi = params.get('payment_intent');
+
+            var pollEl = document.getElementById('confirmPollStatus');
+            var cta = document.getElementById('confirmReportCta');
+            var link = document.getElementById('confirmReportLink');
+
+            function showReport(url) {
+                if (cta && link && url) {
+                    cta.style.display = 'block';
+                    link.href = url;
+                }
+                if (pollEl) pollEl.textContent = '';
+            }
+
+            if (!pi) {
+                if (pollEl) pollEl.textContent = '';
+                return;
+            }
+
+            var tries = 0;
+            var maxTries = 45;
+            function poll() {
+                tries++;
+                fetch(window.location.origin + '/api/order-status?payment_intent=' + encodeURIComponent(pi))
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.status === 'ready' && j.reportUrl) {
+                            showReport(j.reportUrl);
+                            return;
+                        }
+                        if (pollEl) {
+                            pollEl.textContent = j.message || (tries < maxTries ? 'Préparation de votre accès en ligne…' : 'Si le bouton n’apparaît pas, utilisez le lien reçu par email.');
+                        }
+                        if (tries < maxTries) {
+                            setTimeout(poll, 2000);
+                        }
+                    })
+                    .catch(function () {
+                        if (tries < maxTries) setTimeout(poll, 3000);
+                    });
+            }
+            poll();
         })();
     </script>
 </body>

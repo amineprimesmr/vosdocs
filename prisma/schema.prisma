@@ -84,3 +84,25 @@ model CreditTransaction {
   @@index([userId])
   @@map("credit_transactions")
 }
+
+/// Commande rapport VIN (parcours invité) — PDF, email client, lien de consultation
+model VinOrder {
+  id                    String    @id @default(cuid())
+  stripePaymentIntentId String    @unique @map("stripe_payment_intent_id")
+  accessToken           String    @unique @map("access_token")
+  email                 String
+  nom                   String?   @map("nom")
+  prenom                String?   @map("prenom")
+  phone                 String?   @map("phone")
+  vin                   String
+  vehicleDataJson       String?   @map("vehicle_data_json") @db.Text
+  planId                String?   @map("plan_id")
+  planLabel             String?   @map("plan_label")
+  amountCents           Int       @map("amount_cents")
+  pdfGeneratedAt        DateTime? @map("pdf_generated_at")
+  customerEmailSentAt   DateTime? @map("customer_email_sent_at")
+  teamEmailSentAt       DateTime? @map("team_email_sent_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  @@map("vin_orders")
+}

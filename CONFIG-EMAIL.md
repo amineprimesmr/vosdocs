@@ -39,6 +39,17 @@ Après ça, chaque paiement validé (et le bouton test) enverra un email à **in
 
 ---
 
+## Rapport client (PDF + lien en ligne)
+
+En production, configure aussi :
+
+- **`APP_ORIGIN`** = URL publique du site (ex. `https://www.carvinguard.fr`) — pour le lien « Voir mon rapport » dans l’email client.
+- **`DATABASE_URL`** + **`npx prisma db push`** — pour enregistrer les commandes (`vin_orders`), le jeton de consultation et le statut `/api/order-status` sur la page `confirmation.html`.
+
+Sans base de données, le **PDF est quand même joint** à l’email client ; le lien en ligne n’est pas disponible (message explicite dans l’email).
+
+---
+
 ## Option : utiliser Gmail (SMTP) à la place
 
 Si tu préfères Gmail, il faut activer la **validation en deux étapes** sur le compte Google, puis créer un **mot de passe d’application**. Ensuite dans `.env` : `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`. Le projet utilise Resend si **RESEND_API_KEY** est défini, sinon il utilise le SMTP.
