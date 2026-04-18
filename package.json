@@ -12,6 +12,7 @@
     "blog": "node scripts/generate-blog.js",
     "blog:publish": "node scripts/publish-next-blog.js",
     "db:push": "prisma db push",
+    "db:push:local": "node -e \"require('dotenv').config(); if (!process.env.DATABASE_URL) { console.error('DATABASE_URL manquant dans .env'); process.exit(1); } require('child_process').execSync('npx prisma db push', { stdio: 'inherit', env: process.env });\"",
     "db:seed": "node scripts/seed-blog-db.js",
     "gen:jwt-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "saas:check": "node scripts/check-saas-ready.js",
