@@ -69,10 +69,12 @@ Dans **Vercel** → **Settings** → **Environment Variables**, configure :
 
 1. En local, dans un fichier **`.env`** à la racine du projet : `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `BASE_URL` (clés **Live** sur [Stripe → Développeurs → Clés API](https://dashboard.stripe.com/apikeys)).
 2. Lance **`npm run stripe:tout`** : le script explique les étapes en français, crée les 3 Payment Links, et écrit **`STRIPE-COLLER-VERCEL.txt`** (modèle pour coller sur Vercel — ce fichier ne doit pas être commité).
-3. Crée le **webhook** Stripe (même mode Live) : URL `https://www.carvinguard.fr/api/stripe-webhook`, événements :
-   - **`payment_intent.succeeded`** (paiement initial 1€)
-   - **`invoice.payment_succeeded`** (renouvellement mensuel)
+3. Crée le **webhook** Stripe (même mode Live) : URL **`https://www.carvinguard.fr/api/stripe-webhook`** (ou le domaine **canonique** affiché sur Vercel → Domains, **sans** redirection), événements :
+   - **`payment_intent.succeeded`**
+   - **`invoice.payment_succeeded`** (si abonnement)
    puis copie **`STRIPE_WEBHOOK_SECRET`** (`whsec_…`) dans `.env` et sur Vercel.
+
+   **Important — erreur 307 sur le webhook :** Stripe **ne suit pas** les redirections. Si l’URL configurée est `https://carvinguard.com/...` et que le domaine **redirige** (307/301) vers `www` ou `.fr`, les notifications **échouent** et les clients ne reçoivent pas le rapport. Mets l’URL **finale** dans Stripe (souvent `https://www.carvinguard.fr/api/stripe-webhook`). Vérification locale : **`npm run verify:webhook`** (avec `APP_ORIGIN` ou `BASE_URL` dans `.env`).
 4. Vérifie : **`npm run saas:check:prod`**, puis redéploie Vercel.
 
 Côté code (sans secrets) : **`npm run verify`** (Prisma + syntaxe du serveur).

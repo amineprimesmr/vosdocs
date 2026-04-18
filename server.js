@@ -551,6 +551,21 @@ async function decodeVinViaNhtsa(vin) {
   }
 }
 
+/**
+ * GET — diagnostic uniquement (navigateur, monitoring). Stripe envoie uniquement des POST signés.
+ * Évite le message brut « Cannot GET » et rappelle la règle anti-307 (voir DEPLOI-CARVINGUARD.md).
+ */
+app.get('/api/stripe-webhook', (req, res) => {
+  res.status(200).json({
+    ok: true,
+    message:
+      'Endpoint webhook Stripe : les notifications arrivent en POST avec signature. Ouvrir cette URL en GET ne déclenche pas un paiement.',
+    stripeDoc: 'https://stripe.com/docs/webhooks',
+    siStripeAffiche307:
+      'Utilise l’URL finale sans redirection (souvent https://www.carvinguard.fr/api/stripe-webhook), pas un domaine qui renvoie en 301/307 vers un autre.'
+  });
+});
+
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) {
     return res.status(500).send('Stripe non configuré');
