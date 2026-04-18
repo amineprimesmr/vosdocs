@@ -20,6 +20,7 @@
     "stripe:setup": "node scripts/stripe-create-catalog.js",
     "stripe:tout": "node scripts/stripe-tout-en-un.js",
     "verify": "node scripts/verify-deploy.js",
+    "fulfill:pi": "node scripts/manual-fulfill-payment.js",
     "deploy:check": "node scripts/verify-deploy.js",
     "deploy:vercel": "vercel --prod"
   },
