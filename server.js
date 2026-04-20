@@ -15,6 +15,7 @@ const authLib = require('./lib/auth');
 const { fulfillGuestVinOrder, paymentIntentToOrder, appBaseUrl } = require('./lib/fulfill-vin-order');
 const { sendTeamOrderEmail } = require('./lib/order-emails');
 const { generateReportPdfBuffer } = require('./lib/report-pdf');
+const carapiClient = require('./lib/carapi-client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -396,6 +397,61 @@ async function refundVinDecodeCredit(userId, vinMasked) {
     });
   } catch (e) {
     console.error('Remboursement crédit VIN:', e);
+  }
+}
+
+async function debitOneCredit(userId, reason, metaObj) {
+  const prisma = getPrisma();
+  if (!prisma || !userId) return { ok: false, credits: 0 };
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: userId, credits: { gte: 1 } },
+        data: { credits: { decrement: 1 } }
+      });
+      if (updated.count === 0) {
+        const u = await tx.user.findUnique({
+          where: { id: userId },
+          select: { credits: true }
+        });
+        return { ok: false, credits: u != null ? u.credits : 0 };
+      }
+      await tx.creditTransaction.create({
+        data: {
+          userId,
+          delta: -1,
+          reason,
+          meta: JSON.stringify(metaObj || {})
+        }
+      });
+      return { ok: true };
+    });
+  } catch (e) {
+    console.error('Débit crédit:', e);
+    return { ok: false, credits: 0 };
+  }
+}
+
+async function refundOneCredit(userId, reason, metaObj) {
+  const prisma = getPrisma();
+  if (!prisma || !userId) return;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { credits: { increment: 1 } }
+      });
+      await tx.creditTransaction.create({
+        data: {
+          userId,
+          delta: 1,
+          reason,
+          meta: JSON.stringify(metaObj || {})
+        }
+      });
+    });
+  } catch (e) {
+    console.error('Remboursement crédit:', e);
   }
 }
 
@@ -1717,6 +1773,170 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       return res.json(previewPartialVinJson());
     }
     res.status(500).json({ status: 'error', message: 'Erreur service VIN' });
+  }
+});
+
+/**
+ * CarAPI « plan max » : proxy serveur pour inspection, vol, kilométrage, cotation, annonces, photos, financement.
+ * Doc officielle : https://api.carapi.dev/openapi.json — le jeton reste uniquement côté serveur (CARAPI_TOKEN).
+ */
+app.get('/api/carapi/status', (req, res) => {
+  const p = getVinDecodeProvider();
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.json({
+    status: 'ok',
+    carApiConfigured: !!(p && p.id === 'carapi'),
+    endpoints: carapiClient.CARAPI_ENDPOINT_IDS
+  });
+});
+
+app.get('/api/carapi/enrichment/:vin', async (req, res) => {
+  const prisma = getPrisma();
+  const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+  const vinMasked = vin.slice(0, 11) + '…';
+  if (vin.length !== 17) {
+    return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
+  }
+  const provider = getVinDecodeProvider();
+  if (!provider || provider.id !== 'carapi') {
+    return res.status(503).json({
+      status: 'error',
+      message:
+        'Enrichissement CarAPI indisponible : définissez CARAPI_TOKEN (compte CarAPI.dev). Les autres fournisseurs ne couvrent pas ces endpoints.'
+    });
+  }
+  if (!prisma) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'Compte crédité requis (base de données / DATABASE_URL).'
+    });
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'AUTH_REQUIRED',
+      message: 'Connectez-vous pour lancer l’analyse complète (1 crédit).'
+    });
+  }
+
+  const charged = await debitOneCredit(userId, 'carapi_enrichment', { vin: vinMasked });
+  if (!charged.ok) {
+    return res.status(402).json({
+      status: 'error',
+      code: 'INSUFFICIENT_CREDITS',
+      message: 'Crédits insuffisants. Rechargez votre compte.',
+      credits: charged.credits
+    });
+  }
+
+  try {
+    const q = req.query || {};
+    const bundle = await carapiClient.fetchCarApiFullEnrichment(provider.apiKey, {
+      vin,
+      country: q.country,
+      listingLimit: q.listingLimit,
+      listingOffset: q.listingOffset,
+      payment: {
+        price: q.price,
+        downPayment: q.downPayment,
+        loanTerm: q.loanTerm,
+        interestRate: q.interestRate
+      }
+    });
+    const dec = bundle.decode;
+    const decodeFailed = !dec.ok || !(dec.data && (dec.data.success === true || dec.data.success === 'true'));
+    if (decodeFailed) {
+      await refundOneCredit(userId, 'carapi_enrichment_refund', { vin: vinMasked });
+      return res.status(502).json({
+        status: 'error',
+        message: 'Décodage VIN CarAPI indisponible. Votre crédit a été réattribué.',
+        detail: dec.data != null ? dec.data : null
+      });
+    }
+    res.json({ status: 'success', data: bundle });
+  } catch (e) {
+    console.error('CarAPI enrichment:', e.message);
+    await refundOneCredit(userId, 'carapi_enrichment_refund', { vin: vinMasked });
+    res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
+  }
+});
+
+app.get('/api/carapi/plate-to-vin/:plate', async (req, res) => {
+  const prisma = getPrisma();
+  const provider = getVinDecodeProvider();
+  if (!provider || provider.id !== 'carapi') {
+    return res.status(503).json({
+      status: 'error',
+      message: 'Plaque → VIN indisponible sans CARAPI_TOKEN (CarAPI.dev).'
+    });
+  }
+  if (!prisma) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'Compte crédité requis (DATABASE_URL).'
+    });
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'AUTH_REQUIRED',
+      message: 'Connectez-vous pour convertir une plaque (1 crédit).'
+    });
+  }
+  const country = String(req.query.country || '')
+    .toUpperCase()
+    .slice(0, 2);
+  if (country.length !== 2) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Indiquez country (code ISO à 2 lettres, ex. FR, DE).'
+    });
+  }
+  let plate = req.params.plate || '';
+  try {
+    plate = decodeURIComponent(plate);
+  } catch (_) {
+    plate = req.params.plate || '';
+  }
+  plate = String(plate).trim();
+  if (!plate || plate.length > 40) {
+    return res.status(400).json({ status: 'error', message: 'Plaque invalide.' });
+  }
+  const plateHint = plate.slice(0, 12);
+
+  const charged = await debitOneCredit(userId, 'carapi_plate_to_vin', { plate: plateHint });
+  if (!charged.ok) {
+    return res.status(402).json({
+      status: 'error',
+      code: 'INSUFFICIENT_CREDITS',
+      message: 'Crédits insuffisants. Rechargez votre compte.',
+      credits: charged.credits
+    });
+  }
+
+  try {
+    const r = await carapiClient.carApiGet(provider.apiKey, `/plate-to-vin/${encodeURIComponent(plate)}`, {
+      country
+    });
+    if (!r.ok) {
+      await refundOneCredit(userId, 'carapi_plate_refund', { plate: plateHint });
+      const msg =
+        (r.body && (r.body.message || (typeof r.body.error === 'string' ? r.body.error : r.body.error?.message))) ||
+        'Plaque introuvable ou service indisponible';
+      const statusOut = r.status >= 400 && r.status < 600 ? r.status : 502;
+      return res.status(statusOut).json({
+        status: 'error',
+        message: String(msg),
+        data: r.body
+      });
+    }
+    res.json({ status: 'success', data: r.body });
+  } catch (e) {
+    console.error('CarAPI plate:', e.message);
+    await refundOneCredit(userId, 'carapi_plate_refund', { plate: plateHint });
+    res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
   }
 });
 

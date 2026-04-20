@@ -25,6 +25,7 @@ const libChecks = [
   'lib/order-emails.js',
   'lib/report-pdf.js',
   'lib/vin-decode-core.js',
+  'lib/carapi-client.js',
   'lib/prisma.js',
   'scripts/manual-fulfill-payment.js',
   'scripts/verify-stripe-webhook-url.js'
