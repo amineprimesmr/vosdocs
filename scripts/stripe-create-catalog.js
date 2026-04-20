@@ -101,6 +101,12 @@ async function main() {
     results.push({ envVar: plan.envVar, url: paymentLink.url });
   }
 
+  console.log(
+    '\nRedirection après paiement : les liens créés ci-dessus utilisent after_completion vers :\n' +
+      baseUrl +
+      '/confirmation.html?session_id={CHECKOUT_SESSION_ID}\n' +
+      'Si un lien Stripe Dashboard pointe seulement vers la racine du site, ajoutez ?session_id={CHECKOUT_SESSION_ID} — la page d’accueil redirige alors vers confirmation.\n'
+  );
   console.log('=== Variables à copier (Vercel → Environment Variables) ===\n');
   results.forEach(function (r) {
     console.log(r.envVar + '=' + r.url);

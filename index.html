@@ -142,6 +142,20 @@
     </script>
 </head>
 <body>
+    <script>
+    (function () {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        var sid = p.get('session_id');
+        var pi = p.get('payment_intent');
+        if (sid) {
+          window.location.replace('confirmation.html?session_id=' + encodeURIComponent(sid));
+        } else if (pi) {
+          window.location.replace('confirmation.html?payment_intent=' + encodeURIComponent(pi));
+        }
+      } catch (e) {}
+    })();
+    </script>
     <a href="#hero-title" class="skip-link">Aller au contenu</a>
     <!-- Header (ClarityCheck-inspired: blanc, épuré) -->
     <header class="header header-light">
