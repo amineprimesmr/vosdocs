@@ -27,6 +27,7 @@ const libChecks = [
   'lib/vin-decode-core.js',
   'lib/carapi-client.js',
   'lib/prisma.js',
+  'lib/auth.js',
   'scripts/manual-fulfill-payment.js',
   'scripts/verify-stripe-webhook-url.js'
 ];

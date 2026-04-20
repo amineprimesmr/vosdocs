@@ -38,6 +38,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    var inviteParam = new URLSearchParams(window.location.search).get('invite');
+    var elInvite = document.getElementById('compteInvite');
+
     var elGuest = document.getElementById('compteGuest');
     var elUser = document.getElementById('compteUser');
     var elErrorLogin = document.getElementById('loginError');
@@ -265,6 +268,35 @@
         });
     }
 
+    var formInvite = document.getElementById('formInvite');
+    if (formInvite && inviteParam) {
+      formInvite.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var pw = document.getElementById('invitePassword');
+        var err = document.getElementById('inviteError');
+        if (err) err.style.display = 'none';
+        api('/api/auth/accept-invite', {
+          method: 'POST',
+          body: { token: inviteParam, password: (pw && pw.value) || '' }
+        }).then(function (r) {
+          if (r.ok && r.data.user) {
+            try {
+              var u = new URL(window.location.href);
+              u.searchParams.delete('invite');
+              window.history.replaceState({}, '', u.pathname + (u.search || ''));
+            } catch (e) {}
+            if (elInvite) elInvite.style.display = 'none';
+            renderUser(r.data.user);
+          } else {
+            if (err) {
+              err.textContent = (r.data && r.data.error) || 'Erreur';
+              err.style.display = 'block';
+            }
+          }
+        });
+      });
+    }
+
     api('/api/saas-config').then(function (r) {
       var cfg = r.data || {};
       if (!cfg.authAvailable && document.getElementById('compteGuest')) {
@@ -286,11 +318,21 @@
 
     api('/api/auth/me').then(function (r) {
       if (r.ok && r.data.authenticated && r.data.user) {
+        if (elInvite) elInvite.style.display = 'none';
         renderUser(r.data.user);
         maybeResumeSubscribe();
-      } else {
-        renderGuest();
+        return;
       }
+      if (inviteParam && elInvite) {
+        elInvite.style.display = 'block';
+        if (elGuest) elGuest.style.display = 'none';
+        if (compteHeroLead) {
+          compteHeroLead.textContent =
+            'Définissez votre mot de passe pour accéder à vos crédits VIN et lancer des recherches.';
+        }
+        return;
+      }
+      renderGuest();
     });
 
     var formLogin = document.getElementById('formLogin');

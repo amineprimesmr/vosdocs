@@ -80,7 +80,8 @@ async function main() {
       metadata: {
         carvinguard_plan: plan.id,
         app: 'carvinguard',
-        purpose: 'vin_report_guest'
+        /** Sans VIN en référence : webhook crée ou crédite le compte à l’e-mail Stripe. */
+        carvinguard_flow: 'wallet_credit'
       },
       after_completion: {
         type: 'redirect',

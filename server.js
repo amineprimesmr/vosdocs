@@ -8,12 +8,13 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const Stripe = require('stripe');
 const cookieParser = require('cookie-parser');
 const { getPrisma } = require('./lib/prisma');
 const authLib = require('./lib/auth');
 const { fulfillGuestVinOrder, paymentIntentToOrder, appBaseUrl } = require('./lib/fulfill-vin-order');
-const { sendTeamOrderEmail } = require('./lib/order-emails');
+const { sendTeamOrderEmail, sendAccountInviteEmail, sendWalletCreditsEmail } = require('./lib/order-emails');
 const { generateReportPdfBuffer } = require('./lib/report-pdf');
 const carapiClient = require('./lib/carapi-client');
 
@@ -743,6 +744,122 @@ async function handleCheckoutSessionAccountCredit(session) {
 }
 
 /**
+ * Paiement sans compte ni VIN (ex. Payment Link tarifs) : crée ou retrouve l’utilisateur par e-mail Stripe et crédite le wallet.
+ */
+async function handleCheckoutAutoAccountCredit(session, pi, sm) {
+  const prisma = getPrisma();
+  if (!prisma || !stripe || session.mode !== 'payment') {
+    return { handled: false };
+  }
+
+  const emailRaw =
+    (session.customer_details && session.customer_details.email) ||
+    session.customer_email ||
+    '';
+  const email = authLib.normalizeEmail(emailRaw);
+  if (!email || email.indexOf('@') === -1) {
+    return { handled: false };
+  }
+
+  const refRaw = String(session.client_reference_id || '');
+  if (refRaw.startsWith('cguser:')) {
+    return { handled: false };
+  }
+
+  const refVin = normalizeVinMeta(refRaw);
+  const pm = pi.metadata || {};
+  const piVin = normalizeVinMeta(pm.vin || '');
+  if (refVin.length === 17 || piVin.length === 17) {
+    return { handled: false };
+  }
+
+  let plan = sm.carvinguard_plan || pm.carvinguard_plan || '';
+  let credits = 0;
+  let packId = '';
+  if (plan === 'essentiel') {
+    credits = 1;
+    packId = 'tier_essentiel';
+  } else if (plan === 'confort') {
+    credits = 3;
+    packId = 'tier_confort';
+  } else if (plan === 'premium') {
+    credits = 10;
+    packId = 'tier_premium';
+  }
+
+  const amountTotal = session.amount_total;
+  if (!credits && typeof amountTotal === 'number') {
+    if (amountTotal === 1499) {
+      credits = 1;
+      packId = 'tier_essentiel';
+    } else if (amountTotal === 2999) {
+      credits = 3;
+      packId = 'tier_confort';
+    } else if (amountTotal === 6999) {
+      credits = 10;
+      packId = 'tier_premium';
+    }
+  }
+
+  if (credits < 1) {
+    return { handled: false };
+  }
+
+  let user = await prisma.user.findUnique({ where: { email } });
+  let created = false;
+  if (!user) {
+    const provisional = crypto.randomBytes(32).toString('hex');
+    user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: await authLib.hashPassword(provisional)
+      }
+    });
+    created = true;
+  }
+
+  const piId = pi.id;
+  const md = Object.assign({}, pm, {
+    purpose: 'credit_purchase',
+    userId: user.id,
+    credits: String(credits),
+    packId,
+    email
+  });
+  if (plan) md.carvinguard_plan = plan;
+
+  await stripe.paymentIntents.update(piId, {
+    metadata: Object.fromEntries(
+      Object.entries(md).map(([k, v]) => [
+        k,
+        String(v !== undefined && v !== null ? v : '').slice(0, 500)
+      ])
+    )
+  });
+  const piFresh = await stripe.paymentIntents.retrieve(piId);
+  await handleStripeCreditPurchase(piFresh);
+
+  const base = appBaseUrl();
+  try {
+    if (created) {
+      const inviteTok = authLib.signAccountInviteToken(user.id);
+      await sendAccountInviteEmail({
+        to: email,
+        inviteToken: inviteTok,
+        baseUrl: base,
+        credits
+      });
+    } else {
+      await sendWalletCreditsEmail({ to: email, baseUrl: base, credits });
+    }
+  } catch (e) {
+    console.error('Emails wallet auto-compte:', e.message);
+  }
+
+  return { handled: true };
+}
+
+/**
  * Stripe Payment Links : le VIN est dans client_reference_id (session), pas toujours sur le PaymentIntent.
  * On fusionne email + VIN + métadonnées du lien puis on exécute la même finalisation que l’Embedded Checkout.
  */
@@ -765,6 +882,11 @@ async function handleCheckoutSessionCompleted(session) {
     } catch (e) {
       console.error('handleCheckoutSessionCompleted (credit/sub):', e);
     }
+    return;
+  }
+
+  const autoWallet = await handleCheckoutAutoAccountCredit(session, pi, sm);
+  if (autoWallet.handled) {
     return;
   }
 
@@ -839,18 +961,29 @@ async function handleStripeWebhookPost(req, res) {
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object;
     let skipGuestForAccountLink = false;
+    let skipGuestPendingCheckoutSession = false;
     if (stripe && pi.id) {
       try {
         const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 });
-        if (sessions.data[0] && String(sessions.data[0].client_reference_id || '').startsWith('cguser:')) {
+        const sess = sessions.data[0];
+        if (sess && String(sess.client_reference_id || '').startsWith('cguser:')) {
           skipGuestForAccountLink = true;
+        }
+        /* Payment Link sans VIN : le crédit wallet / fusion VIN est fait dans checkout.session.completed */
+        if (
+          sess &&
+          sess.mode === 'payment' &&
+          !String(sess.client_reference_id || '').startsWith('cguser:') &&
+          normalizeVinMeta(sess.client_reference_id || '').length !== 17
+        ) {
+          skipGuestPendingCheckoutSession = true;
         }
       } catch (e) {
         /* ignore */
       }
     }
     const isCreditPurchase = await handleStripeCreditPurchase(pi);
-    if (!isCreditPurchase && !skipGuestForAccountLink) {
+    if (!isCreditPurchase && !skipGuestForAccountLink && !skipGuestPendingCheckoutSession) {
       const order = paymentIntentToOrder(pi);
       saveOrder(order);
       try {
@@ -1144,7 +1277,7 @@ app.get('/api/saas-config', (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
   return res.status(403).json({
     error:
-      'Inscription libre désactivée. Un compte ne s’ouvre pas sans paiement : passez par la page Tarifs pour un premier achat (rapport invité), ou connectez-vous si vous avez déjà un accès.'
+      'Inscription libre désactivée. Un premier compte se crée après un paiement sur la page Tarifs (e-mail reçu pour choisir le mot de passe), ou connectez-vous si vous avez déjà un accès.'
   });
 });
 
@@ -1167,6 +1300,41 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (e) {
     console.error('login:', e);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+/** Premier mot de passe après paiement sans compte (lien e-mail `?invite=`). */
+app.post('/api/auth/accept-invite', async (req, res) => {
+  if (!saaSAuthReady()) {
+    return res.status(503).json({ error: 'Service indisponible.' });
+  }
+  const prisma = getPrisma();
+  const token = (req.body && req.body.token) || '';
+  const password = (req.body && req.body.password) || '';
+  const userId = authLib.verifyAccountInviteToken(token);
+  if (!userId || String(password).length < 8) {
+    return res.status(400).json({
+      error: 'Lien invalide ou expiré, ou mot de passe trop court (8 caractères minimum).'
+    });
+  }
+  try {
+    const hash = await authLib.hashPassword(password);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hash }
+    });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, credits: true }
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'Compte introuvable.' });
+    }
+    authLib.setAuthCookie(res, authLib.signAuthToken(user.id));
+    return res.json({ ok: true, user });
+  } catch (e) {
+    console.error('accept-invite:', e);
     return res.status(500).json({ error: 'Erreur serveur.' });
   }
 });

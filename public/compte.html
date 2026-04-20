@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/checkout-pricing.css?v=6">
-    <link rel="stylesheet" href="css/compte.css?v=4">
+    <link rel="stylesheet" href="css/compte.css?v=5">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="js/analytics.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
@@ -57,12 +57,25 @@
             </div>
         </div>
 
+        <div id="compteInvite" class="compte-form-card compte-invite-card" style="display:none;">
+            <h2 class="compte-guest-login-title">Finalisez votre espace client</h2>
+            <p class="compte-invite-lead">Votre paiement est enregistré. Choisissez un mot de passe pour le compte associé à votre e-mail Stripe.</p>
+            <form id="formInvite" class="compte-form" autocomplete="new-password">
+                <div class="form-group">
+                    <label for="invitePassword">Mot de passe</label>
+                    <input id="invitePassword" name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="8 caractères minimum">
+                </div>
+                <p id="inviteError" class="form-error-inline" role="alert"></p>
+                <button type="submit" class="btn btn-primary">Activer mon compte</button>
+            </form>
+        </div>
+
         <div id="compteGuest">
             <div class="compte-guest-card compte-form-card">
                 <p class="compte-guest-first">
                     <strong>Premier achat ?</strong>
                     <a class="compte-guest-cta" href="checkout.html">Voir les tarifs et payer sur Stripe</a>
-                    — même grille de prix (14,99&nbsp;€ à 69,99&nbsp;€, abonnement possible). Pas d’inscription seule : le compte sert aux clients qui ont déjà un accès.
+                    — vous pouvez payer sans compte : un <strong>espace client</strong> est créé à l’e-mail indiqué sur Stripe ; vous recevez un lien pour choisir votre mot de passe.
                 </p>
                 <hr class="compte-guest-sep" />
                 <h2 class="compte-guest-login-title">Connexion</h2>
@@ -127,6 +140,6 @@
         </div>
     </main>
 
-    <script src="js/compte.js?v=6"></script>
+    <script src="js/compte.js?v=7"></script>
 </body>
 </html>

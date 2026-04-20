@@ -693,3 +693,15 @@ body.compte-page {
   font-size: 0.88rem;
   color: var(--text-light);
 }
+
+.compte-invite-card {
+  margin-bottom: 24px;
+  animation: compte-fade-up 0.5s var(--ease-out) both;
+}
+
+.compte-invite-lead {
+  font-size: 0.98rem;
+  color: var(--text-light);
+  line-height: 1.55;
+  margin: 0 0 18px;
+}
