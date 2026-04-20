@@ -587,3 +587,109 @@ body.compte-page {
   opacity: 0.55;
   pointer-events: none;
 }
+
+/* --- Espace client SaaS : post-paiement + actions rapides --- */
+.compte-hero-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cta-blue);
+  margin: 0 0 8px;
+}
+
+.compte-postpay {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 55%, #f0fdf4 100%);
+  padding: 18px 20px;
+  margin-bottom: 22px;
+  animation: compte-fade-up 0.45s var(--ease-out) both;
+}
+
+.compte-postpay--guest {
+  border-color: rgba(37, 99, 235, 0.28);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.compte-postpay-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  text-align: left;
+}
+
+.compte-postpay-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #059669;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.compte-postpay--guest .compte-postpay-icon {
+  color: #2563eb;
+}
+
+.compte-postpay-title {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text-dark);
+  margin: 0 0 6px;
+}
+
+.compte-postpay-text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #166534;
+}
+
+.compte-postpay--guest .compte-postpay-text {
+  color: #1e3a8a;
+}
+
+.card-quick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px 20px;
+  border-radius: var(--radius-xl);
+  background: var(--white);
+  border: 1px solid rgba(0, 35, 149, 0.08);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 8px;
+}
+
+.compte-quick-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff !important;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s;
+}
+
+.compte-quick-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  color: #fff !important;
+}
+
+.compte-quick-hint {
+  font-size: 0.88rem;
+  color: var(--text-light);
+}

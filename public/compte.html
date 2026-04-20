@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/checkout-pricing.css?v=6">
-    <link rel="stylesheet" href="css/compte.css?v=3">
+    <link rel="stylesheet" href="css/compte.css?v=4">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="js/analytics.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
@@ -38,13 +38,24 @@
         </nav>
 
         <header class="compte-hero">
-            <h1>Mon compte</h1>
+            <p class="compte-hero-kicker" id="compteHeroKicker">Espace client</p>
+            <h1 id="compteH1">Mon compte</h1>
             <p class="compte-hero-lead" id="compteHeroLead">
                 Connexion réservée aux clients disposant déjà d’un accès. Les tarifs et le paiement (y compris premier achat invité) passent par la page Tarifs.
             </p>
         </header>
 
         <p id="saasUnavailable" class="saas-banner" role="alert"></p>
+
+        <div id="postPayGuestHint" class="compte-postpay compte-postpay--guest" style="display:none;" role="status">
+            <div class="compte-postpay-inner">
+                <span class="compte-postpay-icon" aria-hidden="true">✓</span>
+                <div>
+                    <p class="compte-postpay-title">Paiement reçu</p>
+                    <p class="compte-postpay-text">Connectez-vous avec <strong>l’e-mail utilisé sur Stripe</strong> pour voir vos crédits et lancer des recherches VIN.</p>
+                </div>
+            </div>
+        </div>
 
         <div id="compteGuest">
             <div class="compte-guest-card compte-form-card">
@@ -71,6 +82,21 @@
         </div>
 
         <div id="compteUser" style="display:none;" class="compte-dash">
+            <div id="postPayWelcome" class="compte-postpay" style="display:none;" role="status">
+                <div class="compte-postpay-inner">
+                    <span class="compte-postpay-icon" aria-hidden="true">✓</span>
+                    <div>
+                        <p class="compte-postpay-title" id="postPayWelcomeTitle">Paiement confirmé</p>
+                        <p class="compte-postpay-text" id="postPayWelcomeText">Vos crédits sont en cours d’attribution sur ce compte…</p>
+                    </div>
+                </div>
+            </div>
+
+            <section class="compte-quick card-quick" aria-label="Actions rapides">
+                <a class="compte-quick-cta" href="index.html">Nouvelle recherche VIN</a>
+                <span class="compte-quick-hint">1 crédit = 1 décodage complet (rapport PDF)</span>
+            </section>
+
             <p id="creditsMessage"></p>
 
             <section class="compte-card compte-card--balance" aria-labelledby="balanceHeading">
@@ -101,6 +127,6 @@
         </div>
     </main>
 
-    <script src="js/compte.js?v=5"></script>
+    <script src="js/compte.js?v=6"></script>
 </body>
 </html>

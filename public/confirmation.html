@@ -166,19 +166,6 @@
                 return;
             }
 
-            function showAccountCompte(msg) {
-                if (pollEl) {
-                    pollEl.textContent =
-                        msg ||
-                        'Paiement confirmé. Vos crédits sont attribués à votre compte (sous quelques instants après le retour Stripe).';
-                }
-                if (cta && link) {
-                    cta.style.display = 'block';
-                    link.href = 'compte.html?credits=ok';
-                    link.textContent = 'Ouvrir mon compte';
-                }
-            }
-
             var tries = 0;
             var maxTries = 45;
             function poll() {
@@ -213,12 +200,16 @@
                     })
                     .then(function (k) {
                         if (k && k.kind === 'account_credit') {
-                            showAccountCompte();
+                            window.location.replace(
+                                'compte.html?paid=1&credits=ok&session_id=' +
+                                    encodeURIComponent(sessionId)
+                            );
                             return;
                         }
                         if (k && k.kind === 'subscription_initial') {
-                            showAccountCompte(
-                                'Abonnement enregistré. Vos crédits seront visibles sur votre compte sous peu.'
+                            window.location.replace(
+                                'compte.html?paid=1&credits=ok&sub=1&session_id=' +
+                                    encodeURIComponent(sessionId)
                             );
                             return;
                         }

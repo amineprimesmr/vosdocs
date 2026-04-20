@@ -47,9 +47,93 @@
     var packsContainer = document.getElementById('creditPacks');
     var compteMain = document.getElementById('compteMain');
     var compteHeroLead = document.getElementById('compteHeroLead');
+    var compteH1 = document.getElementById('compteH1');
+    var compteHeroKicker = document.getElementById('compteHeroKicker');
+    var postPayWelcome = document.getElementById('postPayWelcome');
+    var postPayWelcomeText = document.getElementById('postPayWelcomeText');
+    var postPayGuestHint = document.getElementById('postPayGuestHint');
 
     function show(el, on) {
       if (el) el.style.display = on ? 'block' : 'none';
+    }
+
+    function isPostPaymentQuery() {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('paid') === '1') return true;
+      if (p.get('credits') === 'ok') return true;
+      if (/credits=ok|paiement=credits_ok/i.test(window.location.search)) return true;
+      return false;
+    }
+
+    function cleanPostPaymentUrl() {
+      try {
+        var u = new URL(window.location.href);
+        if (!isPostPaymentQuery()) return;
+        u.searchParams.delete('session_id');
+        u.searchParams.delete('paid');
+        u.searchParams.delete('sub');
+        if (!u.searchParams.has('credits')) u.searchParams.set('credits', 'ok');
+        window.history.replaceState({}, '', u.pathname + u.search);
+      } catch (e) {}
+    }
+
+    var postPayPollStarted = false;
+
+    function applyPostPaymentUi(isGuestView) {
+      var p = new URLSearchParams(window.location.search);
+      var sub = p.get('sub') === '1';
+      var sid = p.get('session_id');
+
+      if (postPayGuestHint) postPayGuestHint.style.display = 'none';
+      if (postPayWelcome) postPayWelcome.style.display = 'none';
+
+      if (!isPostPaymentQuery()) return;
+
+      if (isGuestView) {
+        if (postPayGuestHint) postPayGuestHint.style.display = 'block';
+        return;
+      }
+
+      if (postPayWelcome) {
+        postPayWelcome.style.display = 'block';
+        if (postPayWelcomeText) {
+          postPayWelcomeText.textContent = sub
+            ? 'Abonnement pris en compte. Vos crédits apparaissent ci-dessous sous quelques instants.'
+            : 'Paiement enregistré. Vos crédits sont crédités sur ce compte sous peu.';
+        }
+        if (sid) {
+          fetch(
+            window.location.origin +
+              '/api/checkout-session-kind?session_id=' +
+              encodeURIComponent(sid)
+          )
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (k) {
+              if (k && k.kind === 'subscription_initial' && postPayWelcomeText) {
+                postPayWelcomeText.textContent =
+                  'Abonnement activé. Les crédits du cycle seront visibles ici dans un instant.';
+              }
+            })
+            .catch(function () {});
+        }
+        cleanPostPaymentUrl();
+      }
+
+      if (elCreditsMsg) {
+        elCreditsMsg.style.display = 'block';
+        elCreditsMsg.textContent =
+          'Mise à jour du solde en direct (webhook Stripe). Patientez quelques secondes si besoin.';
+      }
+      if (!postPayPollStarted) {
+        postPayPollStarted = true;
+        var t0 = Date.now();
+        var poll = setInterval(function () {
+          refreshBalance();
+          if (Date.now() - t0 > 90000) clearInterval(poll);
+        }, 2500);
+      }
     }
 
     function renderUser(user) {
@@ -58,21 +142,27 @@
       if (elBalance) elBalance.textContent = String(user.credits);
       if (elEmail) elEmail.textContent = user.email;
       if (compteMain) compteMain.classList.add('compte-wrap--logged');
+      if (compteH1) compteH1.textContent = 'Espace client';
+      if (compteHeroKicker) compteHeroKicker.style.display = 'block';
       if (compteHeroLead) {
         compteHeroLead.textContent =
-          'Paiement exclusivement sur la page sécurisée Stripe (comme les tarifs). Choisissez une formule ci-dessous : vous êtes redirigé vers buy.stripe.com.';
+          'Vos crédits servent aux recherches VIN (décodage + rapport). Rechargez ou souscrivez à l’abonnement ci-dessous — paiement sécurisé Stripe.';
       }
       loadStripeTierLinks(user.id);
+      applyPostPaymentUi(false);
     }
 
     function renderGuest() {
       show(elGuest, true);
       show(elUser, false);
       if (compteMain) compteMain.classList.remove('compte-wrap--logged');
+      if (compteH1) compteH1.textContent = 'Mon compte';
+      if (compteHeroKicker) compteHeroKicker.style.display = 'block';
       if (compteHeroLead) {
         compteHeroLead.textContent =
           'Connexion réservée aux clients disposant déjà d’un accès. Les tarifs et le paiement (y compris premier achat invité) passent par la page Tarifs — même expérience Stripe hébergée.';
       }
+      applyPostPaymentUi(true);
     }
 
     function loadStripeTierLinks(userId) {
@@ -242,19 +332,6 @@
           elBalance.textContent = String(r.data.user.credits);
         }
       });
-    }
-
-    if (/credits=ok|paiement=credits_ok/i.test(window.location.search)) {
-      if (elCreditsMsg) {
-        elCreditsMsg.style.display = 'block';
-        elCreditsMsg.textContent =
-          'Paiement reçu. Vos crédits sont mis à jour sous quelques instants (rafraîchissez si besoin).';
-      }
-      var t0 = Date.now();
-      var poll = setInterval(function () {
-        refreshBalance();
-        if (Date.now() - t0 > 60000) clearInterval(poll);
-      }, 2500);
     }
 
     var pc = document.getElementById('creditPacks');

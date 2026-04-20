@@ -990,6 +990,11 @@ app.get('/api/checkout-session-kind', async (req, res) => {
   }
 });
 
+/** Raccourci URL vers l’espace client (crédits VIN, paiements Stripe). */
+app.get(['/espace-client', '/espace'], (req, res) => {
+  res.redirect(302, '/compte.html');
+});
+
 app.get('/api/rapport/session/:token', async (req, res) => {
   try {
     const prisma = getPrisma();
@@ -1266,7 +1271,9 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
           trialDays: String(trialDays)
         }
       },
-      success_url: base + '/confirmation.html?session_id={CHECKOUT_SESSION_ID}',
+      success_url:
+        base +
+        '/compte.html?paid=1&credits=ok&sub=1&session_id={CHECKOUT_SESSION_ID}',
       cancel_url: base + '/checkout.html',
       metadata: {
         app: 'carvinguard',
