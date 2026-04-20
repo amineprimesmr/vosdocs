@@ -601,11 +601,100 @@ app.get('/api/webhook', (req, res) => {
 });
 
 /**
+ * Client connecté : Payment Link avec client_reference_id=cguser:<id> → crédits compte (même grille que les liens publics).
+ */
+async function handleCheckoutSessionAccountCredit(session) {
+  if (!stripe || !session || session.mode !== 'payment') return false;
+  const raw = session.client_reference_id || '';
+  if (!raw.startsWith('cguser:')) return false;
+  const userId = raw.slice(7).trim();
+  if (!userId) return true;
+
+  const prisma = getPrisma();
+  if (!prisma) {
+    console.warn('checkout cguser: DATABASE_URL manquant');
+    return true;
+  }
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { id: userId } });
+  } catch (e) {
+    console.warn('checkout cguser:', e.message);
+    return true;
+  }
+  if (!user) {
+    console.warn('checkout cguser: utilisateur introuvable', userId);
+    return true;
+  }
+
+  const sm = session.metadata || {};
+  let plan = sm.carvinguard_plan || '';
+  let credits = 0;
+  let packId = '';
+  if (plan === 'essentiel') {
+    credits = 1;
+    packId = 'tier_essentiel';
+  } else if (plan === 'confort') {
+    credits = 3;
+    packId = 'tier_confort';
+  } else if (plan === 'premium') {
+    credits = 10;
+    packId = 'tier_premium';
+  }
+
+  const piRef = session.payment_intent;
+  const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
+  if (!piId) return true;
+
+  if (!credits && session.amount_total) {
+    const a = session.amount_total;
+    if (a === 1499) {
+      credits = 1;
+      packId = 'tier_essentiel';
+    } else if (a === 2999) {
+      credits = 3;
+      packId = 'tier_confort';
+    } else if (a === 6999) {
+      credits = 10;
+      packId = 'tier_premium';
+    }
+  }
+
+  if (!credits) {
+    console.warn('checkout cguser: plan ou montant non reconnu', session.id, session.amount_total);
+    return true;
+  }
+
+  let pi = await stripe.paymentIntents.retrieve(piId);
+  const md = Object.assign({}, pi.metadata || {});
+  md.purpose = 'credit_purchase';
+  md.userId = user.id;
+  md.credits = String(credits);
+  md.packId = packId;
+  if (plan) md.carvinguard_plan = plan;
+
+  await stripe.paymentIntents.update(piId, {
+    metadata: Object.fromEntries(
+      Object.entries(md).map(([k, v]) => [
+        k,
+        String(v !== undefined && v !== null ? v : '').slice(0, 500)
+      ])
+    )
+  });
+  pi = await stripe.paymentIntents.retrieve(piId);
+  await handleStripeCreditPurchase(pi);
+  return true;
+}
+
+/**
  * Stripe Payment Links : le VIN est dans client_reference_id (session), pas toujours sur le PaymentIntent.
  * On fusionne email + VIN + métadonnées du lien puis on exécute la même finalisation que l’Embedded Checkout.
  */
 async function handleCheckoutSessionCompleted(session) {
-  if (!stripe || !session || session.mode !== 'payment') return;
+  if (!stripe || !session) return;
+  const accountDone = await handleCheckoutSessionAccountCredit(session);
+  if (accountDone) return;
+  if (session.mode !== 'payment') return;
   const piRef = session.payment_intent;
   const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
   if (!piId) return;
@@ -686,8 +775,19 @@ async function handleStripeWebhookPost(req, res) {
   }
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object;
+    let skipGuestForAccountLink = false;
+    if (stripe && pi.id) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 });
+        if (sessions.data[0] && String(sessions.data[0].client_reference_id || '').startsWith('cguser:')) {
+          skipGuestForAccountLink = true;
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
     const isCreditPurchase = await handleStripeCreditPurchase(pi);
-    if (!isCreditPurchase) {
+    if (!isCreditPurchase && !skipGuestForAccountLink) {
       const order = paymentIntentToOrder(pi);
       saveOrder(order);
       try {
@@ -793,6 +893,27 @@ app.get('/api/order-status', async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Erreur' });
+  }
+});
+
+/** Après un Payment Link : distinguer achat de crédits compte (cguser:) du rapport invité. */
+app.get('/api/checkout-session-kind', async (req, res) => {
+  try {
+    const sessionId = req.query.session_id;
+    if (!sessionId || typeof sessionId !== 'string' || !stripe) {
+      return res.json({ kind: 'unknown' });
+    }
+    const sess = await stripe.checkout.sessions.retrieve(sessionId);
+    const ref = String(sess.client_reference_id || '');
+    if (ref.startsWith('cguser:')) {
+      return res.json({ kind: 'account_credit' });
+    }
+    if (normalizeVinMeta(ref).length === 17) {
+      return res.json({ kind: 'guest_vin' });
+    }
+    return res.json({ kind: 'guest_checkout' });
+  } catch (e) {
+    return res.json({ kind: 'unknown' });
   }
 });
 
@@ -1521,7 +1642,8 @@ app.get('/api/payment-links', (req, res) => {
   res.json({
     essentiel: process.env.STRIPE_PAYMENT_LINK_ESSENTIEL || '',
     confort: process.env.STRIPE_PAYMENT_LINK_CONFORT || '',
-    premium: process.env.STRIPE_PAYMENT_LINK_PREMIUM || ''
+    premium: process.env.STRIPE_PAYMENT_LINK_PREMIUM || '',
+    abonnement: process.env.STRIPE_PAYMENT_LINK_ABONNEMENT || ''
   });
 });
 

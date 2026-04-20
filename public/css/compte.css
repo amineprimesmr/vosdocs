@@ -575,3 +575,15 @@ body.compte-page {
   outline: 2px solid #16a34a;
   outline-offset: 3px;
 }
+
+.compte-links-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-light);
+  padding: 24px;
+}
+
+#creditPacks a.compte-tier-link[aria-disabled='true'] {
+  opacity: 0.55;
+  pointer-events: none;
+}

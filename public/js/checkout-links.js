@@ -25,6 +25,7 @@
       confort: document.getElementById('pay-link-confort'),
       premium: document.getElementById('pay-link-premium')
     };
+    var subEl = document.getElementById('pay-link-abonnement');
     var banner = document.getElementById('paymentLinksMissing');
 
     fetch(window.location.origin + '/api/payment-links')
@@ -49,6 +50,16 @@
             el.setAttribute('aria-disabled', 'true');
           }
         });
+
+        var rawSub = (data && data.abonnement) || '';
+        if (subEl && rawSub && /^https?:\/\//i.test(rawSub)) {
+          subEl.href = appendRef(rawSub, vin);
+          subEl.removeAttribute('aria-disabled');
+          any = true;
+        } else if (subEl) {
+          subEl.href = 'contact.html';
+          subEl.removeAttribute('aria-disabled');
+        }
 
         if (!any && banner) {
           banner.hidden = false;
