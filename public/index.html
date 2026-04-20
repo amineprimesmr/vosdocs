@@ -28,7 +28,7 @@
     <meta name="twitter:image" content="https://www.carvinguard.fr/og-image.png">
     
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="css/styles.css?v=202603152350">
+    <link rel="stylesheet" href="css/styles.css?v=202604181530">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,7 +41,7 @@
         {
           "@type": "Organization",
           "@id": "https://www.carvinguard.fr/#organization",
-          "name": "Carvinguard",
+          "name": "CarVINGuard",
           "url": "https://www.carvinguard.fr",
           "logo": { "@type": "ImageObject", "url": "https://www.carvinguard.fr/logo.png" },
           "contactPoint": {
@@ -69,7 +69,7 @@
           "description": "Rapport détaillé à partir du numéro VIN : éléments d'identification, alertes et informations utiles avant un achat ou une vente. Livré par email en PDF.",
           "url": "https://www.carvinguard.fr/",
           "image": "https://www.carvinguard.fr/og-image.png",
-          "brand": { "@type": "Brand", "name": "Carvinguard" },
+          "brand": { "@type": "Brand", "name": "CarVINGuard" },
           "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": 4.6,
@@ -146,12 +146,7 @@
     <!-- Header (ClarityCheck-inspired: blanc, épuré) -->
     <header class="header header-light">
         <div class="container header-inner">
-            <a href="index.html" class="logo">
-                <span class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6" stroke-linecap="round"/></svg>
-                </span>
-                <span class="logo-text">Carvinguard</span>
-            </a>
+            <a href="index.html" class="logo"><img src="/logo.png" alt="CarVINGuard"></a>
             <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
@@ -161,6 +156,7 @@
                 <a href="#vehicules" class="nav-link">Véhicules</a>
                 <a href="#faq" class="nav-link">Qu'est-ce que c'est ?</a>
                 <a href="#demande-rapport" class="nav-link">Comment faire</a>
+                <a href="#partenaire-carte-grise" class="nav-link">Carte grise</a>
                 <a href="guides.html" class="nav-link">Guides</a>
                 <a href="blog/index.html" class="nav-link">Blog</a>
                 <a href="compte.html" class="nav-link">Mon compte</a>
@@ -174,6 +170,7 @@
                 <a href="#vehicules" class="mobile-nav-link">Véhicules</a>
                 <a href="#faq" class="mobile-nav-link">Qu'est-ce que c'est ?</a>
                 <a href="#demande-rapport" class="mobile-nav-link">Comment faire</a>
+                <a href="#partenaire-carte-grise" class="mobile-nav-link">Carte grise</a>
                 <a href="guides.html" class="mobile-nav-link">Guides</a>
                 <a href="blog/index.html" class="mobile-nav-link">Blog</a>
                 <a href="compte.html" class="mobile-nav-link">Mon compte</a>
@@ -235,6 +232,17 @@
             </div>
         </div>
     </div>
+
+    <!-- Partenaire carte grise en ligne -->
+    <section class="partner-cg-section" id="partenaire-carte-grise" aria-labelledby="partner-cg-heading">
+        <div class="container partner-cg-inner">
+            <div class="partner-cg-card">
+                <h2 class="partner-cg-badge" id="partner-cg-heading">Carte grise en ligne — partenaire</h2>
+                <p class="partner-cg-lead">Après avoir vérifié votre rapport de véhicule complet, faites votre carte grise avec notre partenaire agréé par l'État.</p>
+                <a href="https://changer-sa-carte-grise.fr/" class="partner-cg-btn" target="_blank" rel="noopener noreferrer" title="Ouverture dans un nouvel onglet">Accéder au site partenaire<span aria-hidden="true"> →</span></a>
+            </div>
+        </div>
+    </section>
 
     <!-- Stats Section -->
     <section class="stats-section" id="nos-atouts">
