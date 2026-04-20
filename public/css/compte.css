@@ -530,3 +530,48 @@ body.compte-page {
     grid-column: 1 / -1;
   }
 }
+
+/* --- Compte v3 : pas d’inscription libre, mêmes tarifs que checkout --- */
+.compte-wrap--logged {
+  max-width: 1120px;
+}
+
+.compte-guest-first {
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.compte-guest-cta {
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.compte-guest-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+.compte-guest-login-title {
+  font-size: 1.05rem;
+  margin: 0 0 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.compte-card--tiers .compte-recharge-head {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.compte-tier-grid {
+  padding: 16px 12px 24px;
+}
+
+#creditPacks .compte-tier-btn.is-selected {
+  outline: 2px solid #16a34a;
+  outline-offset: 3px;
+}

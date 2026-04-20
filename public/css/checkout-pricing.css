@@ -619,3 +619,14 @@ a.cg-tier-cta--sub {
     transform: none;
   }
 }
+
+/* Mon compte : grille identique, cible <button> */
+button.cg-tier-card.compte-tier-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}

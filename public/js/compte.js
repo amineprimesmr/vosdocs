@@ -1,6 +1,5 @@
 /**
- * Espace compte : inscription, connexion, solde crédits, achat Stripe
- * Le paiement se prépare automatiquement dès qu’un forfait est choisi.
+ * Espace compte : connexion, solde crédits, achat Stripe (mêmes paliers que checkout.html)
  */
 (function () {
   var api = function (path, opts) {
@@ -22,24 +21,70 @@
     return (cents / 100).toFixed(2).replace('.', ',') + ' €';
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-compte-tab]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var tab = btn.getAttribute('data-compte-tab');
-        document.querySelectorAll('.compte-panel').forEach(function (p) {
-          p.style.display = p.getAttribute('data-panel') === tab ? 'block' : 'none';
-        });
-        document.querySelectorAll('[data-compte-tab]').forEach(function (b) {
-          var active = b.getAttribute('data-compte-tab') === tab;
-          b.classList.toggle('is-active', active);
-          b.setAttribute('aria-selected', active ? 'true' : 'false');
-        });
-      });
-    });
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
+  function buildTierCard(p) {
+    var isSub = p.type === 'subscription_initial' || p.subscription;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.packId = p.id;
+    btn.setAttribute('role', 'listitem');
+    var cls = 'cg-tier-card compte-tier-btn';
+    if (p.popular) cls += ' cg-tier-card--popular';
+    if (isSub) cls += ' cg-tier-card--subscription';
+    btn.className = cls;
+
+    if (isSub) {
+      var monthlyEur = p.monthlyPriceCents
+        ? (p.monthlyPriceCents / 100).toFixed(2).replace('.', ',')
+        : '49,99';
+      btn.innerHTML =
+        '<span class="cg-tier-badge cg-tier-badge--deal">Le best deal</span>' +
+        '<span class="cg-tier-name">' +
+        escapeHtml(p.label) +
+        '</span>' +
+        '<span class="cg-tier-sub">' +
+        escapeHtml(p.sub || '') +
+        '</span>' +
+        '<div class="cg-tier-price-row">' +
+        '<span class="cg-tier-price cg-tier-price--sub">1&nbsp;€</span>' +
+        '<span class="cg-tier-price-hint">/ 1 rapport</span>' +
+        '</div>' +
+        '<p class="cg-tier-unit cg-tier-unit--sub">puis <strong>' +
+        monthlyEur +
+        '&nbsp;€</strong>/mois · résiliable à tout moment en <a class="cg-tier-inline-link" href="resiliation-abonnement.html">cliquant ici</a>.</p>' +
+        '<span class="cg-tier-cta cg-tier-cta--sub">Choisir <span aria-hidden="true">→</span></span>';
+    } else {
+      btn.innerHTML =
+        (p.popular ? '<span class="cg-tier-badge">Le plus populaire</span>' : '') +
+        '<span class="cg-tier-name">' +
+        escapeHtml(p.label) +
+        '</span>' +
+        '<span class="cg-tier-sub">' +
+        escapeHtml(p.sub || '') +
+        '</span>' +
+        '<span class="cg-tier-price">' +
+        eur(p.priceCents) +
+        '</span>' +
+        '<span class="cg-tier-unit">' +
+        escapeHtml(p.unit || '') +
+        '</span>' +
+        '<span class="cg-tier-cta ' +
+        (p.popular ? 'cg-tier-cta--primary' : 'cg-tier-cta--muted') +
+        '">Choisir <span aria-hidden="true">→</span></span>';
+    }
+    return btn;
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
     var elGuest = document.getElementById('compteGuest');
     var elUser = document.getElementById('compteUser');
-    var elErrorRegister = document.getElementById('registerError');
     var elErrorLogin = document.getElementById('loginError');
     var elCreditsMsg = document.getElementById('creditsMessage');
     var elBalance = document.getElementById('creditBalance');
@@ -51,6 +96,8 @@
     var payBtn = document.getElementById('creditPaySubmit');
     var payForm = document.getElementById('formCreditPay');
     var payLoading = document.getElementById('payStripeLoading');
+    var compteMain = document.getElementById('compteMain');
+    var compteHeroLead = document.getElementById('compteHeroLead');
     var selectedPackId = null;
     var paymentSeq = 0;
 
@@ -78,11 +125,21 @@
       show(elUser, true);
       if (elBalance) elBalance.textContent = String(user.credits);
       if (elEmail) elEmail.textContent = user.email;
+      if (compteMain) compteMain.classList.add('compte-wrap--logged');
+      if (compteHeroLead) {
+        compteHeroLead.textContent =
+          'Gérez vos crédits et votre abonnement — tarifs alignés sur la page publique.';
+      }
     }
 
     function renderGuest() {
       show(elGuest, true);
       show(elUser, false);
+      if (compteMain) compteMain.classList.remove('compte-wrap--logged');
+      if (compteHeroLead) {
+        compteHeroLead.textContent =
+          'Connexion réservée aux clients disposant déjà d’un accès. Les tarifs et le paiement (y compris premier achat invité) passent par la page Tarifs.';
+      }
     }
 
     function startPaymentIntent() {
@@ -156,7 +213,7 @@
 
     function selectPack(p, btn) {
       selectedPackId = p.id;
-      document.querySelectorAll('.credit-pack-btn').forEach(function (b) {
+      document.querySelectorAll('#creditPacks .compte-tier-btn').forEach(function (b) {
         b.classList.remove('is-selected');
       });
       if (btn) btn.classList.add('is-selected');
@@ -188,20 +245,7 @@
       if (packsContainer && cfg.creditPacks) {
         packsContainer.innerHTML = '';
         cfg.creditPacks.forEach(function (p) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'btn btn-primary credit-pack-btn';
-          if (p.type === 'subscription_initial') {
-            btn.classList.add('credit-pack-btn--sub');
-          }
-          btn.dataset.packId = p.id;
-          var display = p.displayPrice ? p.displayPrice : eur(p.priceCents);
-          btn.innerHTML =
-            '<strong>' +
-            p.label +
-            '</strong><span class="pack-price">' +
-            display +
-            '</span>';
+          var btn = buildTierCard(p);
           btn.addEventListener('click', function () {
             selectPack(p, btn);
           });
@@ -229,28 +273,6 @@
         renderGuest();
       }
     });
-
-    var formReg = document.getElementById('formRegister');
-    if (formReg) {
-      formReg.addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        if (elErrorRegister) elErrorRegister.style.display = 'none';
-        var fd = new FormData(formReg);
-        api('/api/auth/register', {
-          method: 'POST',
-          body: { email: fd.get('email'), password: fd.get('password') }
-        }).then(function (r) {
-          if (r.ok && r.data.user) {
-            renderUser(r.data.user);
-          } else {
-            if (elErrorRegister) {
-              elErrorRegister.textContent = (r.data && r.data.error) || 'Erreur';
-              elErrorRegister.style.display = 'block';
-            }
-          }
-        });
-      });
-    }
 
     var formLogin = document.getElementById('formLogin');
     if (formLogin) {
@@ -282,7 +304,7 @@
           show(paySection, false);
           selectedPackId = null;
           if (packsContainer) {
-            packsContainer.querySelectorAll('.credit-pack-btn').forEach(function (b) {
+            packsContainer.querySelectorAll('.compte-tier-btn').forEach(function (b) {
               b.classList.remove('is-selected');
             });
           }

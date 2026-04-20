@@ -874,20 +874,37 @@ function saaSAuthReady() {
 app.get('/api/saas-config', (req, res) => {
   const prisma = getPrisma();
   const vinApi = !!getVinDecodeProvider();
+  /** Mêmes paliers que checkout.html / Payment Links (rapports VIN, pas anciens packs 5/20). */
   const creditsPacks = [
     {
-      id: 'pack_5',
-      credits: 5,
-      priceCents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10),
-      label: '5 recherches VIN',
-      type: 'credit_purchase'
+      id: 'tier_essentiel',
+      credits: 1,
+      priceCents: parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10),
+      label: 'Rapport VIN unique',
+      sub: 'Un rapport complet pour un véhicule.',
+      unit: '1 rapport',
+      type: 'credit_purchase',
+      popular: false
     },
     {
-      id: 'pack_20',
-      credits: 20,
-      priceCents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10),
-      label: '20 recherches VIN',
-      type: 'credit_purchase'
+      id: 'tier_confort',
+      credits: 3,
+      priceCents: parseInt(process.env.TIER_CONFORT_CENTS || '2999', 10),
+      label: 'Meilleur rapport qualité-prix',
+      sub: 'Pour comparer plusieurs véhicules ou anticiper vos démarches.',
+      unit: '3 rapports · 9,99 €/rapport',
+      type: 'credit_purchase',
+      popular: true
+    },
+    {
+      id: 'tier_premium',
+      credits: 10,
+      priceCents: parseInt(process.env.TIER_PREMIUM_CENTS || '6999', 10),
+      label: 'Pack Pro',
+      sub: 'Pour professionnels et volumes réguliers.',
+      unit: '10 rapports · 6,99 €/rapport',
+      type: 'credit_purchase',
+      popular: false
     }
   ];
 
@@ -906,59 +923,30 @@ app.get('/api/saas-config', (req, res) => {
       type: 'subscription_initial',
       credits: creditsPerCycle,
       priceCents: initialCentsForDisplay,
-      label: 'Abonnement (7 rapports/mois)',
+      monthlyPriceCents: monthlyCentsForDisplay,
+      label: 'Pack mensuel',
+      sub: '7 rapports VIN par mois, renouvelés chaque cycle (1 recherche = 1 rapport).',
       displayPrice: '1 € puis ' + (monthlyCentsForDisplay / 100).toFixed(2).replace('.', ',') + ' €/mois',
       subscriptionMonthlyPriceId: process.env.SUBSCRIPTION_PRICE_MONTHLY_ID,
-      trialDays
+      trialDays,
+      popular: false,
+      subscription: true
     });
   }
 
   res.json({
     vinRequiresAccount: false,
     authAvailable: saaSAuthReady(),
+    registrationOpen: false,
     creditPacks: creditsPacks
   });
 });
 
 app.post('/api/auth/register', async (req, res) => {
-  if (!saaSAuthReady()) {
-    return res.status(503).json({
-      error: 'Inscription indisponible. Configurez DATABASE_URL et JWT_SECRET.'
-    });
-  }
-  const prisma = getPrisma();
-  const email = authLib.normalizeEmail(req.body && req.body.email);
-  const password = (req.body && req.body.password) || '';
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Adresse email invalide.' });
-  }
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
-  }
-  try {
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(400).json({ error: 'Cet email est déjà utilisé.' });
-    }
-    const passwordHash = await authLib.hashPassword(password);
-    const welcome = Math.max(0, parseInt(process.env.WELCOME_CREDITS || '0', 10) || 0);
-    const user = await prisma.user.create({
-      data: { email, passwordHash, credits: welcome }
-    });
-    if (welcome > 0) {
-      await prisma.creditTransaction.create({
-        data: { userId: user.id, delta: welcome, reason: 'welcome_bonus' }
-      });
-    }
-    const token = authLib.signAuthToken(user.id);
-    authLib.setAuthCookie(res, token);
-    return res.json({
-      user: { id: user.id, email: user.email, credits: user.credits }
-    });
-  } catch (e) {
-    console.error('register:', e);
-    return res.status(500).json({ error: 'Erreur serveur.' });
-  }
+  return res.status(403).json({
+    error:
+      'Inscription libre désactivée. Un compte ne s’ouvre pas sans paiement : passez par la page Tarifs pour un premier achat (rapport invité), ou connectez-vous si vous avez déjà un accès.'
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -1032,15 +1020,20 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
   }
   const packId = req.body && req.body.packId;
   const packs = {
-    pack_5: {
+    tier_essentiel: {
       type: 'credit_purchase',
-      credits: 5,
-      cents: parseInt(process.env.CREDIT_PACK_5_CENTS || '499', 10)
+      credits: 1,
+      cents: parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10)
     },
-    pack_20: {
+    tier_confort: {
       type: 'credit_purchase',
-      credits: 20,
-      cents: parseInt(process.env.CREDIT_PACK_20_CENTS || '1499', 10)
+      credits: 3,
+      cents: parseInt(process.env.TIER_CONFORT_CENTS || '2999', 10)
+    },
+    tier_premium: {
+      type: 'credit_purchase',
+      credits: 10,
+      cents: parseInt(process.env.TIER_PREMIUM_CENTS || '6999', 10)
     },
     sub_monthly_7: {
       type: 'subscription_initial',
