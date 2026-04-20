@@ -703,7 +703,14 @@ async function handleCheckoutSessionCompleted(session) {
   const sm = session.metadata || {};
   const pm = pi.metadata || {};
 
-  if (pm.purpose === 'credit_purchase' || pm.purpose === 'subscription_initial') return;
+  if (pm.purpose === 'credit_purchase' || pm.purpose === 'subscription_initial') {
+    try {
+      await handleStripeCreditPurchase(pi);
+    } catch (e) {
+      console.error('handleCheckoutSessionCompleted (credit/sub):', e);
+    }
+    return;
+  }
 
   const refVin = normalizeVinMeta(session.client_reference_id || '');
   const emailFromSession =
@@ -903,7 +910,17 @@ app.get('/api/checkout-session-kind', async (req, res) => {
     if (!sessionId || typeof sessionId !== 'string' || !stripe) {
       return res.json({ kind: 'unknown' });
     }
-    const sess = await stripe.checkout.sessions.retrieve(sessionId);
+    const sess = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent']
+    });
+    const piObj = sess.payment_intent;
+    const pm =
+      typeof piObj === 'object' && piObj && piObj.metadata
+        ? piObj.metadata
+        : {};
+    if (pm.purpose === 'subscription_initial') {
+      return res.json({ kind: 'subscription_initial' });
+    }
     const ref = String(sess.client_reference_id || '');
     if (ref.startsWith('cguser:')) {
       return res.json({ kind: 'account_credit' });
@@ -1120,6 +1137,93 @@ app.get('/api/auth/me', async (req, res) => {
   } catch (e) {
     console.error('me:', e);
     return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+/**
+ * Abonnement (1 € puis mensuel) : redirection vers Stripe Checkout hébergé — pas de Payment Link dédié.
+ * Connexion requise ; si invité → redirection vers compte avec reprise du flux.
+ */
+app.get('/api/billing/subscribe-checkout', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).send('Stripe non configuré.');
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  const base = appBaseUrl();
+  if (!userId) {
+    return res.redirect(
+      302,
+      base + '/compte.html?next=' + encodeURIComponent('/api/billing/subscribe-checkout')
+    );
+  }
+  const prisma = getPrisma();
+  if (!prisma) {
+    return res.status(503).send('Base de données requise.');
+  }
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { id: userId } });
+  } catch (e) {
+    return res.status(500).send('Erreur base.');
+  }
+  if (!user || !user.email) {
+    return res.redirect(302, base + '/compte.html');
+  }
+
+  const initialPriceId = process.env.SUBSCRIPTION_PRICE_INITIAL_ID || '';
+  const subscriptionMonthlyPriceId = process.env.SUBSCRIPTION_PRICE_MONTHLY_ID || '';
+  if (!initialPriceId || !subscriptionMonthlyPriceId) {
+    return res
+      .status(503)
+      .send(
+        'Abonnement non configuré : variables SUBSCRIPTION_PRICE_INITIAL_ID et SUBSCRIPTION_PRICE_MONTHLY_ID requises.'
+      );
+  }
+
+  const trialDays = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10);
+  const creditsPerCycle = parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10);
+
+  try {
+    const initialPrice = await stripe.prices.retrieve(initialPriceId);
+    if (initialPrice && initialPrice.type === 'recurring') {
+      return res
+        .status(500)
+        .send(
+          'SUBSCRIPTION_PRICE_INITIAL_ID doit être un prix ponctuel (pas un prix « récurrent » seul).'
+        );
+    }
+  } catch (e) {
+    return res.status(500).send('Impossible de lire le prix initial Stripe.');
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: user.email,
+      line_items: [{ price: initialPriceId, quantity: 1 }],
+      payment_intent_data: {
+        metadata: {
+          purpose: 'subscription_initial',
+          userId: String(user.id),
+          creditsPerCycle: String(creditsPerCycle),
+          subscriptionMonthlyPriceId,
+          trialDays: String(trialDays)
+        }
+      },
+      success_url: base + '/confirmation.html?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: base + '/checkout.html',
+      metadata: {
+        app: 'carvinguard',
+        carvinguard_plan: 'abonnement'
+      }
+    });
+    if (!session.url) {
+      return res.status(500).send('Session Stripe sans URL.');
+    }
+    return res.redirect(303, session.url);
+  } catch (e) {
+    console.error('subscribe-checkout:', e);
+    return res.status(500).send(e.message || 'Erreur Stripe Checkout.');
   }
 });
 
@@ -1642,8 +1746,7 @@ app.get('/api/payment-links', (req, res) => {
   res.json({
     essentiel: process.env.STRIPE_PAYMENT_LINK_ESSENTIEL || '',
     confort: process.env.STRIPE_PAYMENT_LINK_CONFORT || '',
-    premium: process.env.STRIPE_PAYMENT_LINK_PREMIUM || '',
-    abonnement: process.env.STRIPE_PAYMENT_LINK_ABONNEMENT || ''
+    premium: process.env.STRIPE_PAYMENT_LINK_PREMIUM || ''
   });
 });
 

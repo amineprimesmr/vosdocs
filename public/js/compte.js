@@ -148,19 +148,13 @@
             packsContainer.appendChild(a);
           });
 
-          var subUrl = (data && data.abonnement) || '';
           var subWrap = document.createElement('div');
           subWrap.className = 'cg-tier-card cg-tier-card--subscription';
           var subCta = document.createElement('a');
           subCta.className = 'cg-tier-cta cg-tier-cta--sub';
           subCta.rel = 'noopener noreferrer';
-          if (subUrl && /^https?:\/\//i.test(subUrl)) {
-            subCta.href = appendAccountRef(subUrl, userId);
-            subCta.innerHTML = 'Payer sur Stripe <span aria-hidden="true">→</span>';
-          } else {
-            subCta.href = 'contact.html';
-            subCta.innerHTML = 'Abonnement · nous contacter';
-          }
+          subCta.href = window.location.origin + '/api/billing/subscribe-checkout';
+          subCta.innerHTML = 'Payer sur Stripe <span aria-hidden="true">→</span>';
           subWrap.innerHTML =
             '<span class="cg-tier-badge cg-tier-badge--deal">Le best deal</span>' +
             '<span class="cg-tier-name">Pack mensuel</span>' +
@@ -193,9 +187,17 @@
       }
     });
 
+    function maybeResumeSubscribe() {
+      var next = new URLSearchParams(window.location.search).get('next');
+      if (next && /^\/api\/billing\/subscribe-checkout$/.test(next)) {
+        window.location.replace(window.location.origin + next);
+      }
+    }
+
     api('/api/auth/me').then(function (r) {
       if (r.ok && r.data.authenticated && r.data.user) {
         renderUser(r.data.user);
+        maybeResumeSubscribe();
       } else {
         renderGuest();
       }
@@ -213,6 +215,7 @@
         }).then(function (r) {
           if (r.ok && r.data.user) {
             renderUser(r.data.user);
+            maybeResumeSubscribe();
           } else {
             if (elErrorLogin) {
               elErrorLogin.textContent = (r.data && r.data.error) || 'Erreur';
