@@ -49,6 +49,12 @@ function saveOrder(order) {
   }
 }
 
+function normalizeVinMeta(s) {
+  return String(s || '')
+    .replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '')
+    .toUpperCase();
+}
+
 /** Achat de crédits via Stripe (idempotent par payment_intent) */
 async function handleStripeCreditPurchase(pi) {
   const m = pi.metadata || {};
@@ -203,10 +209,29 @@ async function handleStripeCreditPurchase(pi) {
     return true;
   }
 
-  // 3) Paiement one-shot via Payment Links (checkout.html) :
-  // - carvinguard_plan/amount -> crédits
-  // - crédit sur le compte correspondant via receipt_email (ou customer email)
-  if ((m && (m.carvinguard_plan || m.app === 'carvinguard')) || pi.amount) {
+  // 3) Ancien flux : certains Payment Links créditent un compte existant (sans rapport VIN invité).
+  // Ne pas utiliser pi.amount seul : sinon tout paiement (Embedded Checkout inclus) passait ici.
+  const vinForBlock = normalizeVinMeta(m.vin || '');
+  const hasGuestVinReport = vinForBlock.length === 17;
+  const isGuestVinProductLink =
+    m.purpose === 'vin_report_guest' || m.purpose === 'vin_report';
+
+  if (
+    !hasGuestVinReport &&
+    !isGuestVinProductLink &&
+    m &&
+    (m.carvinguard_plan || m.app === 'carvinguard')
+  ) {
+    if (stripe) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 });
+        if (sessions.data.length > 0) {
+          return false;
+        }
+      } catch (e) {
+        console.warn('checkout.sessions.list (credit guard):', e.message);
+      }
+    }
     if (!prisma) {
       return false;
     }
@@ -575,6 +600,71 @@ app.get('/api/webhook', (req, res) => {
   });
 });
 
+/**
+ * Stripe Payment Links : le VIN est dans client_reference_id (session), pas toujours sur le PaymentIntent.
+ * On fusionne email + VIN + métadonnées du lien puis on exécute la même finalisation que l’Embedded Checkout.
+ */
+async function handleCheckoutSessionCompleted(session) {
+  if (!stripe || !session || session.mode !== 'payment') return;
+  const piRef = session.payment_intent;
+  const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
+  if (!piId) return;
+
+  let pi = await stripe.paymentIntents.retrieve(piId);
+  const sm = session.metadata || {};
+  const pm = pi.metadata || {};
+
+  if (pm.purpose === 'credit_purchase' || pm.purpose === 'subscription_initial') return;
+
+  const refVin = normalizeVinMeta(session.client_reference_id || '');
+  const emailFromSession =
+    (session.customer_details && session.customer_details.email) ||
+    session.customer_email ||
+    '';
+  const mergedEmail = ((pm.email || '').trim() || String(emailFromSession || '').trim()).slice(0, 500);
+
+  const vinFinal = refVin.length === 17 ? refVin : normalizeVinMeta(pm.vin || '');
+
+  const nextMeta = Object.assign({}, pm, {
+    email: mergedEmail,
+    vin: vinFinal
+  });
+
+  if (sm.carvinguard_plan && !pm.planId) {
+    nextMeta.planId = sm.carvinguard_plan;
+    nextMeta.planLabel = pm.planLabel || sm.carvinguard_plan;
+  }
+  if (sm.carvinguard_plan && !pm.carvinguard_plan) {
+    nextMeta.carvinguard_plan = sm.carvinguard_plan;
+  }
+  if (!nextMeta.purpose && (sm.carvinguard_plan || sm.app === 'carvinguard')) {
+    nextMeta.purpose = 'vin_report_guest';
+  } else if (sm.purpose && !pm.purpose) {
+    nextMeta.purpose = sm.purpose;
+  }
+
+  await stripe.paymentIntents.update(piId, {
+    metadata: Object.fromEntries(
+      Object.entries(nextMeta).map(([k, v]) => [
+        k,
+        String(v !== undefined && v !== null ? v : '').slice(0, 500)
+      ])
+    )
+  });
+  pi = await stripe.paymentIntents.retrieve(piId);
+
+  const isCreditPurchase = await handleStripeCreditPurchase(pi);
+  if (!isCreditPurchase) {
+    const order = paymentIntentToOrder(pi);
+    saveOrder(order);
+    try {
+      await fulfillGuestVinOrder(stripe, pi);
+    } catch (e) {
+      console.error('fulfillGuestVinOrder (checkout.session):', e);
+    }
+  }
+}
+
 async function handleStripeWebhookPost(req, res) {
   if (!stripe) {
     return res.status(500).send('Stripe non configuré');
@@ -605,6 +695,12 @@ async function handleStripeWebhookPost(req, res) {
       } catch (e) {
         console.error('fulfillGuestVinOrder:', e);
       }
+    }
+  } else if (event.type === 'checkout.session.completed') {
+    try {
+      await handleCheckoutSessionCompleted(event.data.object);
+    } catch (e) {
+      console.error('checkout.session.completed:', e);
     }
   } else if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
     const invoice = event.data.object;
@@ -659,9 +755,19 @@ if (!cgProdRuntime) {
 // ——— Commandes rapport VIN (statut + consultation sécurisée) ———
 app.get('/api/order-status', async (req, res) => {
   try {
-    const piId = req.query.payment_intent;
+    let piId = req.query.payment_intent;
+    const sessionId = req.query.session_id;
+    if (sessionId && typeof sessionId === 'string' && stripe) {
+      try {
+        const sess = await stripe.checkout.sessions.retrieve(sessionId);
+        const ref = sess.payment_intent;
+        piId = typeof ref === 'string' ? ref : ref && ref.id;
+      } catch (e) {
+        return res.status(400).json({ error: 'session_id invalide' });
+      }
+    }
     if (!piId || typeof piId !== 'string') {
-      return res.status(400).json({ error: 'payment_intent requis' });
+      return res.status(400).json({ error: 'payment_intent ou session_id requis' });
     }
     const prisma = getPrisma();
     if (!prisma) {
@@ -677,7 +783,7 @@ app.get('/api/order-status', async (req, res) => {
       return res.json({ status: 'pending' });
     }
     const base = appBaseUrl();
-    const ready = !!row.customerEmailSentAt;
+    const ready = !!(row.pdfGeneratedAt && row.accessToken);
     return res.json({
       status: ready ? 'ready' : 'pending',
       token: row.accessToken,

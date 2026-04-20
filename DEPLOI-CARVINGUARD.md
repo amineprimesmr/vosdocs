@@ -71,6 +71,7 @@ Dans **Vercel** → **Settings** → **Environment Variables**, configure :
 2. Lance **`npm run stripe:tout`** : le script explique les étapes en français, crée les 3 Payment Links, et écrit **`STRIPE-COLLER-VERCEL.txt`** (modèle pour coller sur Vercel — ce fichier ne doit pas être commité).
 3. Crée le **webhook** Stripe (même mode Live) : URL **`https://www.carvinguard.fr/api/stripe-webhook`** (ou le domaine **canonique** affiché sur Vercel → Domains, **sans** redirection), événements :
    - **`payment_intent.succeeded`**
+   - **`checkout.session.completed`** (obligatoire pour les **Payment Links** : fusion du VIN `client_reference_id` et finalisation du rapport)
    - **`invoice.payment_succeeded`** (si abonnement)
    puis copie **`STRIPE_WEBHOOK_SECRET`** (`whsec_…`) dans `.env` et sur Vercel.
 

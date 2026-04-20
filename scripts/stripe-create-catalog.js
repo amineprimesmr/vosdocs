@@ -77,11 +77,15 @@ async function main() {
 
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [{ price: price.id, quantity: 1 }],
-      metadata: { carvinguard_plan: plan.id, app: 'carvinguard' },
+      metadata: {
+        carvinguard_plan: plan.id,
+        app: 'carvinguard',
+        purpose: 'vin_report_guest'
+      },
       after_completion: {
         type: 'redirect',
         redirect: {
-          url: baseUrl + '/confirmation.html'
+          url: baseUrl + '/confirmation.html?session_id={CHECKOUT_SESSION_ID}'
         }
       }
     });

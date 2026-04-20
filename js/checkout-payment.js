@@ -247,6 +247,7 @@
       }
 
       var metadata = {
+        purpose: 'vin_report',
         nom: nom,
         prenom: prenom,
         phone: phone,
