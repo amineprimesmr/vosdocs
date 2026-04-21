@@ -22,6 +22,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
+/** Inscription email/mot de passe directe. Par défaut désactivée : le compte est créé après paiement Stripe (webhook + invitation). */
+function isOpenRegistrationAllowed() {
+  return String(process.env.REGISTRATION_OPEN || '').toLowerCase() === 'true';
+}
+
 app.use(cors({ origin: true, credentials: true }));
 // Webhook Stripe doit recevoir le body brut AVANT express.json()
 const ORDERS_FILE = path.join(__dirname, 'data', 'commandes.json');
@@ -865,6 +870,103 @@ async function handleCheckoutAutoAccountCredit(session, pi, sm) {
 }
 
 /**
+ * Abonnement (1 € + mensuel) sans compte au moment du Checkout : après paiement, création du compte puis finalisation (subscription_initial).
+ * Même principe que handleCheckoutAutoAccountCredit pour les packs crédits invités.
+ */
+async function handleCheckoutAutoSubscriptionInitial(session, pi, sm) {
+  const prisma = getPrisma();
+  if (!prisma || !stripe || session.mode !== 'payment') {
+    return { handled: false };
+  }
+
+  const pm = pi.metadata || {};
+  if (pm.purpose !== 'subscription_initial' || pm.userId) {
+    return { handled: false };
+  }
+
+  const emailRaw =
+    (session.customer_details && session.customer_details.email) ||
+    session.customer_email ||
+    '';
+  const email = authLib.normalizeEmail(emailRaw);
+  if (!email || email.indexOf('@') === -1) {
+    return { handled: false };
+  }
+
+  const refRaw = String(session.client_reference_id || '');
+  if (refRaw.startsWith('cguser:')) {
+    return { handled: false };
+  }
+
+  const refVin = normalizeVinMeta(refRaw);
+  const piVin = normalizeVinMeta(pm.vin || '');
+  if (refVin.length === 17 || piVin.length === 17) {
+    return { handled: false };
+  }
+
+  const creditsPerCycle = parseInt(String(pm.creditsPerCycle || '7'), 10);
+  const subscriptionMonthlyPriceId = String(pm.subscriptionMonthlyPriceId || '');
+  const trialDays = parseInt(String(pm.trialDays || '1'), 10);
+
+  if (creditsPerCycle < 1 || !subscriptionMonthlyPriceId || trialDays < 0) {
+    return { handled: false };
+  }
+
+  let user = await prisma.user.findUnique({ where: { email } });
+  let created = false;
+  if (!user) {
+    const provisional = crypto.randomBytes(32).toString('hex');
+    user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: await authLib.hashPassword(provisional)
+      }
+    });
+    created = true;
+  }
+
+  const piId = pi.id;
+  const md = Object.assign({}, pm, {
+    purpose: 'subscription_initial',
+    userId: String(user.id),
+    creditsPerCycle: String(creditsPerCycle),
+    subscriptionMonthlyPriceId,
+    trialDays: String(trialDays),
+    email
+  });
+
+  await stripe.paymentIntents.update(piId, {
+    metadata: Object.fromEntries(
+      Object.entries(md).map(([k, v]) => [
+        k,
+        String(v !== undefined && v !== null ? v : '').slice(0, 500)
+      ])
+    )
+  });
+  const piFresh = await stripe.paymentIntents.retrieve(piId);
+  await handleStripeCreditPurchase(piFresh);
+
+  const base = appBaseUrl();
+  try {
+    if (created) {
+      const inviteTok = authLib.signAccountInviteToken(user.id);
+      await sendAccountInviteEmail({
+        to: email,
+        inviteToken: inviteTok,
+        baseUrl: base,
+        credits: creditsPerCycle
+      });
+    } else {
+      await sendWalletCreditsEmail({ to: email, baseUrl: base, credits: creditsPerCycle });
+    }
+  } catch (e) {
+    console.error('Emails abonnement auto-compte:', e.message);
+  }
+
+  return { handled: true };
+}
+
+/**
  * Stripe Payment Links : le VIN est dans client_reference_id (session), pas toujours sur le PaymentIntent.
  * On fusionne email + VIN + métadonnées du lien puis on exécute la même finalisation que l’Embedded Checkout.
  */
@@ -880,6 +982,16 @@ async function handleCheckoutSessionCompleted(session) {
   let pi = await stripe.paymentIntents.retrieve(piId);
   const sm = session.metadata || {};
   const pm = pi.metadata || {};
+
+  // Invité : le PI est déjà typé (crédits / abo) mais sans userId — créer le compte puis enchaîner (ne pas court-circuiter avant).
+  if (pm.purpose === 'credit_purchase' && !pm.userId) {
+    const autoWallet = await handleCheckoutAutoAccountCredit(session, pi, sm);
+    if (autoWallet.handled) return;
+  }
+  if (pm.purpose === 'subscription_initial' && !pm.userId) {
+    const autoSub = await handleCheckoutAutoSubscriptionInitial(session, pi, sm);
+    if (autoSub.handled) return;
+  }
 
   if (pm.purpose === 'credit_purchase' || pm.purpose === 'subscription_initial') {
     try {
@@ -1329,12 +1441,18 @@ app.get('/api/saas-config', (req, res) => {
   res.json({
     vinRequiresAccount: false,
     authAvailable: saaSAuthReady(),
-    registrationOpen: saaSAuthReady(),
+    registrationOpen: saaSAuthReady() && isOpenRegistrationAllowed(),
     creditPacks: creditsPacks
   });
 });
 
 app.post('/api/auth/register', async (req, res) => {
+  if (!isOpenRegistrationAllowed()) {
+    return res.status(403).json({
+      error:
+        'Création de compte réservée après un paiement Stripe. Choisissez un forfait sur la page Tarifs, puis définissez votre mot de passe via le lien reçu par email.'
+    });
+  }
   if (!saaSAuthReady()) {
     return res.status(503).json({ error: 'Inscription indisponible (configuration manquante).' });
   }
@@ -1519,8 +1637,9 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 /**
- * Abonnement (1 € puis mensuel) : redirection vers Stripe Checkout hébergé — pas de Payment Link dédié.
- * Connexion requise ; si invité → redirection vers compte avec reprise du flux.
+ * Abonnement (1 € puis mensuel) : Stripe Checkout hébergé.
+ * — Client connecté : email + userId sur le PaymentIntent.
+ * — Invité : paiement d’abord, création de compte dans le webhook (pas de compte avant Stripe).
  */
 app.get('/api/billing/subscribe-checkout', async (req, res) => {
   if (!stripe) {
@@ -1528,24 +1647,21 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
   }
   const userId = authLib.getUserIdFromCookies(req);
   const base = appBaseUrl();
-  if (!userId) {
-    return res.redirect(
-      302,
-      base + '/compte.html?next=' + encodeURIComponent('/api/billing/subscribe-checkout')
-    );
-  }
   const prisma = getPrisma();
-  if (!prisma) {
-    return res.status(503).send('Base de données requise.');
-  }
-  let user;
-  try {
-    user = await prisma.user.findUnique({ where: { id: userId } });
-  } catch (e) {
-    return res.status(500).send('Erreur base.');
-  }
-  if (!user || !user.email) {
-    return res.redirect(302, base + '/compte.html');
+
+  let user = null;
+  if (userId) {
+    if (!prisma) {
+      return res.status(503).send('Base de données requise.');
+    }
+    try {
+      user = await prisma.user.findUnique({ where: { id: userId } });
+    } catch (e) {
+      return res.status(500).send('Erreur base.');
+    }
+    if (!user || !user.email) {
+      return res.redirect(302, base + '/compte.html');
+    }
   }
 
   const initialPriceId = process.env.SUBSCRIPTION_PRICE_INITIAL_ID || '';
@@ -1574,29 +1690,36 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
     return res.status(500).send('Impossible de lire le prix initial Stripe.');
   }
 
+  const piMeta = {
+    purpose: 'subscription_initial',
+    creditsPerCycle: String(creditsPerCycle),
+    subscriptionMonthlyPriceId,
+    trialDays: String(trialDays)
+  };
+  if (user) {
+    piMeta.userId = String(user.id);
+  }
+
+  const sessionPayload = {
+    mode: 'payment',
+    line_items: [{ price: initialPriceId, quantity: 1 }],
+    payment_intent_data: {
+      metadata: piMeta
+    },
+    success_url:
+      base + '/compte.html?paid=1&credits=ok&sub=1&session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: base + '/checkout.html',
+    metadata: {
+      app: 'carvinguard',
+      carvinguard_plan: 'abonnement'
+    }
+  };
+  if (user && user.email) {
+    sessionPayload.customer_email = user.email;
+  }
+
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      customer_email: user.email,
-      line_items: [{ price: initialPriceId, quantity: 1 }],
-      payment_intent_data: {
-        metadata: {
-          purpose: 'subscription_initial',
-          userId: String(user.id),
-          creditsPerCycle: String(creditsPerCycle),
-          subscriptionMonthlyPriceId,
-          trialDays: String(trialDays)
-        }
-      },
-      success_url:
-        base +
-        '/compte.html?paid=1&credits=ok&sub=1&session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: base + '/checkout.html',
-      metadata: {
-        app: 'carvinguard',
-        carvinguard_plan: 'abonnement'
-      }
-    });
+    const session = await stripe.checkout.sessions.create(sessionPayload);
     if (!session.url) {
       return res.status(500).send('Session Stripe sans URL.');
     }
@@ -1608,9 +1731,9 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
 });
 
 /**
- * Packs crédits (1 / 3 / 10 rapports) : même principe que Fidelity — session Checkout créée par l’API,
- * utilisateur connecté obligatoire, metadata user_id + cguser: pour le webhook.
- * Les invités passent toujours par les Payment Links (page tarifs) ou par le parcours VIN.
+ * Packs crédits (1 / 3 / 10 rapports) : session Checkout par l’API.
+ * Utilisateur connecté : cguser / userId sur le PaymentIntent.
+ * Invité : paiement d’abord — le webhook rattache l’email Stripe au compte créé après paiement.
  */
 app.get('/api/billing/credit-checkout', async (req, res) => {
   if (!stripe) {

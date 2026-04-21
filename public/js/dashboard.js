@@ -40,6 +40,36 @@
   var historyLoaded = false;
   var statsLoaded = false;
   var inviteToken = null;
+  /** false = inscription directe désactivée (compte après paiement Stripe). */
+  var registrationOpen = false;
+
+  function applyRegistrationRestrictedUi() {
+    var tabSignup = document.getElementById('tabSignup');
+    var panelSignup = document.getElementById('panelSignup');
+    var tabLogin = document.getElementById('tabLogin');
+    var panelLogin = document.getElementById('panelLogin');
+    var foot = document.querySelector('#panelLogin .auth-footer');
+    if (registrationOpen) {
+      if (tabSignup) tabSignup.style.display = '';
+      if (panelSignup) panelSignup.style.display = '';
+      if (foot) {
+        foot.innerHTML =
+          'Pas encore de compte ? <button type="button" class="auth-link" onclick="switchTab(\'signup\')">Créer un compte</button>';
+      }
+      return;
+    }
+    if (tabSignup) tabSignup.style.display = 'none';
+    if (panelSignup) {
+      panelSignup.classList.remove('active');
+      panelSignup.style.display = 'none';
+    }
+    if (tabLogin) tabLogin.classList.add('active');
+    if (panelLogin) panelLogin.classList.add('active');
+    if (foot) {
+      foot.innerHTML =
+        'Nouveau client ? Choisissez un forfait sur la page <a href="/checkout.html" class="auth-link">Tarifs</a> : le compte est créé après le paiement sécurisé.';
+    }
+  }
 
   /* ============================================================
      INIT
@@ -47,6 +77,18 @@
   document.addEventListener('DOMContentLoaded', function () {
     var params = new URLSearchParams(window.location.search);
     inviteToken = params.get('invite');
+
+    registrationOpen = false;
+    applyRegistrationRestrictedUi();
+    api('/api/saas-config')
+      .then(function (r) {
+        registrationOpen = !!(r.ok && r.data && r.data.registrationOpen);
+        applyRegistrationRestrictedUi();
+      })
+      .catch(function () {
+        registrationOpen = false;
+        applyRegistrationRestrictedUi();
+      });
 
     // Invite flow → show invite overlay (lien email après paiement)
     if (inviteToken) {
@@ -85,6 +127,9 @@
   };
 
   window.switchTab = function (tab) {
+    if (tab === 'signup' && !registrationOpen) {
+      tab = 'login';
+    }
     var tabs = ['login', 'signup'];
     tabs.forEach(function (t) {
       var btn = document.getElementById('tab' + capitalize(t));
@@ -142,6 +187,10 @@
 
   /* SIGNUP */
   window.doSignup = function () {
+    if (!registrationOpen) {
+      showError('signupError', 'Créez un compte en passant d’abord par un paiement sur la page Tarifs.');
+      return;
+    }
     var email = val('signupEmail');
     var password = val('signupPassword');
     var confirm = val('signupConfirm');
@@ -204,7 +253,7 @@
     var maxAttempts = 8;
 
     showAuthOverlay();
-    switchTab('signup');
+    switchTab('login');
 
     function tryFetch() {
       attempts++;
@@ -219,12 +268,13 @@
             // Webhook pas encore traité → réessayer
             setTimeout(tryFetch, 2000);
           } else {
-            // Abandon : afficher le formulaire d'inscription avec email pré-rempli
-            if (data.email) {
-              var signupEmail = document.getElementById('signupEmail');
-              if (signupEmail) signupEmail.value = data.email;
-            }
-            switchTab('signup');
+            var loginEmail = document.getElementById('loginEmail');
+            if (loginEmail && data.email) loginEmail.value = data.email;
+            showError(
+              'loginError',
+              'Finalisation du paiement en cours ou identifiant de session expiré. Vérifiez vos emails (lien d’activation) ou réessayez depuis la page Tarifs.'
+            );
+            switchTab('login');
             showAuthOverlay();
           }
         })
@@ -232,7 +282,8 @@
           if (attempts < maxAttempts) {
             setTimeout(tryFetch, 2000);
           } else {
-            switchTab('signup');
+            showError('loginError', 'Impossible de finaliser pour le moment. Consultez vos emails ou réessayez.');
+            switchTab('login');
             showAuthOverlay();
           }
         });
