@@ -64,7 +64,7 @@
     });
   }
 
-  /** Retour Stripe : tout de suite l’écran création de mot de passe (champs désactivés le temps du token). */
+  /** Retour Stripe : création mot de passe tout de suite — saisie possible pendant la finalisation serveur. */
   function showPostPayCreateAccountUi() {
     removeTempLoginHideStyle();
     var fail = document.getElementById('activationFailOverlay');
@@ -81,14 +81,14 @@
     if (ht) ht.textContent = 'Créez votre mot de passe';
     if (st) {
       st.textContent =
-        'Votre paiement est validé. Définissez le mot de passe de votre nouvel espace client (ce n’est pas une connexion : vous n’en aviez pas encore).';
+        'Vous pouvez déjà choisir votre mot de passe pendant que nous finalisons la session (ce n’est pas une connexion — compte créé après paiement).';
     }
     var ed = document.getElementById('inviteEmailDisplay');
     if (ed) {
-      ed.textContent = 'Validation du paiement…';
+      ed.textContent = 'Finalisation de la session en cours…';
       ed.style.display = 'block';
     }
-    setInviteFormDisabled(true);
+    setInviteFormDisabled(false);
     var iErr = document.getElementById('inviteError');
     if (iErr) {
       iErr.style.display = 'none';
@@ -345,10 +345,11 @@
    */
   function handleGuestPostPayment(sessionId) {
     var attempts = 0;
-    var maxAttempts = 45;
 
     function nextDelay() {
-      return attempts < 30 ? 80 : 350;
+      if (attempts < 25) return 80;
+      if (attempts < 80) return 300;
+      return Math.min(2500, 400 + Math.floor((attempts - 80) / 20) * 200);
     }
 
     function tryFetch() {
@@ -373,7 +374,7 @@
           }
           if (data.reason === 'no_email') {
             showActivationFailure(
-              'Impossible de lire l’email de cette session de paiement. Utilisez le lien envoyé par email après l’achat.'
+              'Impossible de lire l’email de cette session. Utilisez le lien envoyé par email après l’achat.'
             );
             return;
           }
@@ -382,21 +383,11 @@
             showInviteFormOverlay(data.email);
             return;
           }
-          if (attempts < maxAttempts) {
-            setTimeout(tryFetch, nextDelay());
-          } else {
-            showActivationFailure(
-              'Le serveur ne répond pas assez vite. Un email avec un lien d’activation vous a normalement été envoyé — vérifiez votre boîte de réception.'
-            );
-          }
+          setTimeout(tryFetch, nextDelay());
         })
         .catch(function () {
           if (guestActivationCancelled) return;
-          if (attempts < maxAttempts) {
-            setTimeout(tryFetch, nextDelay());
-          } else {
-            showActivationFailure('Problème de connexion. Réessayez dans un instant ou ouvrez le lien reçu par email.');
-          }
+          setTimeout(tryFetch, nextDelay());
         });
     }
 
@@ -404,6 +395,13 @@
   }
 
   window.doAcceptInvite = function () {
+    if (!inviteToken) {
+      showError(
+        'inviteError',
+        'La session est encore en cours de finalisation — réessayez le bouton dans quelques secondes, ou patientez : aucune limite de temps.'
+      );
+      return;
+    }
     var pw = val('invitePassword');
     var confirm = val('inviteConfirm');
     if (!pw || pw.length < 8) { showError('inviteError', 'Mot de passe trop court (8 caractères minimum).'); return; }
