@@ -1702,6 +1702,8 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
 
   const sessionPayload = {
     mode: 'payment',
+    /** Comme sur un Payment Link : champ code promo sur la page Stripe. */
+    allow_promotion_codes: true,
     line_items: [{ price: initialPriceId, quantity: 1 }],
     payment_intent_data: {
       metadata: piMeta
@@ -1771,6 +1773,8 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
   // Build session — invités autorisés (pas besoin de compte avant paiement)
   const sessionData = {
     mode: 'payment',
+    /** Même possibilité de réduction que sur buy.stripe.com (Payment Link). */
+    allow_promotion_codes: true,
     line_items: [
       {
         price_data: {
