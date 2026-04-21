@@ -658,14 +658,19 @@ app.get('/api/webhook', (req, res) => {
 });
 
 /**
- * Client connecté : Payment Link avec client_reference_id=cguser:<id> → crédits compte (même grille que les liens publics).
+ * Client connecté : session Checkout avec client_reference_id=cguser:<id> et/ou metadata.user_id (même logique que MyFidpass / Fidelity).
  */
 async function handleCheckoutSessionAccountCredit(session) {
   if (!stripe || !session || session.mode !== 'payment') return false;
-  const raw = session.client_reference_id || '';
-  if (!raw.startsWith('cguser:')) return false;
-  const userId = raw.slice(7).trim();
-  if (!userId) return true;
+  const raw = String(session.client_reference_id || '');
+  const sm0 = session.metadata || {};
+  let userId = '';
+  if (raw.startsWith('cguser:')) {
+    userId = raw.slice(7).trim();
+  } else if (sm0.user_id) {
+    userId = String(sm0.user_id).trim();
+  }
+  if (!userId) return false;
 
   const prisma = getPrisma();
   if (!prisma) {
@@ -684,7 +689,7 @@ async function handleCheckoutSessionAccountCredit(session) {
     return true;
   }
 
-  const sm = session.metadata || {};
+  const sm = sm0;
   let plan = sm.carvinguard_plan || '';
   let credits = 0;
   let packId = '';
@@ -1123,6 +1128,61 @@ app.get('/api/checkout-session-kind', async (req, res) => {
   }
 });
 
+/**
+ * Montant réel Stripe + type d’achat (pour la page confirmation — évite 19,90 € fantôme du sessionStorage).
+ */
+app.get('/api/checkout-session-summary', async (req, res) => {
+  try {
+    const sessionId = req.query.session_id;
+    if (!sessionId || typeof sessionId !== 'string' || !stripe) {
+      return res.status(400).json({ error: 'session_id requis' });
+    }
+    const sess = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent']
+    });
+    const cents = sess.amount_total;
+    const eurNum = typeof cents === 'number' ? cents / 100 : 0;
+    const amountLabel =
+      typeof cents === 'number' ? eurNum.toFixed(2).replace('.', ',') + ' €' : '—';
+    const piObj = sess.payment_intent;
+    const pm =
+      typeof piObj === 'object' && piObj && piObj.metadata ? piObj.metadata : {};
+    if (pm.purpose === 'subscription_initial') {
+      return res.json({
+        amountTotalCents: cents,
+        amountLabel,
+        currency: sess.currency || 'eur',
+        purchaseType: 'subscription_initial',
+        customerEmail:
+          (sess.customer_details && sess.customer_details.email) ||
+          sess.customer_email ||
+          ''
+      });
+    }
+    const ref = String(sess.client_reference_id || '');
+    const refVin = normalizeVinMeta(ref);
+    let purchaseType = 'wallet_credits';
+    if (ref.startsWith('cguser:')) {
+      purchaseType = 'account_topup';
+    } else if (refVin.length === 17) {
+      purchaseType = 'vin_report';
+    }
+    return res.json({
+      amountTotalCents: cents,
+      amountLabel,
+      currency: sess.currency || 'eur',
+      purchaseType,
+      customerEmail:
+        (sess.customer_details && sess.customer_details.email) ||
+        sess.customer_email ||
+      '',
+      vinFromReference: refVin.length === 17 ? refVin : null
+    });
+  } catch (e) {
+    return res.status(400).json({ error: 'Session invalide ou expirée' });
+  }
+});
+
 /** Raccourci URL vers l’espace client (crédits VIN, paiements Stripe). */
 app.get(['/espace-client', '/espace'], (req, res) => {
   res.redirect(302, '/compte.html');
@@ -1269,16 +1329,44 @@ app.get('/api/saas-config', (req, res) => {
   res.json({
     vinRequiresAccount: false,
     authAvailable: saaSAuthReady(),
-    registrationOpen: false,
+    registrationOpen: saaSAuthReady(),
     creditPacks: creditsPacks
   });
 });
 
 app.post('/api/auth/register', async (req, res) => {
-  return res.status(403).json({
-    error:
-      'Inscription libre désactivée. Un premier compte se crée après un paiement sur la page Tarifs (e-mail reçu pour choisir le mot de passe), ou connectez-vous si vous avez déjà un accès.'
-  });
+  if (!saaSAuthReady()) {
+    return res.status(503).json({ error: 'Inscription indisponible (configuration manquante).' });
+  }
+  const prisma = getPrisma();
+  const email = authLib.normalizeEmail(req.body && req.body.email);
+  const password = String((req.body && req.body.password) || '');
+
+  if (!email || email.indexOf('@') === -1) {
+    return res.status(400).json({ error: 'Adresse email invalide.' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Mot de passe trop court (8 caractères minimum).' });
+  }
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ error: 'Un compte existe déjà avec cette adresse email.' });
+    }
+    const hash = await authLib.hashPassword(password);
+    const user = await prisma.user.create({
+      data: { email, passwordHash: hash, credits: 0 }
+    });
+    const token = authLib.signAuthToken(user.id);
+    authLib.setAuthCookie(res, token);
+    return res.json({
+      user: { id: user.id, email: user.email, credits: user.credits, createdAt: user.createdAt }
+    });
+  } catch (e) {
+    console.error('register:', e);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -1344,6 +1432,67 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
 });
 
+/** Modification du mot de passe (utilisateur connecté). */
+app.post('/api/auth/change-password', async (req, res) => {
+  if (!saaSAuthReady()) return res.status(503).json({ error: 'Service indisponible.' });
+  const prisma = getPrisma();
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) return res.status(401).json({ error: 'Connexion requise.' });
+  const currentPassword = String((req.body && req.body.currentPassword) || '');
+  const newPassword = String((req.body && req.body.newPassword) || '');
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Nouveau mot de passe trop court (8 caractères minimum).' });
+  }
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(401).json({ error: 'Session invalide.' });
+    if (user.passwordHash && !(await authLib.verifyPassword(currentPassword, user.passwordHash))) {
+      return res.status(401).json({ error: 'Mot de passe actuel incorrect.' });
+    }
+    const hash = await authLib.hashPassword(newPassword);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash: hash } });
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('change-password:', e);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+/** Historique des recherches VIN de l'utilisateur connecté. */
+app.get('/api/vin/history', async (req, res) => {
+  const prisma = getPrisma();
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) return res.status(401).json({ error: 'Connexion requise.' });
+  if (!prisma) return res.status(503).json({ error: 'Base de données non disponible.' });
+  const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 200);
+  try {
+    const transactions = await prisma.creditTransaction.findMany({
+      where: { userId, reason: 'vin_decode' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: { id: true, meta: true, createdAt: true }
+    });
+    const history = transactions.map(function (t) {
+      let meta = {};
+      try { meta = JSON.parse(t.meta || '{}'); } catch (e) {}
+      return {
+        id: t.id,
+        vin: meta.vin || '—',
+        make: meta.make || '',
+        model: meta.model || '',
+        year: meta.year || '',
+        fuel_type: meta.fuel_type || '',
+        engine: meta.engine || '',
+        createdAt: t.createdAt
+      };
+    });
+    return res.json(history);
+  } catch (e) {
+    console.error('vin/history:', e);
+    return res.status(500).json({ error: 'Erreur base de données.' });
+  }
+});
+
 app.get('/api/auth/me', async (req, res) => {
   if (!getPrisma()) {
     return res.status(503).json({ error: 'Comptes non disponibles.' });
@@ -1356,7 +1505,7 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, credits: true }
+      select: { id: true, email: true, credits: true, createdAt: true }
     });
     if (!user) {
       authLib.clearAuthCookie(res);
@@ -1454,6 +1603,112 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
     return res.redirect(303, session.url);
   } catch (e) {
     console.error('subscribe-checkout:', e);
+    return res.status(500).send(e.message || 'Erreur Stripe Checkout.');
+  }
+});
+
+/**
+ * Packs crédits (1 / 3 / 10 rapports) : même principe que Fidelity — session Checkout créée par l’API,
+ * utilisateur connecté obligatoire, metadata user_id + cguser: pour le webhook.
+ * Les invités passent toujours par les Payment Links (page tarifs) ou par le parcours VIN.
+ */
+app.get('/api/billing/credit-checkout', async (req, res) => {
+  if (!stripe) {
+    return res.status(500).send('Stripe non configuré.');
+  }
+  const planKey = String(req.query.plan || '').toLowerCase();
+  const plans = {
+    essentiel: {
+      credits: 1,
+      packId: 'tier_essentiel',
+      cents: parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10),
+      name: 'Carvinguard — Rapport VIN unique'
+    },
+    confort: {
+      credits: 3,
+      packId: 'tier_confort',
+      cents: parseInt(process.env.TIER_CONFORT_CENTS || '2999', 10),
+      name: 'Carvinguard — Pack 3 rapports'
+    },
+    premium: {
+      credits: 10,
+      packId: 'tier_premium',
+      cents: parseInt(process.env.TIER_PREMIUM_CENTS || '6999', 10),
+      name: 'Carvinguard — Pack 10 rapports'
+    }
+  };
+  const plan = plans[planKey];
+  if (!plan || !plan.cents || plan.cents < 50) {
+    return res.status(400).send('Formule inconnue ou montant invalide.');
+  }
+
+  const userId = authLib.getUserIdFromCookies(req);
+  const base = appBaseUrl();
+  if (!userId) {
+    return res.redirect(
+      302,
+      base +
+        '/compte.html?next=' +
+        encodeURIComponent('/api/billing/credit-checkout?plan=' + planKey)
+    );
+  }
+
+  const prisma = getPrisma();
+  if (!prisma) {
+    return res.status(503).send('Base de données requise.');
+  }
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { id: userId } });
+  } catch (e) {
+    return res.status(500).send('Erreur base.');
+  }
+  if (!user || !user.email) {
+    return res.redirect(302, base + '/compte.html');
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: user.email,
+      client_reference_id: ('cguser:' + user.id).slice(0, 80),
+      line_items: [
+        {
+          price_data: {
+            currency: 'eur',
+            unit_amount: plan.cents,
+            product_data: {
+              name: plan.name,
+              description: 'Crédits rapport VIN — compte Carvinguard'
+            }
+          },
+          quantity: 1
+        }
+      ],
+      metadata: {
+        app: 'carvinguard',
+        user_id: String(user.id),
+        carvinguard_plan: planKey
+      },
+      payment_intent_data: {
+        metadata: {
+          purpose: 'credit_purchase',
+          userId: String(user.id),
+          credits: String(plan.credits),
+          packId: plan.packId,
+          carvinguard_plan: planKey
+        }
+      },
+      success_url:
+        base + '/compte.html?paid=1&credits=ok&session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: base + '/checkout.html'
+    });
+    if (!session.url) {
+      return res.status(500).send('Session Stripe sans URL.');
+    }
+    return res.redirect(303, session.url);
+  } catch (e) {
+    console.error('credit-checkout:', e);
     return res.status(500).send(e.message || 'Erreur Stripe Checkout.');
   }
 });
@@ -1787,6 +2042,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       });
     }
     userId = tokenUserId;
+    let vinCtxId = null;
     try {
       const charged = await prisma.$transaction(async (tx) => {
         const updated = await tx.user.updateMany({
@@ -1800,15 +2056,15 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
           });
           return { ok: false, credits: u ? u.credits : 0 };
         }
-        await tx.creditTransaction.create({
+        const ct = await tx.creditTransaction.create({
           data: {
             userId,
             delta: -1,
             reason: 'vin_decode',
-            meta: JSON.stringify({ vin: vinMasked })
+            meta: JSON.stringify({ vin })
           }
         });
-        return { ok: true };
+        return { ok: true, ctxId: ct.id };
       });
       if (!charged.ok) {
         return res.status(402).json({
@@ -1818,6 +2074,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
           credits: charged.credits
         });
       }
+      if (charged.ctxId) vinCtxId = charged.ctxId;
     } catch (e) {
       console.error('Débit crédit VIN:', e);
       return res.status(500).json({ status: 'error', message: 'Erreur compte' });
@@ -1857,6 +2114,14 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         if (norm.ok) {
           const outCar = Object.assign({}, norm.json);
           if (isPreview) outCar.access = 'preview';
+          // Enrich creditTransaction with vehicle data for history
+          if (vinCtxId && prisma && norm.json && norm.json.data) {
+            const d = norm.json.data;
+            prisma.creditTransaction.update({
+              where: { id: vinCtxId },
+              data: { meta: JSON.stringify({ vin, make: d.make || '', model: d.model || '', year: d.year || '', fuel_type: d.fuel_type || '', engine: d.engine || '' }) }
+            }).catch(function () {});
+          }
           return res.json(outCar);
         }
       }
@@ -1869,6 +2134,13 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       if (nhtsaCar && nhtsaCar.status === 'success') {
         const out = Object.assign({}, nhtsaCar);
         if (isPreview) out.access = 'preview';
+        if (vinCtxId && prisma && nhtsaCar.data) {
+          const d = nhtsaCar.data;
+          prisma.creditTransaction.update({
+            where: { id: vinCtxId },
+            data: { meta: JSON.stringify({ vin, make: d.make || '', model: d.model || '', year: d.year || '' }) }
+          }).catch(function () {});
+        }
         return res.json(out);
       }
 
@@ -1938,6 +2210,14 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     }
     const outVd = typeof data === 'object' && data !== null ? Object.assign({}, data) : data;
     if (isPreview && outVd && typeof outVd === 'object') outVd.access = 'preview';
+    // Enrich creditTransaction with vehicle data for history (Vehicle Databases path)
+    if (vinCtxId && prisma && outVd && outVd.data) {
+      const d = outVd.data;
+      prisma.creditTransaction.update({
+        where: { id: vinCtxId },
+        data: { meta: JSON.stringify({ vin, make: d.make || '', model: d.model || '', year: d.year || '', fuel_type: d.fuel_type || d.fuelType || '', engine: d.engine || '' }) }
+      }).catch(function () {});
+    }
     res.json(outVd);
   } catch (e) {
     console.error('VIN decode:', e.message);

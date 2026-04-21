@@ -102,7 +102,9 @@
           email: email
         };
         var current = VehicleService.getCommandeData() || {};
-        VehicleService.saveCommandeData(Object.assign({}, current, formData));
+        VehicleService.saveCommandeData(
+          Object.assign({}, current, formData, { attachVinToStripeLink: true })
+        );
         window.location.href = 'checkout.html';
       });
     }

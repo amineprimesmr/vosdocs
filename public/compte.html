@@ -1,145 +1,504 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon compte | Carvinguard</title>
-    <meta name="description" content="Connexion client Carvinguard — crédits et abonnement (mêmes tarifs que la page publique). Premier achat : page Tarifs.">
-    <meta name="robots" content="noindex, follow">
-    <link rel="canonical" href="https://www.carvinguard.fr/compte.html">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/checkout-pricing.css?v=6">
-    <link rel="stylesheet" href="css/compte.css?v=5">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="js/analytics.js"></script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'AW-17972633421');
-    </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espace client | CarvinGuard</title>
+  <meta name="description" content="Votre espace client CarvinGuard — recherche VIN, historique des rapports, crédits.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/css/dashboard.css?v=1">
+  <script src="/js/analytics.js" defer></script>
 </head>
-<body class="compte-page">
-    <header class="header header-light">
-        <div class="container header-inner">
-            <a href="index.html" class="logo"><img src="/logo.png" alt="CarVINGuard"></a>
-            <nav class="nav-main">
-                <a href="index.html" class="nav-link">Accueil</a>
-                <a href="contact.html" class="nav-link">Contact</a>
-            </nav>
+<body class="dashboard-page">
+
+  <!-- ================================================================
+       AUTH OVERLAY — affichée quand l'utilisateur n'est pas connecté
+       ================================================================ -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="/logo.png" alt="CarvinGuard">
+        <span class="auth-logo-text">CarvinGuard</span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">Connexion</button>
+        <button class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">Créer un compte</button>
+      </div>
+
+      <!-- Connexion -->
+      <div class="auth-panel active" id="panelLogin">
+        <div class="form-group">
+          <label class="auth-label" for="loginEmail">Email</label>
+          <input class="auth-input" id="loginEmail" type="email" autocomplete="email"
+                 placeholder="vous@exemple.fr" required>
         </div>
-    </header>
+        <div class="form-group">
+          <label class="auth-label" for="loginPassword">Mot de passe</label>
+          <input class="auth-input" id="loginPassword" type="password" autocomplete="current-password"
+                 placeholder="••••••••" required>
+        </div>
+        <div class="auth-error" id="loginError" style="display:none;"></div>
+        <button class="auth-btn" id="loginBtn" onclick="doLogin()">
+          <span id="loginBtnText">Se connecter</span>
+          <span class="spinner" id="loginSpinner" style="display:none;"></span>
+        </button>
+        <p class="auth-footer">
+          Pas encore de compte ? <button class="auth-link" onclick="switchTab('signup')">Créer un compte</button>
+        </p>
+      </div>
 
-    <main class="compte-wrap" id="compteMain">
-        <nav class="compte-breadcrumb breadcrumb" aria-label="Fil d’Ariane">
-            <a href="index.html">Accueil</a> &gt; <span>Mon compte</span>
-        </nav>
+      <!-- Inscription -->
+      <div class="auth-panel" id="panelSignup">
+        <div class="form-group">
+          <label class="auth-label" for="signupEmail">Email</label>
+          <input class="auth-input" id="signupEmail" type="email" autocomplete="email"
+                 placeholder="vous@exemple.fr" required>
+        </div>
+        <div class="form-group">
+          <label class="auth-label" for="signupPassword">Mot de passe</label>
+          <input class="auth-input" id="signupPassword" type="password" autocomplete="new-password"
+                 placeholder="8 caractères minimum" required minlength="8">
+        </div>
+        <div class="form-group">
+          <label class="auth-label" for="signupConfirm">Confirmer le mot de passe</label>
+          <input class="auth-input" id="signupConfirm" type="password" autocomplete="new-password"
+                 placeholder="••••••••" required>
+        </div>
+        <div class="auth-error" id="signupError" style="display:none;"></div>
+        <button class="auth-btn" id="signupBtn" onclick="doSignup()">
+          <span id="signupBtnText">Créer mon compte</span>
+          <span class="spinner" id="signupSpinner" style="display:none;"></span>
+        </button>
+        <p class="auth-footer">
+          Déjà client ? <button class="auth-link" onclick="switchTab('login')">Me connecter</button>
+        </p>
+      </div>
+    </div>
+  </div>
 
-        <header class="compte-hero">
-            <p class="compte-hero-kicker" id="compteHeroKicker">Espace client</p>
-            <h1 id="compteH1">Mon compte</h1>
-            <p class="compte-hero-lead" id="compteHeroLead">
-                Connexion réservée aux clients disposant déjà d’un accès. Les tarifs et le paiement (y compris premier achat invité) passent par la page Tarifs.
-            </p>
-        </header>
+  <!-- ================================================================
+       INVITE OVERLAY — activation du compte après paiement
+       ================================================================ -->
+  <div class="invite-overlay hidden" id="inviteOverlay">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="/logo.png" alt="CarvinGuard">
+        <span class="auth-logo-text">CarvinGuard</span>
+      </div>
+      <h2 style="font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.025em;">
+        Finalisez votre compte
+      </h2>
+      <p style="font-size:.875rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">
+        Votre paiement est confirmé. Choisissez un mot de passe pour accéder à vos crédits VIN.
+      </p>
+      <div class="form-group">
+        <label class="auth-label" for="invitePassword">Mot de passe</label>
+        <input class="auth-input" id="invitePassword" type="password" autocomplete="new-password"
+               placeholder="8 caractères minimum" minlength="8">
+      </div>
+      <div class="form-group">
+        <label class="auth-label" for="inviteConfirm">Confirmer</label>
+        <input class="auth-input" id="inviteConfirm" type="password" autocomplete="new-password"
+               placeholder="••••••••">
+      </div>
+      <div class="auth-error" id="inviteError" style="display:none;"></div>
+      <button class="auth-btn" id="inviteBtn" onclick="doAcceptInvite()">
+        <span id="inviteBtnText">Activer mon compte</span>
+        <span class="spinner" id="inviteSpinner" style="display:none;"></span>
+      </button>
+    </div>
+  </div>
 
-        <p id="saasUnavailable" class="saas-banner" role="alert"></p>
+  <!-- ================================================================
+       APP SHELL
+       ================================================================ -->
+  <div class="app-shell" id="appShell" style="display:none;">
 
-        <div id="postPayGuestHint" class="compte-postpay compte-postpay--guest" style="display:none;" role="status">
-            <div class="compte-postpay-inner">
-                <span class="compte-postpay-icon" aria-hidden="true">✓</span>
-                <div>
-                    <p class="compte-postpay-title">Paiement reçu</p>
-                    <p class="compte-postpay-text">Connectez-vous avec <strong>l’e-mail utilisé sur Stripe</strong> pour voir vos crédits et lancer des recherches VIN.</p>
-                </div>
+    <!-- Sidebar overlay mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- ---- SIDEBAR ---- -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <img src="/logo.png" alt="CarvinGuard">
+        <span class="sidebar-logo-name">CarvinGuard</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-section="dashboard" onclick="goSection('dashboard')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+          Tableau de bord
+        </button>
+
+        <button class="nav-item" data-section="search" onclick="goSection('search')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          Nouvelle recherche
+          <span class="nav-badge" id="sidebarCredits" style="display:none;"></span>
+        </button>
+
+        <button class="nav-item" data-section="history" onclick="goSection('history')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>
+          </svg>
+          Mes rapports
+        </button>
+
+        <button class="nav-item" data-section="credits" onclick="goSection('credits')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>
+          </svg>
+          Acheter des crédits
+        </button>
+
+        <div style="height:12px;"></div>
+
+        <button class="nav-item" data-section="profile" onclick="goSection('profile')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          Profil &amp; paramètres
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebarAvatar">?</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
+        </div>
+        <button class="btn-logout" onclick="doLogout()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Déconnexion
+        </button>
+      </div>
+    </aside>
+
+    <!-- ---- MAIN ---- -->
+    <main class="app-main">
+
+      <!-- Mobile topbar -->
+      <div class="app-topbar">
+        <button class="btn-menu" onclick="openSidebar()" aria-label="Menu">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <span class="topbar-title">CarvinGuard</span>
+      </div>
+
+      <!-- ============= DASHBOARD ============= -->
+      <section class="app-section active" id="section-dashboard">
+        <div class="section-header">
+          <h1 class="section-title">Tableau de bord</h1>
+          <p class="section-sub">Bienvenue dans votre espace CarvinGuard.</p>
+        </div>
+
+        <!-- Post-payment banner -->
+        <div class="success-banner hidden" id="postPayBanner">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span id="postPayText">Paiement confirmé — vos crédits ont été ajoutés à votre compte.</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card stat-card--credits">
+            <div class="stat-label">Crédits disponibles</div>
+            <div class="stat-value" id="statCredits">—</div>
+            <div class="stat-hint">1 crédit = 1 rapport VIN complet</div>
+          </div>
+          <div class="stat-card stat-card--month">
+            <div class="stat-label">Rapports ce mois</div>
+            <div class="stat-value" id="statMonth">—</div>
+            <div class="stat-hint">Recherches du mois en cours</div>
+          </div>
+          <div class="stat-card stat-card--total">
+            <div class="stat-label">Total rapports</div>
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-hint">Depuis la création du compte</div>
+          </div>
+        </div>
+
+        <!-- Recent searches -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Dernières recherches</span>
+            <button class="dash-link-btn" onclick="goSection('history')">Voir tout →</button>
+          </div>
+          <div id="recentSearches">
+            <div class="loading-state">
+              <span class="spinner spinner--accent"></span>
+              <span>Chargement…</span>
             </div>
+          </div>
         </div>
 
-        <div id="compteInvite" class="compte-form-card compte-invite-card" style="display:none;">
-            <h2 class="compte-guest-login-title">Finalisez votre espace client</h2>
-            <p class="compte-invite-lead">Votre paiement est enregistré. Choisissez un mot de passe pour le compte associé à votre e-mail Stripe.</p>
-            <form id="formInvite" class="compte-form" autocomplete="new-password">
-                <div class="form-group">
-                    <label for="invitePassword">Mot de passe</label>
-                    <input id="invitePassword" name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="8 caractères minimum">
-                </div>
-                <p id="inviteError" class="form-error-inline" role="alert"></p>
-                <button type="submit" class="btn btn-primary">Activer mon compte</button>
-            </form>
+        <!-- Quick CTA if no credits -->
+        <div class="info-banner hidden" id="noCreditsHint" style="margin-top:16px;">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+          </svg>
+          <span>Vous n'avez plus de crédits. <button class="auth-link" onclick="goSection('credits')">Recharger maintenant →</button></span>
+        </div>
+      </section>
+
+      <!-- ============= SEARCH ============= -->
+      <section class="app-section" id="section-search">
+        <div class="section-header">
+          <h1 class="section-title">Nouvelle recherche VIN</h1>
+          <p class="section-sub">Saisissez un numéro VIN (17 caractères) pour obtenir un rapport complet.</p>
         </div>
 
-        <div id="compteGuest">
-            <div class="compte-guest-card compte-form-card">
-                <p class="compte-guest-first">
-                    <strong>Premier achat ?</strong>
-                    <a class="compte-guest-cta" href="checkout.html">Voir les tarifs et payer sur Stripe</a>
-                    — vous pouvez payer sans compte : un <strong>espace client</strong> est créé à l’e-mail indiqué sur Stripe ; vous recevez un lien pour choisir votre mot de passe.
-                </p>
-                <hr class="compte-guest-sep" />
-                <h2 class="compte-guest-login-title">Connexion</h2>
-                <form id="formLogin" class="compte-form" autocomplete="on">
-                    <div class="form-group">
-                        <label for="loginEmail">Email</label>
-                        <input id="loginEmail" name="email" type="email" autocomplete="email" required placeholder="vous@exemple.fr">
-                    </div>
-                    <div class="form-group">
-                        <label for="loginPassword">Mot de passe</label>
-                        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
-                    </div>
-                    <p id="loginError" class="form-error-inline" role="alert"></p>
-                    <button type="submit" class="btn btn-primary">Se connecter</button>
-                </form>
+        <div class="vin-search-card">
+          <div class="vin-input-row">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label class="form-label" for="vinInput">Numéro VIN</label>
+              <input class="form-input form-input--vin" id="vinInput" type="text"
+                     placeholder="ex : VF1RFB00063879582" maxlength="17" autocomplete="off"
+                     oninput="this.value=this.value.replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g,'').toUpperCase()"
+                     onkeydown="if(event.key==='Enter')doVinSearch()">
             </div>
+            <button class="btn btn--primary" id="searchBtn" onclick="doVinSearch()" style="align-self:flex-end;padding:11px 20px;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <span id="searchBtnText">Rechercher</span>
+              <span class="spinner" id="searchSpinner" style="display:none;"></span>
+            </button>
+          </div>
+          <p class="credits-hint">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+            </svg>
+            Solde actuel : <span class="credits-count" id="searchCreditsCount">—</span> crédits — 1 crédit sera débité par recherche.
+          </p>
+          <div class="form-error" id="searchError" style="display:none;"></div>
         </div>
 
-        <div id="compteUser" style="display:none;" class="compte-dash">
-            <div id="postPayWelcome" class="compte-postpay" style="display:none;" role="status">
-                <div class="compte-postpay-inner">
-                    <span class="compte-postpay-icon" aria-hidden="true">✓</span>
-                    <div>
-                        <p class="compte-postpay-title" id="postPayWelcomeTitle">Paiement confirmé</p>
-                        <p class="compte-postpay-text" id="postPayWelcomeText">Vos crédits sont en cours d’attribution sur ce compte…</p>
-                    </div>
-                </div>
+        <!-- VIN Result -->
+        <div class="vin-result-card" id="vinResult" style="display:none;">
+          <div class="vin-result-header">
+            <div class="vin-result-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
             </div>
-
-            <section class="compte-quick card-quick" aria-label="Actions rapides">
-                <a class="compte-quick-cta" href="index.html">Nouvelle recherche VIN</a>
-                <span class="compte-quick-hint">1 crédit = 1 décodage complet (rapport PDF)</span>
-            </section>
-
-            <p id="creditsMessage"></p>
-
-            <section class="compte-card compte-card--balance" aria-labelledby="balanceHeading">
-                <div class="compte-card-inner">
-                    <div class="compte-user-row">
-                        <p class="compte-user-email">Connecté en tant que <strong id="userEmailDisplay"></strong></p>
-                        <button type="button" id="btnLogout" class="compte-logout">Déconnexion</button>
-                    </div>
-                    <div class="compte-balance-block">
-                        <span id="balanceHeading" class="compte-balance-label">Crédits disponibles</span>
-                        <p class="compte-balance" id="creditBalance" aria-live="polite">0</p>
-                        <p class="compte-balance-hint">1 crédit = 1 recherche VIN avec décodage complet (rapport PDF).</p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="compte-card compte-card--tiers" id="creditsSection" aria-labelledby="rechargeHeading">
-                <div class="compte-recharge-head">
-                    <h2 id="rechargeHeading">Crédits &amp; abonnement</h2>
-                    <p class="compte-recharge-lead cg-hero-sub" style="margin-top:8px;">
-                        Mêmes tarifs que la <a href="checkout.html">page Tarifs</a>. Choisissez une formule — le paiement Stripe s’affiche en dessous.
-                    </p>
-                </div>
-                <div id="creditPacks" class="cg-tier-grid compte-tier-grid" role="list"></div>
-            </section>
-
-            <p class="compte-back"><a href="index.html">← Retour à la recherche VIN</a></p>
+            <div>
+              <div class="vin-result-vehicle" id="resultVehicle">—</div>
+              <div class="vin-result-code" id="resultVinCode">—</div>
+            </div>
+          </div>
+          <div class="vin-result-body">
+            <div class="result-grid" id="resultGrid"></div>
+          </div>
         </div>
+      </section>
+
+      <!-- ============= HISTORY ============= -->
+      <section class="app-section" id="section-history">
+        <div class="section-header">
+          <h1 class="section-title">Mes rapports</h1>
+          <p class="section-sub">Historique complet de vos recherches VIN.</p>
+        </div>
+
+        <div class="dash-card">
+          <div id="historyContent">
+            <div class="loading-state">
+              <span class="spinner spinner--accent"></span>
+              <span>Chargement…</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============= CREDITS ============= -->
+      <section class="app-section" id="section-credits">
+        <div class="section-header">
+          <h1 class="section-title">Acheter des crédits</h1>
+          <p class="section-sub">Choisissez une formule — paiement sécurisé par Stripe.</p>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- Essentiel -->
+          <a class="pricing-card" href="/api/billing/credit-checkout?plan=essentiel">
+            <div class="pricing-name">Rapport unique</div>
+            <div class="pricing-desc">Un décodage VIN complet pour un seul véhicule.</div>
+            <div class="pricing-price">14,99&nbsp;€</div>
+            <div class="pricing-unit">1 rapport</div>
+            <span class="btn-pricing btn-pricing--outline">Payer sur Stripe →</span>
+          </a>
+
+          <!-- Confort -->
+          <a class="pricing-card pricing-card--popular" href="/api/billing/credit-checkout?plan=confort">
+            <span class="pricing-badge">Le plus populaire</span>
+            <div class="pricing-name">Pack 3 rapports</div>
+            <div class="pricing-desc">Idéal pour comparer plusieurs véhicules avant achat.</div>
+            <div class="pricing-price">29,99&nbsp;€</div>
+            <div class="pricing-unit"><strong>9,99&nbsp;€</strong> / rapport</div>
+            <span class="btn-pricing btn-pricing--primary">Payer sur Stripe →</span>
+          </a>
+
+          <!-- Premium -->
+          <a class="pricing-card" href="/api/billing/credit-checkout?plan=premium">
+            <div class="pricing-name">Pack Pro — 10 rapports</div>
+            <div class="pricing-desc">Pour les professionnels et volumes réguliers.</div>
+            <div class="pricing-price">69,99&nbsp;€</div>
+            <div class="pricing-unit"><strong>6,99&nbsp;€</strong> / rapport</div>
+            <span class="btn-pricing btn-pricing--outline">Payer sur Stripe →</span>
+          </a>
+        </div>
+
+        <!-- Subscription -->
+        <div class="dash-card" style="margin-bottom:0;">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Abonnement mensuel</span>
+            <span class="badge badge--amber">Le best deal</span>
+          </div>
+          <div style="padding:20px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:1.5rem;font-weight:800;color:var(--text);letter-spacing:-.03em;margin-bottom:4px;">
+                1&nbsp;€ <span style="font-size:.875rem;font-weight:500;color:var(--text-muted);">puis 49,99&nbsp;€/mois</span>
+              </div>
+              <div style="font-size:.875rem;color:var(--text-muted);max-width:400px;line-height:1.5;">
+                7 rapports VIN par mois, renouvelés chaque cycle. Résiliable à tout moment depuis votre
+                <a href="/resiliation-abonnement.html" style="color:var(--accent);text-decoration:none;">espace abonnement</a>.
+              </div>
+            </div>
+            <a href="/api/billing/subscribe-checkout"
+               style="flex-shrink:0;padding:12px 24px;background:var(--accent);color:white;border-radius:var(--r);
+                      font-weight:700;font-size:.9375rem;text-decoration:none;white-space:nowrap;
+                      transition:all .15s;display:inline-block;"
+               onmouseover="this.style.background='var(--accent-h)'"
+               onmouseout="this.style.background='var(--accent)'">
+              S'abonner →
+            </a>
+          </div>
+        </div>
+
+        <p style="font-size:.8125rem;color:var(--text-muted);margin-top:16px;text-align:center;">
+          Paiement 100&nbsp;% sécurisé par Stripe · Aucune donnée bancaire stockée sur nos serveurs
+        </p>
+      </section>
+
+      <!-- ============= PROFILE ============= -->
+      <section class="app-section" id="section-profile">
+        <div class="section-header">
+          <h1 class="section-title">Profil &amp; paramètres</h1>
+          <p class="section-sub">Gérez vos informations de compte.</p>
+        </div>
+
+        <!-- Infos compte -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <div class="profile-card-title">Informations du compte</div>
+          </div>
+          <div class="profile-card-body">
+            <div class="profile-row">
+              <div class="profile-row-label">Email</div>
+              <div class="profile-row-value" id="profileEmail">—</div>
+            </div>
+            <div class="profile-row">
+              <div class="profile-row-label">Crédits</div>
+              <div class="profile-row-value"><span id="profileCredits">—</span> crédit(s)</div>
+            </div>
+            <div class="profile-row">
+              <div class="profile-row-label">Membre depuis</div>
+              <div class="profile-row-value" id="profileCreatedAt">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Changer mot de passe -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <div class="profile-card-title">Modifier le mot de passe</div>
+          </div>
+          <div class="profile-card-body">
+            <div class="profile-form">
+              <div class="form-group">
+                <label class="form-label" for="pwdCurrent">Mot de passe actuel</label>
+                <input class="form-input" id="pwdCurrent" type="password" autocomplete="current-password"
+                       placeholder="••••••••">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="pwdNew">Nouveau mot de passe</label>
+                <input class="form-input" id="pwdNew" type="password" autocomplete="new-password"
+                       placeholder="8 caractères minimum" minlength="8">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="pwdConfirm">Confirmer</label>
+                <input class="form-input" id="pwdConfirm" type="password" autocomplete="new-password"
+                       placeholder="••••••••">
+              </div>
+              <div class="form-error" id="pwdError" style="display:none;"></div>
+              <div class="form-success" id="pwdSuccess" style="display:none;"></div>
+              <button class="btn btn--secondary" onclick="doChangePassword()">Modifier le mot de passe</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Liens utiles -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <div class="profile-card-title">Liens utiles</div>
+          </div>
+          <div class="profile-card-body">
+            <div class="profile-row">
+              <div class="profile-row-label">Gérer l'abonnement</div>
+              <div class="profile-row-value">
+                <a href="/resiliation-abonnement.html" style="color:var(--accent);text-decoration:none;">
+                  Résilier ou modifier →
+                </a>
+              </div>
+            </div>
+            <div class="profile-row">
+              <div class="profile-row-label">Aide &amp; support</div>
+              <div class="profile-row-value">
+                <a href="/contact.html" style="color:var(--accent);text-decoration:none;">
+                  Contacter l'équipe →
+                </a>
+              </div>
+            </div>
+            <div class="profile-row">
+              <div class="profile-row-label">Accueil</div>
+              <div class="profile-row-value">
+                <a href="/index.html" style="color:var(--accent);text-decoration:none;">
+                  Retour à l'accueil →
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div style="margin-top:8px;">
+          <button class="btn btn--danger" onclick="doLogout()">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Se déconnecter
+          </button>
+        </div>
+      </section>
+
     </main>
+  </div>
 
-    <script src="js/compte.js?v=7"></script>
+  <script src="/js/dashboard.js?v=1"></script>
 </body>
 </html>

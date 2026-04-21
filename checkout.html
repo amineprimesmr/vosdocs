@@ -38,12 +38,16 @@
     <main class="cg-main">
         <section class="cg-pricing-hero">
             <h1 class="cg-hero-title">Tarifs simples et <span class="cg-text-green">transparents</span></h1>
-            <p class="cg-hero-sub">Choisissez votre formule — le bouton ouvre la page de paiement Stripe (buy.stripe.com). Même expérience partout sur le site.</p>
+            <p class="cg-hero-sub">
+                <strong>Connecté :</strong> session Stripe créée par notre API (comme sur MyFidpass) — tarif affiché = montant payé, crédits sur votre compte.
+                <strong>Non connecté :</strong> lien Stripe hébergé ; utilisez l’e-mail où vous voudrez recevoir l’accès client.
+            </p>
         </section>
 
         <div id="paymentLinksMissing" class="cg-config-banner" hidden>
-            <strong>Configuration requise.</strong> Ajoutez vos liens Stripe (Payment Links) dans les variables d’environnement&nbsp;:
+            <strong>Configuration invités.</strong> Pour les achats <em>sans</em> compte, renseignez les Payment Links&nbsp;:
             <code>STRIPE_PAYMENT_LINK_ESSENTIEL</code>, <code>STRIPE_PAYMENT_LINK_CONFORT</code>, <code>STRIPE_PAYMENT_LINK_PREMIUM</code>.
+            Les clients connectés n’en ont pas besoin.
         </div>
 
         <section class="cg-tiers-section" aria-labelledby="tiersTitle">

@@ -82,10 +82,11 @@
                     (généralement en moins d’une minute). Un email de confirmation avec le PDF vous est aussi envoyé.
                 </p>
                 <div class="cg-confirm-details" id="confirmationDetails">
-                    <p><strong>Référence véhicule (VIN)</strong> <span id="ref">—</span></p>
+                    <p id="confirmVinRow"><strong>Référence véhicule (VIN)</strong> <span id="ref">—</span></p>
                     <p><strong>Montant payé</strong> <span id="montant">—</span></p>
                     <p><strong>Délai indicatif</strong> sous 5 minutes</p>
                 </div>
+                <p id="confirmPurchaseTypeHint" style="display:none;font-size:0.9rem;color:var(--text-light);line-height:1.5;"></p>
                 <p id="confirmEmailHint" style="font-size: 0.9rem; color: var(--text-light); line-height: 1.5;">
                     Pensez à vérifier vos <strong>courriers indésirables</strong> si vous ne voyez pas notre message.
                 </p>
@@ -129,21 +130,66 @@
     <script src="js/vehicle-service.js"></script>
     <script>
         (function() {
+            var params = new URLSearchParams(window.location.search);
+            var pi = params.get('payment_intent');
+            var sessionId = params.get('session_id');
+
             var data = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
             if (data && typeof VehicleService !== 'undefined') {
                 VehicleService.saveCommandeData(Object.assign({}, data, { reportUnlocked: true }));
                 data = VehicleService.getCommandeData();
             }
             if (data) {
-                var ref = document.getElementById('ref');
+                var refEl = document.getElementById('ref');
                 var montant = document.getElementById('montant');
-                if (ref && data.vin) ref.textContent = data.vin;
-                if (montant && data.prix !== undefined) montant.textContent = (data.prix || 19.90).toFixed(2).replace('.', ',') + ' €';
+                if (refEl && data.vin && !sessionId) refEl.textContent = data.vin;
+                if (montant && data.prix !== undefined && !sessionId) {
+                    montant.textContent = (Number(data.prix) || 14.99).toFixed(2).replace('.', ',') + ' €';
+                }
             }
 
-            var params = new URLSearchParams(window.location.search);
-            var pi = params.get('payment_intent');
-            var sessionId = params.get('session_id');
+            function applyStripeSummary(s) {
+                var montantEl = document.getElementById('montant');
+                var refSpan = document.getElementById('ref');
+                var vinRow = document.getElementById('confirmVinRow');
+                var typeHint = document.getElementById('confirmPurchaseTypeHint');
+                if (!s || !s.amountLabel) return;
+                if (montantEl) montantEl.textContent = s.amountLabel;
+                if (s.purchaseType === 'vin_report') {
+                    if (refSpan) {
+                        refSpan.textContent =
+                            (s.vinFromReference && s.vinFromReference.length === 17
+                                ? s.vinFromReference
+                                : null) ||
+                            (data && data.vin) ||
+                            '—';
+                    }
+                    if (vinRow) vinRow.style.display = '';
+                    if (typeHint) typeHint.style.display = 'none';
+                } else if (s.purchaseType === 'wallet_credits') {
+                    if (vinRow) vinRow.style.display = 'none';
+                    if (typeHint) {
+                        typeHint.style.display = 'block';
+                        typeHint.textContent =
+                            'Achat de crédits : ils sont associés à l’e-mail utilisé sur Stripe. Ouvrez Mon compte avec cet e-mail pour voir votre solde.';
+                    }
+                }
+            }
+
+            if (sessionId) {
+                fetch(
+                    window.location.origin +
+                        '/api/checkout-session-summary?session_id=' +
+                        encodeURIComponent(sessionId)
+                )
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (s) {
+                        if (s && !s.error) applyStripeSummary(s);
+                    })
+                    .catch(function () {});
+            }
 
             var pollEl = document.getElementById('confirmPollStatus');
             var cta = document.getElementById('confirmReportCta');

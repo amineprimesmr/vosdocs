@@ -78,7 +78,7 @@
                 demarche: 'Rapport historique véhicule (VIN)',
                 vin: vin.toUpperCase(),
                 vehicleData: vehicleData,
-                prix: 19.90,
+                prix: 14.99,
                 reportUnlocked: false,
                 partialDecode: !!result.partialDecode
               });
@@ -89,7 +89,7 @@
               VehicleService.saveCommandeData({
                 demarche: 'Rapport historique véhicule (VIN)',
                 vin: vin.toUpperCase(),
-                prix: 19.90,
+                prix: 14.99,
                 reportUnlocked: false
               });
             }

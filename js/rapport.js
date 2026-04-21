@@ -142,6 +142,12 @@
     var btn = document.getElementById('btnUnlockFull');
     if (btn && !reportUnlocked) {
       btn.addEventListener('click', function () {
+        if (typeof VehicleService !== 'undefined') {
+          var d = VehicleService.getCommandeData() || {};
+          VehicleService.saveCommandeData(
+            Object.assign({}, d, { attachVinToStripeLink: true })
+          );
+        }
         window.location.href = 'checkout.html?plan=confort';
       });
     }
