@@ -448,7 +448,7 @@
     <!-- PRICING CARDS -->
     <div class="pricing-grid" id="pricingGrid">
       <!-- Essentiel -->
-      <a class="plan-card" href="/compte.html" id="link-essentiel" data-plan="essentiel">
+      <a class="plan-card" href="/api/billing/credit-checkout?plan=essentiel" id="link-essentiel" data-plan="essentiel">
         <div class="plan-name">Rapport unique</div>
         <div class="plan-desc">Un décodage VIN complet pour un véhicule. Idéal pour un achat ponctuel.</div>
         <div class="plan-price">14,99&nbsp;€</div>
@@ -471,7 +471,7 @@
       </a>
 
       <!-- Confort -->
-      <a class="plan-card plan-card--popular" href="/compte.html" id="link-confort" data-plan="confort">
+      <a class="plan-card plan-card--popular" href="/api/billing/credit-checkout?plan=confort" id="link-confort" data-plan="confort">
         <span class="plan-badge">Le plus populaire</span>
         <div class="plan-name">Pack 3 rapports</div>
         <div class="plan-desc">Comparez plusieurs véhicules avant votre achat. Le meilleur rapport qualité-prix.</div>
@@ -495,7 +495,7 @@
       </a>
 
       <!-- Premium -->
-      <a class="plan-card" href="/compte.html" id="link-premium" data-plan="premium">
+      <a class="plan-card" href="/api/billing/credit-checkout?plan=premium" id="link-premium" data-plan="premium">
         <div class="plan-name">Pack Pro — 10 rapports</div>
         <div class="plan-desc">Pour les professionnels : garages, marchands, experts. Volume et économies maximales.</div>
         <div class="plan-price">69,99&nbsp;€</div>
@@ -529,7 +529,7 @@
           <a href="/resiliation-abonnement.html">espace abonnement</a>.
         </p>
       </div>
-      <a href="/compte.html" id="link-abonnement"
+      <a href="/api/billing/subscribe-checkout" id="link-abonnement"
          style="flex-shrink:0;padding:13px 28px;background:var(--accent);color:white;border-radius:var(--r);
                 font-weight:700;font-size:.9375rem;text-decoration:none;transition:all .15s;white-space:nowrap;"
          onmouseover="this.style.background='#1D4ED8'"
@@ -613,38 +613,5 @@
     © 2025 CarvinGuard — Service de décodage VIN
   </footer>
 
-  <script>
-    // Redirect pricing links to compte with ?next=billing for logged-in users
-    (function() {
-      var planMap = {
-        essentiel: '/api/billing/credit-checkout?plan=essentiel',
-        confort:   '/api/billing/credit-checkout?plan=confort',
-        premium:   '/api/billing/credit-checkout?plan=premium',
-      };
-
-      function setLinks(user) {
-        Object.keys(planMap).forEach(function(plan) {
-          var el = document.getElementById('link-' + plan);
-          if (!el) return;
-          if (user) {
-            el.href = planMap[plan];
-          } else {
-            el.href = '/compte.html?next=' + encodeURIComponent(planMap[plan]);
-          }
-        });
-        var sub = document.getElementById('link-abonnement');
-        if (sub) {
-          sub.href = user
-            ? '/api/billing/subscribe-checkout'
-            : '/compte.html?next=' + encodeURIComponent('/api/billing/subscribe-checkout');
-        }
-      }
-
-      fetch('/api/auth/me', { credentials: 'include' })
-        .then(function(r) { return r.json(); })
-        .then(function(d) { setLinks(d.authenticated && d.user ? d.user : null); })
-        .catch(function() { setLinks(null); });
-    })();
-  </script>
 </body>
 </html>
