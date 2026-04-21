@@ -62,18 +62,160 @@ function normalizeVinMeta(s) {
     .toUpperCase();
 }
 
+/** Cache listage prix Stripe (évite un appel à chaque clic). */
+let __stripeCatalogCache = { ts: 0, ttlMs: 60 * 60 * 1000, value: null };
+
+async function listAllActivePricesStripe(stripe) {
+  const out = [];
+  let starting_after;
+  for (let page = 0; page < 15; page++) {
+    const r = await stripe.prices.list({
+      active: true,
+      limit: 100,
+      starting_after,
+      expand: ['data.product']
+    });
+    out.push(...r.data);
+    if (!r.has_more || !r.data.length) break;
+    starting_after = r.data[r.data.length - 1].id;
+  }
+  return out;
+}
+
+function stripePriceProductName(price) {
+  const p = price.product;
+  if (p && typeof p === 'object' && p.name) return String(p.name);
+  return '';
+}
+
+function pickStripePriceByAmountAndHints(candidates, hints) {
+  if (!candidates || !candidates.length) return null;
+  if (candidates.length === 1) return candidates[0].id;
+  const hl = (hints || []).map((h) => h.toLowerCase());
+  let bestId = candidates[0].id;
+  let bestScore = -1;
+  for (const c of candidates) {
+    const n = stripePriceProductName(c).toLowerCase();
+    const score = hl.reduce((s, h) => s + (h && n.includes(h) ? 2 : 0), 0);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = c.id;
+    }
+  }
+  return bestId;
+}
+
 /**
- * Ligne de panier pour les packs crédits : si TIER_*_PRICE_ID est défini (price_… du catalogue Stripe),
- * le coupon peut être restreint à ce prix ; sinon price_data crée un produit à la volée (les promos
- * « ce produit uniquement » ne s’appliquent jamais → erreur Stripe « valide mais ne s’applique pas »).
+ * Résout automatiquement les price_… du catalogue Stripe (aucune variable obligatoire).
+ * Priorité : env TIER_*_PRICE_ID / SUBSCRIPTION_PRICE_* > matching montant + nom produit > vide (fallback price_data côté packs).
  */
-function creditPackCheckoutLineItems(planKey, plan) {
-  const priceIdByPlan = {
+async function resolveCarvinguardStripeCatalog(stripe) {
+  const now = Date.now();
+  if (__stripeCatalogCache.value && now - __stripeCatalogCache.ts < __stripeCatalogCache.ttlMs) {
+    return __stripeCatalogCache.value;
+  }
+
+  const essCents = parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10);
+  const confCents = parseInt(process.env.TIER_CONFORT_CENTS || '2999', 10);
+  const premCents = parseInt(process.env.TIER_PREMIUM_CENTS || '6999', 10);
+  const subInitialCents = parseInt(process.env.SUBSCRIPTION_INITIAL_CENTS_FOR_DISPLAY || '100', 10);
+  const subMonthlyCents = parseInt(process.env.SUBSCRIPTION_MONTHLY_CENTS_FOR_DISPLAY || '4999', 10);
+
+  let prices = [];
+  try {
+    prices = await listAllActivePricesStripe(stripe);
+  } catch (e) {
+    console.error('resolveCarvinguardStripeCatalog list prices:', e.message);
+  }
+
+  const eurOneTime = prices.filter(
+    (p) => p.currency === 'eur' && p.type === 'one_time' && typeof p.unit_amount === 'number'
+  );
+  const eurMonthly = prices.filter(
+    (p) =>
+      p.currency === 'eur' &&
+      p.type === 'recurring' &&
+      p.recurring &&
+      p.recurring.interval === 'month' &&
+      typeof p.unit_amount === 'number'
+  );
+
+  const filterAmt = (arr, cents) => arr.filter((p) => p.unit_amount === cents);
+
+  const credit = {
+    essentiel:
+      pickStripePriceByAmountAndHints(filterAmt(eurOneTime, essCents), [
+        'certificat',
+        'unique',
+        'essentiel',
+        'rapport',
+        'vin',
+        'carvinguard'
+      ]),
+    confort:
+      pickStripePriceByAmountAndHints(filterAmt(eurOneTime, confCents), [
+        'confort',
+        '3',
+        'rapport',
+        'vin',
+        'pack',
+        '29'
+      ]),
+    premium:
+      pickStripePriceByAmountAndHints(filterAmt(eurOneTime, premCents), [
+        'pro',
+        'premium',
+        '10',
+        'pack',
+        '69'
+      ])
+  };
+
+  const subInitialDisc = pickStripePriceByAmountAndHints(filterAmt(eurOneTime, subInitialCents), [
+    'pack',
+    'rapport',
+    '1',
+    'initial',
+    'euro',
+    'abonnement',
+    'découverte'
+  ]);
+  const subMonthlyDisc = pickStripePriceByAmountAndHints(filterAmt(eurMonthly, subMonthlyCents), [
+    'pack',
+    'rapport',
+    '49',
+    'mensuel',
+    'mois',
+    'abonnement'
+  ]);
+
+  const value = {
+    credit: {
+      essentiel: process.env.TIER_ESSENTIEL_PRICE_ID || process.env.STRIPE_PRICE_ID_ESSENTIEL || credit.essentiel,
+      confort: process.env.TIER_CONFORT_PRICE_ID || process.env.STRIPE_PRICE_ID_CONFORT || credit.confort,
+      premium: process.env.TIER_PREMIUM_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM || credit.premium
+    },
+    subscription: {
+      initial:
+        process.env.SUBSCRIPTION_PRICE_INITIAL_ID || subInitialDisc,
+      monthly: process.env.SUBSCRIPTION_PRICE_MONTHLY_ID || subMonthlyDisc
+    }
+  };
+
+  __stripeCatalogCache = { ts: now, ttlMs: __stripeCatalogCache.ttlMs, value };
+  return value;
+}
+
+/**
+ * Ligne de panier packs crédits : catalogue auto (price_) ou prix inline si introuvable.
+ */
+function creditPackCheckoutLineItems(planKey, plan, catalogPriceId) {
+  const envFirst = {
     essentiel: process.env.TIER_ESSENTIEL_PRICE_ID || process.env.STRIPE_PRICE_ID_ESSENTIEL,
     confort: process.env.TIER_CONFORT_PRICE_ID || process.env.STRIPE_PRICE_ID_CONFORT,
     premium: process.env.TIER_PREMIUM_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM
   };
-  const pid = String(priceIdByPlan[planKey] || '').trim();
+  const pid = String(envFirst[planKey] || catalogPriceId || '').trim();
   if (pid.startsWith('price_')) {
     return [{ price: pid, quantity: 1 }];
   }
@@ -1405,7 +1547,7 @@ function saaSAuthReady() {
   return !!(getPrisma() && process.env.JWT_SECRET);
 }
 
-app.get('/api/saas-config', (req, res) => {
+app.get('/api/saas-config', async (req, res) => {
   const prisma = getPrisma();
   const vinApi = !!getVinDecodeProvider();
   /** Mêmes paliers que checkout.html / Payment Links (rapports VIN, pas anciens packs 5/20). */
@@ -1442,30 +1584,37 @@ app.get('/api/saas-config', (req, res) => {
     }
   ];
 
-  // Abonnement mensuel "7 rapports/mois (reset)" : piloté par des variables d’env.
-  // - On charge 1€ au départ (initial price)
-  // - Puis on crée un abonnement mensuel avec trial de 1 jour
-  // - À chaque renouvellement : on reset le compteur à 7 crédits
-  if (process.env.SUBSCRIPTION_PRICE_INITIAL_ID && process.env.SUBSCRIPTION_PRICE_MONTHLY_ID) {
-    const creditsPerCycle = parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10);
-    const trialDays = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10);
-    const monthlyCentsForDisplay = parseInt(process.env.SUBSCRIPTION_MONTHLY_CENTS_FOR_DISPLAY || '4999', 10);
-    const initialCentsForDisplay = parseInt(process.env.SUBSCRIPTION_INITIAL_CENTS_FOR_DISPLAY || '100', 10);
+  // Abonnement : prix détectés dans le catalogue Stripe si les variables ne sont pas posées.
+  if (stripe) {
+    try {
+      const cat = await resolveCarvinguardStripeCatalog(stripe);
+      const subIni = String(cat.subscription.initial || '').trim();
+      const subMo = String(cat.subscription.monthly || '').trim();
+      if (subIni.startsWith('price_') && subMo.startsWith('price_')) {
+        const creditsPerCycle = parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10);
+        const trialDays = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10);
+        const monthlyCentsForDisplay = parseInt(process.env.SUBSCRIPTION_MONTHLY_CENTS_FOR_DISPLAY || '4999', 10);
+        const initialCentsForDisplay = parseInt(process.env.SUBSCRIPTION_INITIAL_CENTS_FOR_DISPLAY || '100', 10);
 
-    creditsPacks.push({
-      id: 'sub_monthly_7',
-      type: 'subscription_initial',
-      credits: creditsPerCycle,
-      priceCents: initialCentsForDisplay,
-      monthlyPriceCents: monthlyCentsForDisplay,
-      label: 'Pack mensuel',
-      sub: '7 rapports VIN par mois, renouvelés chaque cycle (1 recherche = 1 rapport).',
-      displayPrice: '1 € puis ' + (monthlyCentsForDisplay / 100).toFixed(2).replace('.', ',') + ' €/mois',
-      subscriptionMonthlyPriceId: process.env.SUBSCRIPTION_PRICE_MONTHLY_ID,
-      trialDays,
-      popular: false,
-      subscription: true
-    });
+        creditsPacks.push({
+          id: 'sub_monthly_7',
+          type: 'subscription_initial',
+          credits: creditsPerCycle,
+          priceCents: initialCentsForDisplay,
+          monthlyPriceCents: monthlyCentsForDisplay,
+          label: 'Pack mensuel',
+          sub: '7 rapports VIN par mois, renouvelés chaque cycle (1 recherche = 1 rapport).',
+          displayPrice:
+            '1 € puis ' + (monthlyCentsForDisplay / 100).toFixed(2).replace('.', ',') + ' €/mois',
+          subscriptionMonthlyPriceId: subMo,
+          trialDays,
+          popular: false,
+          subscription: true
+        });
+      }
+    } catch (e) {
+      console.warn('saas-config subscription detection:', e.message);
+    }
   }
 
   res.json({
@@ -1694,18 +1843,23 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
     }
   }
 
-  const initialPriceId = process.env.SUBSCRIPTION_PRICE_INITIAL_ID || '';
-  const subscriptionMonthlyPriceId = process.env.SUBSCRIPTION_PRICE_MONTHLY_ID || '';
-  if (!initialPriceId || !subscriptionMonthlyPriceId) {
-    return res
-      .status(503)
-      .send(
-        'Abonnement non configuré : variables SUBSCRIPTION_PRICE_INITIAL_ID et SUBSCRIPTION_PRICE_MONTHLY_ID requises.'
-      );
-  }
-
   const trialDays = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10);
   const creditsPerCycle = parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10);
+  const subInitialCentsHint = parseInt(process.env.SUBSCRIPTION_INITIAL_CENTS_FOR_DISPLAY || '100', 10);
+  const subMonthlyCentsHint = parseInt(process.env.SUBSCRIPTION_MONTHLY_CENTS_FOR_DISPLAY || '4999', 10);
+
+  const cat = await resolveCarvinguardStripeCatalog(stripe);
+  let initialPriceId = String(cat.subscription.initial || '').trim();
+  let subscriptionMonthlyPriceId = String(cat.subscription.monthly || '').trim();
+  if (!initialPriceId.startsWith('price_') || !subscriptionMonthlyPriceId.startsWith('price_')) {
+    return res.status(503).send(
+      'Abonnement : prix Stripe introuvables (attendu : ~' +
+        (subInitialCentsHint / 100).toFixed(2).replace('.', ',') +
+        ' € une fois + ~' +
+        (subMonthlyCentsHint / 100).toFixed(2).replace('.', ',') +
+        ' €/mois dans le catalogue). Vérifie tes produits Stripe.'
+    );
+  }
 
   try {
     const initialPrice = await stripe.prices.retrieve(initialPriceId);
@@ -1800,12 +1954,14 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
   const userId = authLib.getUserIdFromCookies(req);
   const base = appBaseUrl();
 
+  const cat = await resolveCarvinguardStripeCatalog(stripe);
+
   // Build session — invités autorisés (pas besoin de compte avant paiement)
   const sessionData = {
     mode: 'payment',
     /** Même possibilité de réduction que sur buy.stripe.com (Payment Link). */
     allow_promotion_codes: true,
-    line_items: creditPackCheckoutLineItems(planKey, plan),
+    line_items: creditPackCheckoutLineItems(planKey, plan, cat.credit[planKey]),
     metadata: {
       app: 'carvinguard',
       carvinguard_plan: planKey
@@ -1904,6 +2060,7 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
   if (!user) {
     return res.status(401).json({ error: 'Session invalide.' });
   }
+  const cat = await resolveCarvinguardStripeCatalog(stripe);
   const packId = req.body && req.body.packId;
   const packs = {
     tier_essentiel: {
@@ -1924,8 +2081,8 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
     sub_monthly_7: {
       type: 'subscription_initial',
       creditsPerCycle: parseInt(process.env.SUBSCRIPTION_CREDITS_PER_CYCLE || '7', 10),
-      initialPriceId: process.env.SUBSCRIPTION_PRICE_INITIAL_ID || '',
-      subscriptionMonthlyPriceId: process.env.SUBSCRIPTION_PRICE_MONTHLY_ID || '',
+      initialPriceId: cat.subscription.initial || '',
+      subscriptionMonthlyPriceId: cat.subscription.monthly || '',
       trialDays: parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '1', 10)
     }
   };
@@ -1937,7 +2094,7 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
     let amountCents = p.cents;
     if (p.type === 'subscription_initial') {
       if (!p.initialPriceId || !p.subscriptionMonthlyPriceId) {
-        return res.status(400).json({ error: 'Abonnement non configuré (variables env manquantes).' });
+        return res.status(400).json({ error: 'Abonnement : prix initiaux / mensuels introuvables sur Stripe.' });
       }
       const initialPrice = await stripe.prices.retrieve(p.initialPriceId);
       amountCents = initialPrice.unit_amount;
