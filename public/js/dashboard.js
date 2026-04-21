@@ -40,6 +40,8 @@
   var historyLoaded = false;
   var statsLoaded = false;
   var inviteToken = null;
+  /** Annule les requêtes get-invite si /auth/me dit déjà connecté (même navigateur). */
+  var guestActivationCancelled = false;
   /** false = inscription directe désactivée (compte après paiement Stripe). */
   var registrationOpen = false;
 
@@ -55,21 +57,65 @@
     if (f) f.style.display = showWaiting ? 'none' : 'block';
   }
 
-  /** Retour Stripe invité : pas de formulaire de connexion — attente webhook puis mot de passe. */
-  function showInviteWaitingState() {
+  function setInviteFormDisabled(disabled) {
+    ['invitePassword', 'inviteConfirm', 'inviteBtn'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !!disabled;
+    });
+  }
+
+  /** Retour Stripe : tout de suite l’écran création de mot de passe (champs désactivés le temps du token). */
+  function showPostPayCreateAccountUi() {
     removeTempLoginHideStyle();
+    var fail = document.getElementById('activationFailOverlay');
+    if (fail) fail.classList.add('hidden');
     var authOverlay = document.getElementById('authOverlay');
     var inviteOverlay = document.getElementById('inviteOverlay');
     var shell = document.getElementById('appShell');
     if (authOverlay) authOverlay.classList.add('hidden');
     if (inviteOverlay) inviteOverlay.classList.remove('hidden');
     if (shell) shell.style.display = 'none';
-    setInviteOverlaySteps(true);
+    setInviteOverlaySteps(false);
+    var ht = document.getElementById('inviteFormTitle');
+    var st = document.getElementById('inviteFormSubtitle');
+    if (ht) ht.textContent = 'Créez votre mot de passe';
+    if (st) {
+      st.textContent =
+        'Votre paiement est validé. Définissez le mot de passe de votre nouvel espace client (ce n’est pas une connexion : vous n’en aviez pas encore).';
+    }
+    var ed = document.getElementById('inviteEmailDisplay');
+    if (ed) {
+      ed.textContent = 'Validation du paiement…';
+      ed.style.display = 'block';
+    }
+    setInviteFormDisabled(true);
+    var iErr = document.getElementById('inviteError');
+    if (iErr) {
+      iErr.style.display = 'none';
+      iErr.textContent = '';
+    }
   }
 
-  /** Formulaire mot de passe (après webhook ou lien ?invite=). */
+  function showActivationFailure(msg) {
+    guestActivationCancelled = true;
+    removeTempLoginHideStyle();
+    var inv = document.getElementById('inviteOverlay');
+    var auth = document.getElementById('authOverlay');
+    if (inv) inv.classList.add('hidden');
+    if (auth) auth.classList.add('hidden');
+    var shell = document.getElementById('appShell');
+    if (shell) shell.style.display = 'none';
+    var fo = document.getElementById('activationFailOverlay');
+    var tx = document.getElementById('activationFailText');
+    if (tx) tx.textContent = msg || 'Une erreur est survenue.';
+    if (fo) fo.classList.remove('hidden');
+  }
+
+  /** Formulaire mot de passe (lien ?invite= ou après validation session Stripe). */
   function showInviteFormOverlay(email) {
     removeTempLoginHideStyle();
+    var fail = document.getElementById('activationFailOverlay');
+    if (fail) fail.classList.add('hidden');
     var authOverlay = document.getElementById('authOverlay');
     var inviteOverlay = document.getElementById('inviteOverlay');
     var shell = document.getElementById('appShell');
@@ -86,6 +132,7 @@
         emailDisplay.style.display = 'none';
       }
     }
+    setInviteFormDisabled(false);
   }
 
   function applyRegistrationRestrictedUi() {
@@ -135,7 +182,7 @@
         applyRegistrationRestrictedUi();
       });
 
-    // Lien email ?invite= — mot de passe direct (pas l’étape attente)
+    // Lien email ?invite= — création mot de passe directe
     if (inviteToken) {
       showInviteFormOverlay();
       return;
@@ -144,22 +191,30 @@
     var sessionId = params.get('session_id');
     var isPaid = params.get('paid') === '1' || params.get('credits') === 'ok';
 
+    /** Retour Stripe : finalisation immédiate — ne pas attendre /api/auth/me */
+    if (isPaid && sessionId) {
+      guestActivationCancelled = false;
+      showPostPayCreateAccountUi();
+      handleGuestPostPayment(sessionId);
+      api('/api/auth/me').then(function (r) {
+        if (r.ok && r.data && r.data.authenticated && r.data.user) {
+          guestActivationCancelled = true;
+          var inv = document.getElementById('inviteOverlay');
+          if (inv) inv.classList.add('hidden');
+          onAuthSuccess(r.data.user);
+        }
+      });
+      return;
+    }
+
     api('/api/auth/me').then(function (r) {
       if (r.ok && r.data && r.data.authenticated && r.data.user) {
         onAuthSuccess(r.data.user);
-      } else if (isPaid && sessionId) {
-        showInviteWaitingState();
-        handleGuestPostPayment(sessionId);
       } else {
         showAuthOverlay();
       }
     }).catch(function () {
-      if (isPaid && sessionId) {
-        showInviteWaitingState();
-        handleGuestPostPayment(sessionId);
-      } else {
-        showAuthOverlay();
-      }
+      showAuthOverlay();
     });
   });
 
@@ -290,64 +345,57 @@
    */
   function handleGuestPostPayment(sessionId) {
     var attempts = 0;
-    var maxAttempts = 20;
+    var maxAttempts = 45;
+
+    function nextDelay() {
+      return attempts < 30 ? 80 : 350;
+    }
 
     function tryFetch() {
+      if (guestActivationCancelled) return;
       attempts++;
       fetch(
         window.location.origin +
           '/api/billing/get-invite?session_id=' +
-          encodeURIComponent(sessionId),
-        { credentials: 'include' }
+          encodeURIComponent(sessionId) +
+          '&_=' +
+          Date.now(),
+        { credentials: 'include', cache: 'no-store' }
       )
         .then(function (r) {
           return r.json();
         })
         .then(function (data) {
+          if (guestActivationCancelled) return;
           if (data.error && !data.ready) {
-            var invE = document.getElementById('inviteOverlay');
-            if (invE) invE.classList.add('hidden');
-            showAuthOverlay();
-            showError('loginError', data.error || 'Erreur serveur.');
+            showActivationFailure(data.error || 'Erreur serveur.');
             return;
           }
           if (data.reason === 'no_email') {
-            var invN = document.getElementById('inviteOverlay');
-            if (invN) invN.classList.add('hidden');
-            showAuthOverlay();
-            showError(
-              'loginError',
-              'Impossible de lire l’email de paiement. Ouvrez le lien reçu par email ou contactez le support.'
+            showActivationFailure(
+              'Impossible de lire l’email de cette session de paiement. Utilisez le lien envoyé par email après l’achat.'
             );
             return;
           }
           if (data.ready && data.inviteToken) {
             inviteToken = data.inviteToken;
             showInviteFormOverlay(data.email);
-          } else if (attempts < maxAttempts) {
-            setTimeout(tryFetch, 2000);
+            return;
+          }
+          if (attempts < maxAttempts) {
+            setTimeout(tryFetch, nextDelay());
           } else {
-            var inv = document.getElementById('inviteOverlay');
-            if (inv) inv.classList.add('hidden');
-            showAuthOverlay();
-            if (data && data.email) {
-              var le = document.getElementById('loginEmail');
-              if (le) le.value = data.email;
-            }
-            showError(
-              'loginError',
-              'L’activation prend plus de temps que prévu. Réessayez dans une minute ou ouvrez le lien reçu par email.'
+            showActivationFailure(
+              'Le serveur ne répond pas assez vite. Un email avec un lien d’activation vous a normalement été envoyé — vérifiez votre boîte de réception.'
             );
           }
         })
         .catch(function () {
+          if (guestActivationCancelled) return;
           if (attempts < maxAttempts) {
-            setTimeout(tryFetch, 2000);
+            setTimeout(tryFetch, nextDelay());
           } else {
-            var inv = document.getElementById('inviteOverlay');
-            if (inv) inv.classList.add('hidden');
-            showAuthOverlay();
-            showError('loginError', 'Erreur réseau. Réessayez ou utilisez le lien reçu par email après paiement.');
+            showActivationFailure('Problème de connexion. Réessayez dans un instant ou ouvrez le lien reçu par email.');
           }
         });
     }
@@ -384,6 +432,8 @@
     currentUser = user;
 
     removeTempLoginHideStyle();
+    var actFail = document.getElementById('activationFailOverlay');
+    if (actFail) actFail.classList.add('hidden');
     // Hide overlays, show shell
     var authOverlay = document.getElementById('authOverlay');
     var inviteOverlay = document.getElementById('inviteOverlay');

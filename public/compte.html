@@ -116,13 +116,13 @@
         <p style="text-align:center;margin:0 0 12px;"><span class="spinner" id="inviteWaitSpinner" style="display:inline-block;"></span></p>
         <p style="font-size:.8125rem;color:var(--text-muted);text-align:center;margin:0;">Vous n’avez pas encore de mot de passe : l’étape suivante vous le demandera.</p>
       </div>
-      <!-- Étape 2 : choix du mot de passe -->
+      <!-- Étape 2 : création mot de passe (pas une connexion — compte créé côté serveur après paiement) -->
       <div id="inviteStepForm" style="display:none;">
-        <h2 style="font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.025em;">
-          Finalisez votre compte
+        <h2 id="inviteFormTitle" style="font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.025em;">
+          Créez votre mot de passe
         </h2>
-        <p style="font-size:.875rem;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">
-          Choisissez un mot de passe pour accéder à vos crédits VIN.
+        <p id="inviteFormSubtitle" style="font-size:.875rem;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">
+          Nouveau compte après paiement : choisissez un mot de passe pour accéder à vos crédits VIN.
         </p>
         <p id="inviteEmailDisplay" style="display:none;font-size:.875rem;font-weight:600;color:var(--accent);margin-bottom:16px;text-align:center;padding:8px 12px;background:var(--accent-bg);border-radius:8px;"></p>
         <div class="form-group">
@@ -141,6 +141,18 @@
           <span class="spinner" id="inviteSpinner" style="display:none;"></span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Échec activation post-paiement — jamais un formulaire « connexion » -->
+  <div class="invite-overlay hidden" id="activationFailOverlay">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="/logo.png" alt="CarvinGuard">
+      </div>
+      <h2 style="font-size:1.15rem;font-weight:800;color:var(--text);margin-bottom:10px;">Activation</h2>
+      <p id="activationFailText" style="font-size:.9rem;color:var(--text-muted);line-height:1.5;margin-bottom:16px;"></p>
+      <p style="font-size:.8125rem;color:var(--text-muted);">Un email avec un lien peut aussi vous parvenir — vérifiez vos courriers indésirables.</p>
     </div>
   </div>
 
@@ -528,6 +540,6 @@
     </main>
   </div>
 
-  <script src="/js/dashboard.js?v=1"></script>
+  <script src="/js/dashboard.js?v=2"></script>
 </body>
 </html>

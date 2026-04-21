@@ -2014,6 +2014,7 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
  * pour afficher directement l'overlay "Activez votre compte" côté frontend.
  */
 app.get('/api/billing/get-invite', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   if (!stripe) return res.status(500).json({ error: 'Stripe non configuré.' });
   const sessionId = String(req.query.session_id || '');
   if (!sessionId.startsWith('cs_')) {
