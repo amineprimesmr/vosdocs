@@ -13,6 +13,23 @@
   <script src="/js/analytics.js" defer></script>
 </head>
 <body class="dashboard-page">
+  <script>
+    (function () {
+      try {
+        var p = new URLSearchParams(location.search);
+        if (
+          (p.get('paid') === '1' || p.get('credits') === 'ok') &&
+          p.get('session_id') &&
+          !p.get('invite')
+        ) {
+          var st = document.createElement('style');
+          st.id = 'cg-hide-login-temp';
+          st.textContent = '#authOverlay{display:none!important}';
+          document.head.appendChild(st);
+        }
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- ================================================================
        AUTH OVERLAY — affichée quand l'utilisateur n'est pas connecté
@@ -88,28 +105,42 @@
       <div class="auth-logo">
         <img src="/logo.png" alt="CarvinGuard">
       </div>
-      <h2 style="font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.025em;">
-        Finalisez votre compte
-      </h2>
-      <p style="font-size:.875rem;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">
-        Votre paiement est confirmé. Choisissez un mot de passe pour accéder à vos crédits VIN.
-      </p>
-      <p id="inviteEmailDisplay" style="display:none;font-size:.875rem;font-weight:600;color:var(--accent);margin-bottom:16px;text-align:center;padding:8px 12px;background:var(--accent-bg);border-radius:8px;"></p>
-      <div class="form-group">
-        <label class="auth-label" for="invitePassword">Mot de passe</label>
-        <input class="auth-input" id="invitePassword" type="password" autocomplete="new-password"
-               placeholder="8 caractères minimum" minlength="8">
+      <!-- Étape 1 : retour Stripe — pas de connexion, attente webhook -->
+      <div id="inviteStepWaiting">
+        <h2 style="font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.025em;">
+          Création de votre accès
+        </h2>
+        <p style="font-size:.875rem;color:var(--text-muted);margin-bottom:16px;line-height:1.5;">
+          Paiement reçu. Nous préparons votre espace client (quelques secondes).
+        </p>
+        <p style="text-align:center;margin:0 0 12px;"><span class="spinner" id="inviteWaitSpinner" style="display:inline-block;"></span></p>
+        <p style="font-size:.8125rem;color:var(--text-muted);text-align:center;margin:0;">Vous n’avez pas encore de mot de passe : l’étape suivante vous le demandera.</p>
       </div>
-      <div class="form-group">
-        <label class="auth-label" for="inviteConfirm">Confirmer</label>
-        <input class="auth-input" id="inviteConfirm" type="password" autocomplete="new-password"
-               placeholder="••••••••">
+      <!-- Étape 2 : choix du mot de passe -->
+      <div id="inviteStepForm" style="display:none;">
+        <h2 style="font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.025em;">
+          Finalisez votre compte
+        </h2>
+        <p style="font-size:.875rem;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">
+          Choisissez un mot de passe pour accéder à vos crédits VIN.
+        </p>
+        <p id="inviteEmailDisplay" style="display:none;font-size:.875rem;font-weight:600;color:var(--accent);margin-bottom:16px;text-align:center;padding:8px 12px;background:var(--accent-bg);border-radius:8px;"></p>
+        <div class="form-group">
+          <label class="auth-label" for="invitePassword">Mot de passe</label>
+          <input class="auth-input" id="invitePassword" type="password" autocomplete="new-password"
+                 placeholder="8 caractères minimum" minlength="8">
+        </div>
+        <div class="form-group">
+          <label class="auth-label" for="inviteConfirm">Confirmer</label>
+          <input class="auth-input" id="inviteConfirm" type="password" autocomplete="new-password"
+                 placeholder="••••••••">
+        </div>
+        <div class="auth-error" id="inviteError" style="display:none;"></div>
+        <button class="auth-btn" id="inviteBtn" onclick="doAcceptInvite()">
+          <span id="inviteBtnText">Activer mon compte</span>
+          <span class="spinner" id="inviteSpinner" style="display:none;"></span>
+        </button>
       </div>
-      <div class="auth-error" id="inviteError" style="display:none;"></div>
-      <button class="auth-btn" id="inviteBtn" onclick="doAcceptInvite()">
-        <span id="inviteBtnText">Activer mon compte</span>
-        <span class="spinner" id="inviteSpinner" style="display:none;"></span>
-      </button>
     </div>
   </div>
 
