@@ -2020,22 +2020,59 @@ app.get('/api/billing/get-invite', async (req, res) => {
     return res.status(400).json({ error: 'session_id invalide.' });
   }
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    const emailRaw =
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent']
+    });
+
+    const piObj =
+      session.payment_intent && typeof session.payment_intent === 'object'
+        ? session.payment_intent
+        : null;
+    const pm = (piObj && piObj.metadata) || {};
+
+    let emailRaw =
       (session.customer_details && session.customer_details.email) ||
       session.customer_email ||
+      (piObj && piObj.receipt_email) ||
+      (pm.email ? String(pm.email) : '') ||
       '';
+
+    if (!emailRaw && session.customer) {
+      const cid = typeof session.customer === 'string' ? session.customer : session.customer && session.customer.id;
+      if (cid && String(cid).startsWith('cus_')) {
+        try {
+          const cust = await stripe.customers.retrieve(cid);
+          if (cust && cust.email) emailRaw = String(cust.email);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+
     const email = authLib.normalizeEmail(emailRaw);
-    if (!email) return res.json({ ready: false });
+    if (!email || email.indexOf('@') === -1) {
+      return res.json({ ready: false, reason: 'no_email' });
+    }
 
     const prisma = getPrisma();
-    if (!prisma) return res.json({ email, ready: false });
+    if (!prisma) return res.json({ email, ready: false, reason: 'no_db' });
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      // Webhook pas encore traité — renvoie juste l'email
-      return res.json({ email, ready: false });
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    /** Webhook en retard ou absent (Vercel / config) : même finalisation que checkout.session.completed, idempotent. */
+    if (!user && session.payment_status === 'paid' && session.mode === 'payment') {
+      try {
+        await handleCheckoutSessionCompleted(session);
+      } catch (e) {
+        console.error('get-invite reconcile:', e.message || e);
+      }
+      user = await prisma.user.findUnique({ where: { email } });
     }
+
+    if (!user) {
+      return res.json({ email, ready: false, reason: 'pending' });
+    }
+
     const invToken = authLib.signAccountInviteToken(user.id);
     return res.json({ email, ready: true, inviteToken: invToken });
   } catch (e) {

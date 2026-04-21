@@ -304,6 +304,23 @@
           return r.json();
         })
         .then(function (data) {
+          if (data.error && !data.ready) {
+            var invE = document.getElementById('inviteOverlay');
+            if (invE) invE.classList.add('hidden');
+            showAuthOverlay();
+            showError('loginError', data.error || 'Erreur serveur.');
+            return;
+          }
+          if (data.reason === 'no_email') {
+            var invN = document.getElementById('inviteOverlay');
+            if (invN) invN.classList.add('hidden');
+            showAuthOverlay();
+            showError(
+              'loginError',
+              'Impossible de lire l’email de paiement. Ouvrez le lien reçu par email ou contactez le support.'
+            );
+            return;
+          }
           if (data.ready && data.inviteToken) {
             inviteToken = data.inviteToken;
             showInviteFormOverlay(data.email);
