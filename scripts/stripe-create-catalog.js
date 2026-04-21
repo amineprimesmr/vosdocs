@@ -98,7 +98,17 @@ async function main() {
     console.log('  Link       :', paymentLink.url);
     console.log('');
 
-    results.push({ envVar: plan.envVar, url: paymentLink.url });
+    results.push({
+      envVar: plan.envVar,
+      url: paymentLink.url,
+      priceId: price.id,
+      priceIdEnv:
+        plan.id === 'essentiel'
+          ? 'TIER_ESSENTIEL_PRICE_ID'
+          : plan.id === 'confort'
+            ? 'TIER_CONFORT_PRICE_ID'
+            : 'TIER_PREMIUM_PRICE_ID'
+    });
   }
 
   console.log(
@@ -111,9 +121,20 @@ async function main() {
   results.forEach(function (r) {
     console.log(r.envVar + '=' + r.url);
   });
+  console.log('\n=== Price IDs (codes promo « par produit » — checkout /api/billing/credit-checkout) ===\n');
+  results.forEach(function (r) {
+    if (r.priceIdEnv && r.priceId) {
+      console.log(r.priceIdEnv + '=' + r.priceId);
+    }
+  });
   console.log('\n=== Local (.env) ===\n');
   results.forEach(function (r) {
     console.log(r.envVar + '=' + r.url);
+  });
+  results.forEach(function (r) {
+    if (r.priceIdEnv && r.priceId) {
+      console.log(r.priceIdEnv + '=' + r.priceId);
+    }
   });
   console.log('\nTerminé. Redéployez Vercel après avoir enregistré les variables.\n');
 

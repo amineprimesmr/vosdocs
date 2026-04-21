@@ -62,6 +62,36 @@ function normalizeVinMeta(s) {
     .toUpperCase();
 }
 
+/**
+ * Ligne de panier pour les packs crédits : si TIER_*_PRICE_ID est défini (price_… du catalogue Stripe),
+ * le coupon peut être restreint à ce prix ; sinon price_data crée un produit à la volée (les promos
+ * « ce produit uniquement » ne s’appliquent jamais → erreur Stripe « valide mais ne s’applique pas »).
+ */
+function creditPackCheckoutLineItems(planKey, plan) {
+  const priceIdByPlan = {
+    essentiel: process.env.TIER_ESSENTIEL_PRICE_ID || process.env.STRIPE_PRICE_ID_ESSENTIEL,
+    confort: process.env.TIER_CONFORT_PRICE_ID || process.env.STRIPE_PRICE_ID_CONFORT,
+    premium: process.env.TIER_PREMIUM_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM
+  };
+  const pid = String(priceIdByPlan[planKey] || '').trim();
+  if (pid.startsWith('price_')) {
+    return [{ price: pid, quantity: 1 }];
+  }
+  return [
+    {
+      price_data: {
+        currency: 'eur',
+        unit_amount: plan.cents,
+        product_data: {
+          name: plan.name,
+          description: 'Crédits rapport VIN — compte Carvinguard'
+        }
+      },
+      quantity: 1
+    }
+  ];
+}
+
 /** Achat de crédits via Stripe (idempotent par payment_intent) */
 async function handleStripeCreditPurchase(pi) {
   const m = pi.metadata || {};
@@ -1775,19 +1805,7 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
     mode: 'payment',
     /** Même possibilité de réduction que sur buy.stripe.com (Payment Link). */
     allow_promotion_codes: true,
-    line_items: [
-      {
-        price_data: {
-          currency: 'eur',
-          unit_amount: plan.cents,
-          product_data: {
-            name: plan.name,
-            description: 'Crédits rapport VIN — compte Carvinguard'
-          }
-        },
-        quantity: 1
-      }
-    ],
+    line_items: creditPackCheckoutLineItems(planKey, plan),
     metadata: {
       app: 'carvinguard',
       carvinguard_plan: planKey
