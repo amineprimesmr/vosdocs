@@ -1644,65 +1644,60 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
 
   const userId = authLib.getUserIdFromCookies(req);
   const base = appBaseUrl();
-  if (!userId) {
-    return res.redirect(
-      302,
-      base +
-        '/compte.html?next=' +
-        encodeURIComponent('/api/billing/credit-checkout?plan=' + planKey)
-    );
-  }
 
-  const prisma = getPrisma();
-  if (!prisma) {
-    return res.status(503).send('Base de données requise.');
-  }
-  let user;
-  try {
-    user = await prisma.user.findUnique({ where: { id: userId } });
-  } catch (e) {
-    return res.status(500).send('Erreur base.');
-  }
-  if (!user || !user.email) {
-    return res.redirect(302, base + '/compte.html');
-  }
-
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      customer_email: user.email,
-      client_reference_id: ('cguser:' + user.id).slice(0, 80),
-      line_items: [
-        {
-          price_data: {
-            currency: 'eur',
-            unit_amount: plan.cents,
-            product_data: {
-              name: plan.name,
-              description: 'Crédits rapport VIN — compte Carvinguard'
-            }
-          },
-          quantity: 1
-        }
-      ],
+  // Build session — invités autorisés (pas besoin de compte avant paiement)
+  const sessionData = {
+    mode: 'payment',
+    line_items: [
+      {
+        price_data: {
+          currency: 'eur',
+          unit_amount: plan.cents,
+          product_data: {
+            name: plan.name,
+            description: 'Crédits rapport VIN — compte Carvinguard'
+          }
+        },
+        quantity: 1
+      }
+    ],
+    metadata: {
+      app: 'carvinguard',
+      carvinguard_plan: planKey
+    },
+    payment_intent_data: {
       metadata: {
-        app: 'carvinguard',
-        user_id: String(user.id),
+        purpose: 'credit_purchase',
+        credits: String(plan.credits),
+        packId: plan.packId,
         carvinguard_plan: planKey
-      },
-      payment_intent_data: {
-        metadata: {
-          purpose: 'credit_purchase',
-          userId: String(user.id),
-          credits: String(plan.credits),
-          packId: plan.packId,
-          carvinguard_plan: planKey
+      }
+    },
+    success_url:
+      base + '/compte.html?paid=1&credits=ok&session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: base + '/checkout.html'
+  };
+
+  // Utilisateur connecté : lier directement au compte existant
+  if (userId) {
+    const prisma = getPrisma();
+    if (prisma) {
+      try {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (user && user.email) {
+          sessionData.customer_email = user.email;
+          sessionData.client_reference_id = ('cguser:' + user.id).slice(0, 80);
+          sessionData.metadata.user_id = String(user.id);
+          sessionData.payment_intent_data.metadata.userId = String(user.id);
+          sessionData.payment_intent_data.metadata.email = user.email;
         }
-      },
-      success_url:
-        base + '/compte.html?paid=1&credits=ok&session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: base + '/checkout.html'
-    });
+      } catch (_e) { /* ignore, crée session sans lien compte */ }
+    }
+  }
+  // Invité : Stripe collecte l'email → webhook crée le compte et envoie le lien d'invitation
+
+  try {
+    const session = await stripe.checkout.sessions.create(sessionData);
     if (!session.url) {
       return res.status(500).send('Session Stripe sans URL.');
     }
@@ -1710,6 +1705,41 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
   } catch (e) {
     console.error('credit-checkout:', e);
     return res.status(500).send(e.message || 'Erreur Stripe Checkout.');
+  }
+});
+
+/**
+ * Après paiement invité : récupère l'email Stripe + génère un token d'invitation
+ * pour afficher directement l'overlay "Activez votre compte" côté frontend.
+ */
+app.get('/api/billing/get-invite', async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: 'Stripe non configuré.' });
+  const sessionId = String(req.query.session_id || '');
+  if (!sessionId.startsWith('cs_')) {
+    return res.status(400).json({ error: 'session_id invalide.' });
+  }
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const emailRaw =
+      (session.customer_details && session.customer_details.email) ||
+      session.customer_email ||
+      '';
+    const email = authLib.normalizeEmail(emailRaw);
+    if (!email) return res.json({ ready: false });
+
+    const prisma = getPrisma();
+    if (!prisma) return res.json({ email, ready: false });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Webhook pas encore traité — renvoie juste l'email
+      return res.json({ email, ready: false });
+    }
+    const invToken = authLib.signAccountInviteToken(user.id);
+    return res.json({ email, ready: true, inviteToken: invToken });
+  } catch (e) {
+    console.error('get-invite:', e);
+    return res.status(500).json({ error: e.message });
   }
 });
 

@@ -48,18 +48,26 @@
     var params = new URLSearchParams(window.location.search);
     inviteToken = params.get('invite');
 
-    // Invite flow → show invite overlay
+    // Invite flow → show invite overlay (lien email après paiement)
     if (inviteToken) {
       showInviteOverlay();
       return;
     }
+
+    var sessionId = params.get('session_id');
+    var isPaid = params.get('paid') === '1' || params.get('credits') === 'ok';
 
     // Check auth
     api('/api/auth/me').then(function (r) {
       if (r.ok && r.data && r.data.authenticated && r.data.user) {
         onAuthSuccess(r.data.user);
       } else {
-        showAuthOverlay();
+        // Invité qui revient de Stripe : tenter de récupérer le token d'invitation
+        if (isPaid && sessionId) {
+          handleGuestPostPayment(sessionId);
+        } else {
+          showAuthOverlay();
+        }
       }
     }).catch(function () {
       showAuthOverlay();
@@ -170,13 +178,67 @@
   /* ============================================================
      INVITE OVERLAY
      ============================================================ */
-  function showInviteOverlay() {
+  function showInviteOverlay(email) {
     var overlay = document.getElementById('authOverlay');
     var invite = document.getElementById('inviteOverlay');
     var shell = document.getElementById('appShell');
     if (overlay) overlay.classList.add('hidden');
     if (invite) invite.classList.remove('hidden');
     if (shell) shell.style.display = 'none';
+    // Afficher l'email si fourni
+    if (email) {
+      var emailDisplay = document.getElementById('inviteEmailDisplay');
+      if (emailDisplay) {
+        emailDisplay.textContent = email;
+        emailDisplay.style.display = 'block';
+      }
+    }
+  }
+
+  /**
+   * Invité revenant de Stripe : récupère l'email + token d'invitation depuis session_id.
+   * Retente jusqu'à 8× (webhook peut être légèrement en retard).
+   */
+  function handleGuestPostPayment(sessionId) {
+    var attempts = 0;
+    var maxAttempts = 8;
+
+    showAuthOverlay();
+    switchTab('signup');
+
+    function tryFetch() {
+      attempts++;
+      fetch('/api/billing/get-invite?session_id=' + encodeURIComponent(sessionId), { credentials: 'include' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ready && data.inviteToken) {
+            // Webhook traité → afficher l'overlay d'activation directement
+            inviteToken = data.inviteToken;
+            showInviteOverlay(data.email);
+          } else if (attempts < maxAttempts) {
+            // Webhook pas encore traité → réessayer
+            setTimeout(tryFetch, 2000);
+          } else {
+            // Abandon : afficher le formulaire d'inscription avec email pré-rempli
+            if (data.email) {
+              var signupEmail = document.getElementById('signupEmail');
+              if (signupEmail) signupEmail.value = data.email;
+            }
+            switchTab('signup');
+            showAuthOverlay();
+          }
+        })
+        .catch(function () {
+          if (attempts < maxAttempts) {
+            setTimeout(tryFetch, 2000);
+          } else {
+            switchTab('signup');
+            showAuthOverlay();
+          }
+        });
+    }
+
+    tryFetch();
   }
 
   window.doAcceptInvite = function () {
