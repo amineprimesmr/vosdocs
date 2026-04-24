@@ -2135,6 +2135,94 @@ app.get('/api/vin/report/:transactionId', async (req, res) => {
   }
 });
 
+/**
+ * PDF synthèse rapport VIN (espace connecté) — même fidélité documentaire qu’en invité, données issues du relevé d’analyse.
+ */
+function vehicleDataForSaaSPdfFromTransactionMeta(meta) {
+  const out = {
+    make: meta.make != null ? String(meta.make) : '',
+    model: meta.model != null ? String(meta.model) : '',
+    year: meta.year != null ? String(meta.year) : '',
+    trim: '',
+    engine: meta.engine != null ? String(meta.engine) : '',
+    transmission: '',
+    fuel_type: meta.fuel_type != null ? String(meta.fuel_type) : '',
+    drivetrain: '',
+    summary: ''
+  };
+  if (meta.fullReportJson) {
+    try {
+      const bundle = JSON.parse(String(meta.fullReportJson));
+      const id = bundle.decode && bundle.decode.identity;
+      if (id && typeof id === 'object') {
+        if (id.trim) out.trim = String(id.trim);
+        if (id.transmission) out.transmission = String(id.transmission);
+        if (id.drivetrain) out.drivetrain = String(id.drivetrain);
+        if (!out.drivetrain && (id.drive_type || id.drivetrain)) {
+          out.drivetrain = String(id.drive_type || id.drivetrain);
+        }
+      }
+    } catch (_) {}
+  }
+  const sumParts = [out.engine, out.fuel_type].filter((x) => x && String(x).trim());
+  out.summary = sumParts.length
+    ? sumParts.join(' · ')
+    : [out.make, out.model, out.year].filter((x) => x && String(x).trim()).join(' ').trim();
+  return out;
+}
+
+app.get('/api/vin/report/:transactionId/pdf', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  const prisma = getPrisma();
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).send('Connexion requise.');
+  }
+  if (!prisma) {
+    return res.status(503).send('Service indisponible');
+  }
+  const tid = String(req.params.transactionId || '').trim();
+  if (!tid) {
+    return res.status(400).send('Identifiant invalide.');
+  }
+  try {
+    const t = await prisma.creditTransaction.findFirst({
+      where: { id: tid, userId, reason: 'vin_full_report' }
+    });
+    if (!t) {
+      return res.status(404).send('Rapport introuvable.');
+    }
+    let meta = {};
+    try {
+      meta = JSON.parse(t.meta || '{}');
+    } catch (e) {}
+    if (!meta.fullReportJson) {
+      return res.status(404).send(
+        "Aucun relevé d'analyse enregistré pour ce rapport. Relancez une recherche (1 crédit)."
+      );
+    }
+    const vin = (meta.vin && String(meta.vin).length === 17 ? String(meta.vin) : '').trim() || '—';
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true }
+    });
+    const vehicleData = vehicleDataForSaaSPdfFromTransactionMeta(meta);
+    const pdfBuffer = await generateReportPdfBuffer(vehicleData, vin, {
+      prenom: '',
+      nom: '',
+      email: (user && user.email) || '',
+      planLabel: 'Espace client — analyse VIN (crédit)',
+      montantEur: '1 crédit'
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="rapport-vin-carvinguard.pdf"');
+    res.send(pdfBuffer);
+  } catch (e) {
+    console.error('vin/report/pdf:', e);
+    return res.status(500).send('Erreur');
+  }
+});
+
 app.get('/api/auth/me', async (req, res) => {
   if (!getPrisma()) {
     return res.status(503).json({ error: 'Comptes non disponibles.' });
@@ -3259,7 +3347,7 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
         })
         .catch(function () {});
     }
-    return res.json({ status: 'success', data: bundle });
+    return res.json({ status: 'success', data: bundle, transactionId: vinCtxId || null });
   } catch (e) {
     console.error('Rapport VIN complet CarAPI:', e.message);
     await refundVinDecodeCredit(userId, vinMasked);

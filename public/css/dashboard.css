@@ -769,6 +769,30 @@ body.dashboard-page {
   margin-top: 2px;
 }
 
+.vin-result-pdf-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.vin-result-pdf-row .btn--pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.vin-result-pdf-hint {
+  font-size: .8125rem;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+}
+
 .vin-result-body { padding: 18px 22px; }
 
 .result-grid {

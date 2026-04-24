@@ -960,7 +960,7 @@
         if (errEl) {
           errEl.style.display = 'none';
         }
-        renderFullVinResult(v, bundle);
+        renderFullVinResult(v, bundle, txId);
       }, 50);
     });
   }
@@ -1046,7 +1046,7 @@
       });
 
       if (r.data && r.data.data && r.data.data.decode) {
-        renderFullVinResult(vin, r.data.data);
+        renderFullVinResult(vin, r.data.data, r.data.transactionId);
       } else {
         renderVinResult(vin, r.data);
       }
@@ -1552,7 +1552,22 @@
     );
   }
 
-  function renderFullVinResult(vin, bundle) {
+  function updateVinPdfButton(transactionId) {
+    var row = document.getElementById('vinResultPdfRow');
+    var link = document.getElementById('vinResultPdfLink');
+    if (!row || !link) return;
+    if (transactionId && String(transactionId).length > 0) {
+      link.href =
+        window.location.origin + '/api/vin/report/' + encodeURIComponent(String(transactionId)) + '/pdf';
+      link.setAttribute('download', 'rapport-vin-carvinguard.pdf');
+      row.style.display = 'flex';
+    } else {
+      row.style.display = 'none';
+      link.removeAttribute('href');
+    }
+  }
+
+  function renderFullVinResult(vin, bundle, transactionId) {
     var resultEl = document.getElementById('vinResult');
     var fr = document.getElementById('fullReportExtra');
     var dec = bundle && bundle.decode;
@@ -1619,6 +1634,7 @@
       fr.innerHTML = html;
       fr.style.display = 'flex';
     }
+    updateVinPdfButton(transactionId);
     if (resultEl) {
       resultEl.style.display = 'block';
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1702,6 +1718,9 @@
     var gridEl = document.getElementById('resultGrid');
     var metaEl = document.getElementById('resultDecodeMeta');
     var fr = document.getElementById('fullReportExtra');
+    if (!keepFullPanel) {
+      updateVinPdfButton(null);
+    }
     if (fr && !keepFullPanel) {
       fr.innerHTML = '';
       fr.style.display = 'none';
