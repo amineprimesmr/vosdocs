@@ -1372,3 +1372,45 @@ body.dashboard-page {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Rapport VIN complet CarAPI */
+.full-report-panels { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.full-report-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+.full-report-panel summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text);
+  background: var(--surface-2);
+}
+.full-report-panel summary::-webkit-details-marker { display: none; }
+.full-report-panel summary::after { content: '▾'; color: var(--text-muted); font-size: 0.75rem; }
+.full-report-panel[open] summary::after { content: '▴'; }
+.full-report-panel-body { padding: 0 12px 12px; }
+.full-report-pre {
+  margin: 0;
+  padding: 12px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.full-report-skip, .full-report-err { font-size: 0.8125rem; color: var(--text-muted); margin: 8px 0 0; }
+.full-report-err { color: var(--error); }
+.badge-full { font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--accent-bg); color: var(--accent); }

@@ -1650,11 +1650,14 @@ app.get('/api/saas-config', async (req, res) => {
     }
   }
 
+  const p = getVinDecodeProvider();
   res.json({
     vinRequiresAccount: false,
     authAvailable: saaSAuthReady(),
     registrationOpen: saaSAuthReady() && isOpenRegistrationAllowed(),
-    creditPacks: creditsPacks
+    creditPacks: creditsPacks,
+    /** true si CARAPI_TOKEN est posé : le dashboard peut lancer le rapport complet (tous les endpoints). */
+    carApiEnabled: !!(p && p.id === 'carapi')
   });
 });
 
@@ -1797,16 +1800,17 @@ app.get('/api/vin/history', async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 200);
   try {
     const transactions = await prisma.creditTransaction.findMany({
-      where: { userId, reason: 'vin_decode' },
+      where: { userId, reason: { in: ['vin_decode', 'vin_full_report'] } },
       orderBy: { createdAt: 'desc' },
       take: limit,
-      select: { id: true, meta: true, createdAt: true }
+      select: { id: true, reason: true, meta: true, createdAt: true }
     });
     const history = transactions.map(function (t) {
       let meta = {};
       try { meta = JSON.parse(t.meta || '{}'); } catch (e) {}
       return {
         id: t.id,
+        reportKind: t.reason === 'vin_full_report' ? 'full' : 'standard',
         vin: meta.vin || '—',
         make: meta.make || '',
         model: meta.model || '',
@@ -2668,6 +2672,128 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       return res.json(previewPartialVinJson());
     }
     res.status(500).json({ status: 'error', message: 'Erreur service VIN' });
+  }
+});
+
+/**
+ * Rapport VIN « complet » CarAPI (1 crédit) : décode + inspection, vol, km, photos, financement, cote, annonces
+ * (fetchCarApiFullEnrichment). Réservé quand CARAPI_TOKEN est configuré.
+ */
+app.get('/api/vin-full-report/:vin', async (req, res) => {
+  const prisma = getPrisma();
+  const provider = getVinDecodeProvider();
+  const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+  const vinMasked = vin.slice(0, 11) + '…';
+  if (vin.length !== 17) {
+    return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
+  }
+  if (!prisma) {
+    return res.status(503).json({ status: 'error', message: 'Base de données requise.' });
+  }
+  if (!provider || provider.id !== 'carapi') {
+    return res.status(503).json({
+      status: 'error',
+      code: 'CARAPI_REQUIRED',
+      message:
+        'Rapport complet indisponible : configurez CARAPI_TOKEN (CarAPI.dev) côté serveur. Le décodage de base reste disponible via l’autre mode.'
+    });
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'AUTH_REQUIRED',
+      message: 'Connectez-vous pour lancer un rapport (1 crédit).'
+    });
+  }
+  let vinCtxId = null;
+  try {
+    const charged = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: userId, credits: { gte: 1 } },
+        data: { credits: { decrement: 1 } }
+      });
+      if (updated.count === 0) {
+        const u = await tx.user.findUnique({ where: { id: userId }, select: { credits: true } });
+        return { ok: false, credits: u ? u.credits : 0 };
+      }
+      const ct = await tx.creditTransaction.create({
+        data: {
+          userId,
+          delta: -1,
+          reason: 'vin_full_report',
+          meta: JSON.stringify({ vin })
+        }
+      });
+      return { ok: true, ctxId: ct.id };
+    });
+    if (!charged.ok) {
+      return res.status(402).json({
+        status: 'error',
+        code: 'INSUFFICIENT_CREDITS',
+        message: 'Crédits insuffisants. Rechargez votre compte.',
+        credits: charged.credits
+      });
+    }
+    if (charged.ctxId) vinCtxId = charged.ctxId;
+  } catch (e) {
+    console.error('Débit rapport VIN complet:', e);
+    return res.status(500).json({ status: 'error', message: 'Erreur compte' });
+  }
+
+  try {
+    const q = req.query || {};
+    const bundle = await carapiClient.fetchCarApiFullEnrichment(provider.apiKey, {
+      vin,
+      country: q.country,
+      listingLimit: q.listingLimit,
+      listingOffset: q.listingOffset,
+      payment: {
+        price: q.price,
+        downPayment: q.downPayment,
+        loanTerm: q.loanTerm,
+        interestRate: q.interestRate
+      }
+    });
+    const dec = bundle.decode;
+    const decodeBody = dec && dec.data;
+    const decodeFailed =
+      !dec ||
+      !dec.ok ||
+      !decodeBody ||
+      !((decodeBody.success === true || decodeBody.success === 'true') && decodeBody.data);
+    if (decodeFailed) {
+      await refundVinDecodeCredit(userId, vinMasked);
+      return res.status(502).json({
+        status: 'error',
+        message:
+          'Décodage VIN indisponible. Votre crédit a été réattribué. Vérifiez le VIN ou réessayez plus tard.',
+        detail: decodeBody != null ? decodeBody : null
+      });
+    }
+    if (vinCtxId && decodeBody && decodeBody.data) {
+      const d = decodeBody.data;
+      const meta = {
+        vin,
+        make: d.make != null ? String(d.make) : '',
+        model: d.model != null ? String(d.model) : '',
+        year: d.year != null ? String(d.year) : '',
+        fuel_type: d.fuel_type != null ? String(d.fuel_type) : '',
+        engine: d.engine != null ? String(d.engine) : '',
+        reportType: 'carapi_full'
+      };
+      prisma.creditTransaction
+        .update({
+          where: { id: vinCtxId },
+          data: { meta: JSON.stringify(meta) }
+        })
+        .catch(function () {});
+    }
+    return res.json({ status: 'success', data: bundle });
+  } catch (e) {
+    console.error('Rapport VIN complet CarAPI:', e.message);
+    await refundVinDecodeCredit(userId, vinMasked);
+    return res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
   }
 });
 

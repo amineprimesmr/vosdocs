@@ -46,6 +46,8 @@
   var guestActivationCancelled = false;
   /** false = inscription directe désactivée (compte après paiement Stripe). */
   var registrationOpen = false;
+  /** true si le serveur a CARAPI_TOKEN : recherche = rapport complet (tous les endpoints). */
+  var carApiEnabled = false;
 
   function removeTempLoginHideStyle() {
     var st = document.getElementById('cg-hide-login-temp');
@@ -177,11 +179,15 @@
     api('/api/saas-config')
       .then(function (r) {
         registrationOpen = !!(r.ok && r.data && r.data.registrationOpen);
+        carApiEnabled = !!(r.ok && r.data && r.data.carApiEnabled);
         applyRegistrationRestrictedUi();
+        refreshSearchModeDesc();
       })
       .catch(function () {
         registrationOpen = false;
+        carApiEnabled = false;
         applyRegistrationRestrictedUi();
+        refreshSearchModeDesc();
       });
 
     // Lien email ?invite= — création mot de passe directe
@@ -520,6 +526,18 @@
   function onAuthSuccess(user, fromInvite) {
     currentUser = user;
     postPaymentSessionId = null;
+    api('/api/saas-config')
+      .then(function (r) {
+        if (r.ok && r.data) {
+          carApiEnabled = !!r.data.carApiEnabled;
+          registrationOpen = !!r.data.registrationOpen;
+          applyRegistrationRestrictedUi();
+        }
+      })
+      .catch(function () {})
+      .then(function () {
+        refreshSearchModeDesc();
+      });
 
     removeTempLoginHideStyle();
     var actFail = document.getElementById('activationFailOverlay');
@@ -597,6 +615,14 @@
     if (emailEl) emailEl.textContent = user.email || '—';
     if (avatarEl) avatarEl.textContent = (user.email || '?').charAt(0).toUpperCase();
     updateCreditsDisplay(user.credits);
+  }
+
+  function refreshSearchModeDesc() {
+    var d = document.getElementById('searchModeDesc');
+    if (!d) return;
+    d.textContent = carApiEnabled
+      ? ' crédit(s) — 1 crédit = rapport complet (CarAPI : fiche, contrôle, vol, km, cote, annonces, photos, financement).'
+      : ' crédit(s) — 1 crédit par fiche VIN (source API configurée côté serveur).';
   }
 
   function updateCreditsDisplay(credits) {
@@ -723,8 +749,11 @@
     }
     var rows = searches.map(function (s) {
       var vehicle = [s.make, s.model, s.year].filter(Boolean).join(' ') || 'Véhicule inconnu';
+      var typeBadge = s.reportKind === 'full'
+        ? ' <span class="badge-full" title="Rapport complet CarAPI">Complet</span>'
+        : '';
       return '<tr>' +
-        '<td class="cell-vin">' + esc(s.vin || '—') + '</td>' +
+        '<td class="cell-vin">' + esc(s.vin || '—') + typeBadge + '</td>' +
         '<td class="cell-vehicle">' + esc(vehicle) + '</td>' +
         '<td class="cell-date">' + formatDate(s.createdAt) + '</td>' +
         '</tr>';
@@ -757,8 +786,11 @@
       }
       var rows = searches.map(function (s) {
         var vehicle = [s.make, s.model, s.year].filter(Boolean).join(' ') || '—';
+        var typeBadge = s.reportKind === 'full'
+          ? ' <span class="badge-full">Complet</span>'
+          : '';
         return '<tr>' +
-          '<td class="cell-vin">' + esc(s.vin || '—') + '</td>' +
+          '<td class="cell-vin">' + esc(s.vin || '—') + typeBadge + '</td>' +
           '<td class="cell-vehicle">' + esc(vehicle) + '</td>' +
           '<td>' + esc(s.fuel_type || '—') + '</td>' +
           '<td>' + esc(s.engine || '—') + '</td>' +
@@ -800,11 +832,20 @@
 
     setLoading('searchBtn', 'searchBtnText', 'searchSpinner', true);
 
-    api('/api/vin-decode/' + encodeURIComponent(vin)).then(function (r) {
+    var searchPath = carApiEnabled
+      ? '/api/vin-full-report/' + encodeURIComponent(vin)
+      : '/api/vin-decode/' + encodeURIComponent(vin);
+    api(searchPath).then(function (r) {
       setLoading('searchBtn', 'searchBtnText', 'searchSpinner', false);
 
       if (!r.ok || !r.data || r.data.status !== 'success') {
         var msg = (r.data && r.data.message) || 'VIN introuvable ou invalide.';
+        if (r.status === 502 && r.data && r.data.message) {
+          msg = r.data.message;
+        }
+        if (r.status === 503 && r.data && r.data.message) {
+          msg = r.data.message;
+        }
         if (r.status === 402) {
           msg = 'Crédits insuffisants. <button class="auth-link" onclick="goSection(\'credits\')">Recharger →</button>';
         } else if (r.status === 401) {
@@ -814,15 +855,12 @@
         return;
       }
 
-      // Debit credit locally
       if (currentUser && currentUser.credits > 0) {
         currentUser.credits -= 1;
         updateCreditsDisplay(currentUser.credits);
       }
 
-      // Mark history as stale
       historyLoaded = false;
-      // Update stats
       api('/api/auth/me').then(function (mr) {
         if (mr.ok && mr.data && mr.data.user) {
           currentUser.credits = mr.data.user.credits;
@@ -830,39 +868,132 @@
         }
       });
 
-      renderVinResult(vin, r.data);
+      if (r.data && r.data.data && r.data.data.decode) {
+        renderFullVinResult(vin, r.data.data);
+      } else {
+        renderVinResult(vin, r.data);
+      }
     }).catch(function () {
       setLoading('searchBtn', 'searchBtnText', 'searchSpinner', false);
       if (errorEl) { errorEl.textContent = 'Erreur réseau. Réessayez.'; errorEl.style.display = 'block'; }
     });
   };
 
-  function renderVinResult(vin, data) {
+  function safeJsonStringify(obj) {
+    try {
+      var s = JSON.stringify(obj, null, 2);
+      if (s.length > 12000) return s.slice(0, 12000) + '\n… (aperçu tronqué)';
+      return s;
+    } catch (e) {
+      return String(e);
+    }
+  }
+
+  function renderCarApiBlockHtml(block) {
+    if (block == null) {
+      return '<p class="full-report-err">Bloc absent</p>';
+    }
+    if (block.skipped) {
+      return (
+        '<p class="full-report-skip">Non requis : ' +
+        esc(String(block.reason || '—')) +
+        ' <span style="font-size:0.8rem;opacity:0.85">(cote / annonces si marque-modèle-année reconnus par CarAPI)</span></p>'
+      );
+    }
+    if (block.error) {
+      return '<p class="full-report-err">' + esc(String(block.error)) + '</p>';
+    }
+    if (block.ok === false) {
+      return (
+        '<p class="full-report-err">Réponse négative (HTTP ' + esc(String(block.status != null ? block.status : '?')) + ')</p>' +
+        '<pre class="full-report-pre">' + esc(safeJsonStringify(block.data)) + '</pre>'
+      );
+    }
+    return '<pre class="full-report-pre">' + esc(safeJsonStringify(block.data)) + '</pre>';
+  }
+
+  function renderFullVinResult(vin, bundle) {
+    var resultEl = document.getElementById('vinResult');
+    var fr = document.getElementById('fullReportExtra');
+    var d = (bundle && bundle.decode && bundle.decode.data && bundle.decode.data.data) || {};
+    var out = {
+      status: 'success',
+      data: {
+        make: d.make,
+        model: d.model,
+        year: d.year,
+        trim: d.trim || d.body_type,
+        engine: d.engine,
+        transmission: d.transmission,
+        fuel_type: d.fuel_type,
+        drivetrain: d.drive_type || d.drivetrain
+      }
+    };
+    renderVinResult(vin, out, true);
+    if (fr) {
+      var panels = [
+        ['inspection', 'Contrôle technique & inspection (MOT, TÜV, EK, etc.)'],
+        ['stolenCheck', 'Recherche de vol (véhicule signalé)'],
+        ['mileageHistory', 'Historique du kilométrage'],
+        ['photos', 'Photos / visuels'],
+        ['payments', 'Simulation de financement (mensualité)'],
+        ['vehicleValuation', 'Cote / valorisation (marché)'],
+        ['listings', 'Annonces de véhicules similaires']
+      ];
+      var html = panels
+        .map(function (p) {
+          var key = p[0];
+          var label = p[1];
+          var block = bundle[key];
+          return (
+            '<details class="full-report-panel" open>' +
+            '<summary>' + esc(label) + '</summary>' +
+            '<div class="full-report-panel-body">' +
+            renderCarApiBlockHtml(block) +
+            '</div></details>'
+          );
+        })
+        .join('');
+      fr.innerHTML = html;
+      fr.style.display = 'flex';
+    }
+    if (resultEl) {
+      resultEl.style.display = 'block';
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function renderVinResult(vin, data, keepFullPanel) {
     var d = data.data || {};
     var resultEl = document.getElementById('vinResult');
     var vehicleEl = document.getElementById('resultVehicle');
     var vinCodeEl = document.getElementById('resultVinCode');
     var gridEl = document.getElementById('resultGrid');
+    var fr = document.getElementById('fullReportExtra');
+    if (fr && !keepFullPanel) {
+      fr.innerHTML = '';
+      fr.style.display = 'none';
+    }
 
     if (!resultEl) return;
 
     var make = d.make || '';
     var model = d.model || '';
-    var year = d.year || '';
+    var year = d.year != null && d.year !== '' ? String(d.year) : '';
     var vehicleLabel = [make, model, year].filter(Boolean).join(' ') || 'Véhicule identifié';
 
     if (vehicleEl) vehicleEl.textContent = vehicleLabel;
     if (vinCodeEl) vinCodeEl.textContent = vin;
 
     var fields = [
-      { label: 'Marque',       value: make },
-      { label: 'Modèle',       value: model },
-      { label: 'Année',        value: year },
-      { label: 'Carrosserie',  value: d.trim },
-      { label: 'Moteur',       value: d.engine },
-      { label: 'Transmission', value: d.transmission },
-      { label: 'Carburant',    value: d.fuel_type },
-      { label: 'Transmission', value: d.drivetrain },
+      { label: 'Marque',                 value: make },
+      { label: 'Modèle',                 value: model },
+      { label: 'Année',                  value: year },
+      { label: 'Finition / carrosserie', value: d.trim },
+      { label: 'Moteur',                 value: d.engine },
+      { label: 'Transmission',            value: d.transmission },
+      { label: 'Carburant',               value: d.fuel_type },
+      { label: 'Motricité / 4x4',         value: d.drivetrain }
     ].filter(function (f) { return f.value; });
 
     if (gridEl) {
