@@ -642,6 +642,41 @@ function getVinDecodeProvider() {
   return null;
 }
 
+const MAX_VIN_FULL_REPORT_SNAPSHOT = 150000;
+/**
+ * Stocke une copie du bundle CarAPI dans credit_transactions.meta (lecture « Mes rapports »).
+ */
+function slimCarApiBundleForMetaSnapshot(bundle) {
+  if (!bundle || typeof bundle !== 'object') {
+    return null;
+  }
+  try {
+    const b = JSON.parse(JSON.stringify(bundle));
+    if (b.listings && b.listings.data) {
+      const arr = b.listings.data;
+      if (Array.isArray(arr) && arr.length > 4) b.listings.data = arr.slice(0, 4);
+    }
+    if (b.mileageHistory && b.mileageHistory.data && b.mileageHistory.data.mileageHistory) {
+      const m = b.mileageHistory.data.mileageHistory;
+      if (Array.isArray(m) && m.length > 6) b.mileageHistory.data = Object.assign({}, b.mileageHistory.data, { mileageHistory: m.slice(0, 6) });
+    }
+    if (b.photos && b.photos.data && b.photos.data.media && Array.isArray(b.photos.data.media) && b.photos.data.media.length > 5) {
+      b.photos.data = Object.assign({}, b.photos.data, { media: b.photos.data.media.slice(0, 5) });
+    }
+    let s = JSON.stringify(b);
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      b.listings = b.listings && b.listings.data ? { ok: b.listings.ok, data: { _truncated: true } } : b.listings;
+      s = JSON.stringify(b);
+    }
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      return null;
+    }
+    return s;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Normalise la réponse CarAPI (ancien { success, data } ou actuel { vin, specifications } — OpenAPI).
  * @see https://api.carapi.dev/openapi.json
@@ -2033,6 +2068,7 @@ app.get('/api/vin/history', async (req, res) => {
         year: meta.year || '',
         fuel_type: meta.fuel_type || '',
         engine: meta.engine || '',
+        hasSnapshot: !!(t.reason === 'vin_full_report' && meta.fullReportJson && String(meta.fullReportJson).length > 2),
         createdAt: t.createdAt
       };
     });
@@ -2040,6 +2076,53 @@ app.get('/api/vin/history', async (req, res) => {
   } catch (e) {
     console.error('vin/history:', e);
     return res.status(500).json({ error: 'Erreur base de données.' });
+  }
+});
+
+/**
+ * Récupère l’instantané du rapport complet CarAPI (même contenu qu’au moment de l’analyse), sans crédit.
+ */
+app.get('/api/vin/report/:transactionId', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  const prisma = getPrisma();
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({ status: 'error', message: 'Connexion requise.' });
+  }
+  if (!prisma) {
+    return res.status(503).json({ status: 'error', message: 'Base de données requise.' });
+  }
+  const tid = String(req.params.transactionId || '').trim();
+  if (!tid) {
+    return res.status(400).json({ status: 'error', message: 'Identifiant invalide.' });
+  }
+  try {
+    const t = await prisma.creditTransaction.findFirst({
+      where: { id: tid, userId, reason: 'vin_full_report' }
+    });
+    if (!t) {
+      return res.status(404).json({ status: 'error', message: 'Rapport introuvable.' });
+    }
+    let meta = {};
+    try { meta = JSON.parse(t.meta || '{}'); } catch (e) {}
+    if (!meta.fullReportJson) {
+      return res.status(404).json({
+        status: 'error',
+        code: 'NO_SNAPSHOT',
+        message:
+          'Aucun détail enregistré pour cette entrée. Relancez une analyse depuis « Nouvelle recherche » (1 crédit) pour ce VIN — les analyses avant mise à jour n’incluaient pas l’enregistrement complet.'
+      });
+    }
+    let bundle;
+    try {
+      bundle = JSON.parse(String(meta.fullReportJson));
+    } catch (e) {
+      return res.status(502).json({ status: 'error', message: 'Donnée rapport corrompue.' });
+    }
+    return res.json({ status: 'success', data: bundle });
+  } catch (e) {
+    console.error('vin/report:', e);
+    return res.status(500).json({ status: 'error', message: 'Erreur serveur.' });
   }
 });
 
@@ -3124,6 +3207,10 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
         engine: d.engine != null ? String(d.engine) : '',
         reportType: 'carapi_full'
       };
+      const snap = slimCarApiBundleForMetaSnapshot(bundle);
+      if (snap) {
+        meta.fullReportJson = snap;
+      }
       prisma.creditTransaction
         .update({
           where: { id: vinCtxId },

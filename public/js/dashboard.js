@@ -861,24 +861,125 @@
         return;
       }
       var rows = searches.map(function (s) {
-        var vehicle = [s.make, s.model, s.year].filter(Boolean).join(' ') || '—';
+        var vehicle = [s.make, s.model, s.year].filter(Boolean).join(' ').trim();
+        if (!vehicle) {
+          vehicle = s.hasSnapshot
+            ? '(détail enregistré — utiliser le bouton)'
+            : '(résumé non rempli — relancer l’analyse)';
+        }
         var typeBadge = s.reportKind === 'full'
           ? ' <span class="badge-full">Complet</span>'
           : '';
-        return '<tr>' +
-          '<td class="cell-vin">' + esc(s.vin || '—') + typeBadge + '</td>' +
-          '<td class="cell-vehicle">' + esc(vehicle) + '</td>' +
-          '<td>' + esc(s.fuel_type || '—') + '</td>' +
-          '<td>' + esc(s.engine || '—') + '</td>' +
-          '<td class="cell-date">' + formatDate(s.createdAt) + '</td>' +
-          '</tr>';
+        var actionHtml = '';
+        if (s.id && s.reportKind === 'full' && s.hasSnapshot) {
+          actionHtml =
+            '<button type="button" class="btn-history-detail" data-txid="' +
+            esc(s.id) +
+            '" data-vin="' +
+            esc(s.vin || '') +
+            '">Voir le détail</button>';
+        } else if (s.vin && s.vin.length === 17) {
+          actionHtml =
+            '<button type="button" class="btn-history-prefill" data-vin="' +
+            esc(s.vin) +
+            '">Rouvrir l’analyse</button>';
+        } else {
+          actionHtml = '—';
+        }
+        return (
+          '<tr>' +
+          '<td class="cell-vin">' +
+          esc(s.vin || '—') +
+          typeBadge +
+          '</td>' +
+          '<td class="cell-vehicle">' +
+          esc(vehicle) +
+          '</td>' +
+          '<td>' +
+          esc(s.fuel_type || '—') +
+          '</td>' +
+          '<td>' +
+          esc(s.engine || '—') +
+          '</td>' +
+          '<td class="cell-date">' +
+          formatDate(s.createdAt) +
+          '</td>' +
+          '<td class="cell-actions history-actions">' +
+          actionHtml +
+          '</td>' +
+          '</tr>'
+        );
       }).join('');
-      el.innerHTML = '<table class="data-table">' +
-        '<thead><tr><th>VIN</th><th>Véhicule</th><th>Carburant</th><th>Moteur</th><th>Date</th></tr></thead>' +
+      el.innerHTML =
+        '<table class="data-table data-table--history">' +
+        '<thead><tr><th>VIN</th><th>Véhicule</th><th>Carburant</th><th>Moteur</th><th>Date</th><th>Accès</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table>';
+      el.querySelectorAll('.btn-history-detail').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var tid = btn.getAttribute('data-txid');
+          var v = (btn.getAttribute('data-vin') || '').trim();
+          if (tid) openStoredFullReport(tid, v);
+        });
+      });
+      el.querySelectorAll('.btn-history-prefill').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var v = (btn.getAttribute('data-vin') || '').trim();
+          if (v) prefillVinSearch(v, true);
+        });
+      });
     }).catch(function () {
       el.innerHTML = '<div class="empty-state">Erreur de chargement. Réessayez.</div>';
     });
+  }
+
+  /** Rapport complet déjà enregistré côté serveur — ouvre l’onglet recherche + panneaux. */
+  function openStoredFullReport(txId, vinHint) {
+    var errEl = document.getElementById('searchError');
+    api('/api/vin/report/' + encodeURIComponent(txId)).then(function (r) {
+      if (!r.ok || !r.data || r.data.status !== 'success' || !r.data.data) {
+        var m =
+          (r.data && r.data.message) || 'Rapport indisponible. Relancez l’analyse depuis l’onglet Nouvelle recherche (1 crédit).';
+        if (errEl) {
+          goSection('search');
+          errEl.textContent = m;
+          errEl.style.display = 'block';
+        } else {
+          goSection('search');
+        }
+        return;
+      }
+      var bundle = r.data.data;
+      var v = (bundle && bundle.vin) || vinHint || '';
+      v = String(v)
+        .replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '')
+        .toUpperCase();
+      goSection('search');
+      setTimeout(function () {
+        var input = document.getElementById('vinInput');
+        if (input) input.value = v;
+        if (errEl) {
+          errEl.style.display = 'none';
+        }
+        renderFullVinResult(v, bundle);
+      }, 50);
+    });
+  }
+
+  function prefillVinSearch(vin, showHint) {
+    goSection('search');
+    setTimeout(function () {
+      var input = document.getElementById('vinInput');
+      if (input) input.value = vin;
+      if (showHint) {
+        var h = document.getElementById('searchError');
+        if (h) {
+          h.textContent =
+            'Saisie préremplie : lancez la recherche pour 1 crédit afin d’afficher de nouveau le rapport complet.';
+          h.style.display = 'block';
+          h.classList.remove('search-error--hard');
+        }
+      }
+    }, 50);
   }
 
   /* ============================================================
