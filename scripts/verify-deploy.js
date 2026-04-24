@@ -29,7 +29,8 @@ const libChecks = [
   'lib/prisma.js',
   'lib/auth.js',
   'scripts/manual-fulfill-payment.js',
-  'scripts/verify-stripe-webhook-url.js'
+  'scripts/verify-stripe-webhook-url.js',
+  'scripts/diag-stripe-webhooks.js'
 ];
 for (const rel of libChecks) {
   try {
