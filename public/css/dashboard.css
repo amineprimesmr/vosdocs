@@ -1452,6 +1452,10 @@ body.dashboard-page {
 .report-lead { font-size: 0.875rem; color: var(--text); margin: 0 0 12px; }
 .report-subhead { font-size: 0.8rem; font-weight: 700; color: var(--text); margin: 6px 0 10px; }
 .report-footnote { font-size: 0.75rem; color: var(--text-muted); margin: 12px 0 0; }
+.report-api-note { font-size: 0.78rem; color: var(--text-2); line-height: 1.5; margin: 0 0 10px; padding: 8px 10px; background: var(--surface-2); border-radius: var(--r-sm); border: 1px solid var(--border); }
+.report-code { font-family: ui-monospace, monospace; font-size: 0.8em; background: var(--surface-1); padding: 1px 4px; border-radius: 4px; }
+.report-api-params { margin-bottom: 12px; }
+.report-plate2vin-title { font-size: 0.85rem; font-weight: 800; margin: 0 0 8px; color: var(--text); }
 
 .report-callout {
   border-radius: var(--r);

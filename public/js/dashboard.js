@@ -697,7 +697,7 @@
     var d = document.getElementById('searchModeDesc');
     if (!d) return;
     d.textContent = carApiEnabled
-      ? ' crédit(s) — 1 crédit = rapport complet (CarAPI : fiche, contrôle, vol, km, cote, annonces, photos, financement).'
+      ? ' crédit(s) — 1 crédit = pack CarAPI (décodage, vol, inspection, km, annonces, cote, photos, financement) + aperçu module plaque → VIN.'
       : ' crédit(s) — 1 crédit par fiche VIN (source API configurée côté serveur).';
   }
 
@@ -1164,6 +1164,9 @@
     if (block == null) {
       return '<span class="' + reportPillClass('err') + '">Absente</span>';
     }
+    if (block._infoOnly) {
+      return '<span class="' + reportPillClass('neutral') + '">CarAPI</span>';
+    }
     if (block.skipped) {
       return '<span class="' + reportPillClass('neutral') + '">Non requise</span>';
     }
@@ -1179,13 +1182,92 @@
     return '<span class="' + reportPillClass('ok') + '">Reçu</span>';
   }
 
-  function renderInspectionData(data) {
+  /**
+   * Bloc aligné sur le « Décodage du VIN » du playground CarAPI (GET /v1/vin-decode/{vin}).
+   */
+  function renderDecodeBlock(block, bundle) {
+    if (block == null) {
+      return '<p class="full-report-err">Décodage absent</p>';
+    }
+    if (block.error) {
+      return '<p class="full-report-err">' + esc(String(block.error)) + '</p>';
+    }
+    if (block.ok === false) {
+      return (
+        '<div class="report-decode report-decode--fail"><p class="report-fail__title">Le décodage VIN n’a pas réussi (HTTP ' +
+        esc(String(block.status != null ? block.status : '?')) + ').</p></div>'
+      );
+    }
+    var b = block.data && typeof block.data === 'object' && !Array.isArray(block.data) ? block.data : {};
+    var inner = b.data && typeof b.data === 'object' && !Array.isArray(b.data) ? b.data : {};
+    var spec = b.specifications && typeof b.specifications === 'object' && !Array.isArray(b.specifications) ? b.specifications : null;
+    var id = block.identity && typeof block.identity === 'object' ? block.identity : null;
+    var make = (id && id.make) || b.make;
+    var model = (id && id.model) || b.model;
+    var y = (id && id.year != null) ? id.year : b.year;
+    var vinSh = b.vin != null && b.vin !== '' ? b.vin : (bundle && bundle.vin) ? String(bundle.vin) : '—';
+    var intro =
+      '<p class="report-lead">Réponse de l’endpoint <strong>vin-decode</strong> (CarAPI) : fiche d’identification liée à ce numéro de châssis, incluant le détail constructeur / homologation lorsqu’il est retourné par la base.</p>';
+    var grid =
+      '<div class="report-kv report-kv--hero">' +
+      '<div class="report-kv-item"><span class="report-kv-label">VIN</span><span class="report-kv-value report-kv-mono">' + esc(String(vinSh || b.vin || '—')) + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Marque</span><span class="report-kv-value">' + esc(make != null ? String(make) : '—') + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Modèle</span><span class="report-kv-value">' + esc(model != null ? String(model) : '—') + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Année modèle (si indiquée)</span><span class="report-kv-value">' + esc(y != null && y !== '' ? String(y) : '—') + '</span></div>' +
+      '</div>';
+    var more = [];
+    var pick = function (o, keys, label) {
+      var v = firstDefined(o, keys);
+      if (v != null) more.push({ l: label, v: v });
+    };
+    if (Object.keys(inner).length) {
+      pick(inner, ['vehicleType', 'vehicle_type', 'type'], 'Type');
+      pick(inner, ['bodyClass', 'body_class'], 'Carrosserie');
+      pick(inner, ['driveType', 'drive_type', 'drivetrain'], 'Motricité');
+    }
+    if (spec) {
+      pick(spec, ['fuel', 'fuelType', 'engine'], 'Moteur / carburant (spec.)');
+    }
+    var moreHtml = '';
+    if (more.length) {
+      moreHtml = '<p class="report-subhead">Données complémentaires (réponse API)</p><div class="report-kv report-kv--compact">';
+      more.forEach(function (m) {
+        moreHtml +=
+          '<div class="report-kv-item"><span class="report-kv-label">' + esc(m.l) + '</span><span class="report-kv-value">' + esc(String(m.v)) + '</span></div>';
+      });
+      moreHtml += '</div>';
+    }
+    return (
+      intro +
+      grid +
+      moreHtml +
+      '<p class="report-footnote">Cette section regroupe l’essentiel du <strong>GET /v1/vin-decode/…</strong> — miroir de l’option «&nbsp;Décodage du VIN&nbsp;» sur le dashboard CarAPI.</p>'
+    );
+  }
+
+  function renderPlateToVinInfoBlock() {
+    return (
+      '<div class="report-plate2vin-info report-callout report-callout--info">' +
+      '<h4 class="report-plate2vin-title">Plaque d’immatriculation → VIN (API distincte)</h4>' +
+      '<p class="report-lead" style="margin:0 0 8px">Sur CarAPI, le point de terminaison <code class="report-code">GET /v1/plate-to-vin/{plaque}</code> accepte le <strong>numéro de plaque</strong> et le <strong>code pays</strong> (paramètre <code class="report-code">country</code>, ex. <span class="report-kv-mono">FR</span>, <span class="report-kv-mono">PL</span>) pour remonter un VIN. Ce rapport a été lancé à partir d’un <strong>VIN saisi</strong> : la conversion «&nbsp;plaque → VIN&nbsp;» n’a pas été utilisée pour cette fiche.</p>' +
+      '<p class="report-footnote" style="margin:0">Pour offrir la recherche par plaque, prévoir un écran dédié (même modèle que le playground) — côté serveur, un proxy sécurisé est possible (crédit / journalisation séparés comme pour le décodage).</p></div>'
+    );
+  }
+
+  function renderInspectionData(data, enrichment) {
     var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     var ins = d.inspection && typeof d.inspection === 'object' ? d.inspection : {};
     var ctry = d.country;
     var stk = ins.stkValidTo;
     var ek = ins.ekValidTo;
+    var enrLine = '';
+    if (enrichment && enrichment.inspectionQueryCountry) {
+      enrLine =
+        '<p class="report-api-note">Requête alignée sur le playground <strong>inspection</strong> : <code class="report-code">country=' +
+        esc(String(enrichment.inspectionQueryCountry)) + '</code> (pays cible pour l’endpoint CarAPI, pas l’immat. du véhicule seul).</p>';
+    }
     var hint =
+      enrLine +
       '<p class="report-lead">Contrôle périodique (STK) et contrôle des émissions (EK) tels qu’exposés par l’API pour le pays indiqué. ' +
       'L’exhaustivité des pays dépend de CarAPI — pour la plupart des VIN, seuls certains jeux de données (ex. Slovaquie) sont proposés.</p>';
     var countryLine =
@@ -1214,7 +1296,7 @@
       stolen
         ? '<div class="report-hero report-hero--alert"><div class="report-hero__icon" aria-hidden="true">!</div><div>' +
           '<div class="report-hero__title">Signalement de vol</div>' +
-          '<p class="report-hero__text">D’après la base interrogee par l’API, ce VIN remonte comme signalé. Vérifiez auprès des autorités compétentes.</p></div></div>'
+          '<p class="report-hero__text">D’après la base interrogée par l’API, ce VIN remonte comme signalé. Vérifiez auprès des autorités compétentes.</p></div></div>'
         : '<div class="report-hero report-hero--ok"><div class="report-hero__icon" aria-hidden="true">✓</div><div>' +
           '<div class="report-hero__title">Aucun signalement de vol</div>' +
           '<p class="report-hero__text">Aucun vol signalé sur les sources consultées par CarAPI pour ce VIN, selon le jeu de pays retourné.</p></div></div>';
@@ -1300,11 +1382,24 @@
     );
   }
 
-  function renderPaymentsData(data) {
+  function renderPaymentsData(data, enrichment) {
     var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     var cur = d.currency || 'EUR';
     var pay = Array.isArray(d.payments) ? d.payments : [];
-    var top =
+    var paramBlock = '';
+    if (enrichment && enrichment.payment && typeof enrichment.payment === 'object') {
+      var p = enrichment.payment;
+      var ir = p.interestRate != null && isFinite(Number(p.interestRate)) ? String(p.interestRate) : '—';
+      var lt = p.loanTerm != null ? String(p.loanTerm) : '—';
+      paramBlock =
+        '<div class="report-api-params"><p class="report-subhead">Paramètres envoyés (GET /payments/{vin})</p><div class="report-kv report-kv--compact">' +
+        '<div class="report-kv-item"><span class="report-kv-label">Prix (véhicule)</span><span class="report-kv-value">' + esc(formatMoney(p.price, 'EUR')) + '</span></div>' +
+        '<div class="report-kv-item"><span class="report-kv-label">Apport (acompte)</span><span class="report-kv-value">' + esc(formatMoney(p.downPayment, 'EUR')) + '</span></div>' +
+        '<div class="report-kv-item"><span class="report-kv-label">Durée du prêt</span><span class="report-kv-value">' + esc(lt) + ' mois</span></div>' +
+        '<div class="report-kv-item"><span class="report-kv-label">Taux d’intérêt</span><span class="report-kv-value">' + esc(ir) + ' %</span></div></div></div>' +
+        '<p class="report-footnote">Même logique que le <strong>calculateur de paiement</strong> du dashboard CarAPI — personnalisable côté serveur via requête sur <code class="report-code">/api/vin-full-report/…?price=…&amp;downPayment=…&amp;loanTerm=…&amp;interestRate=…</code> si vous exposez ces paramètres en produit.</p>';
+    }
+    var top = paramBlock +
       '<div class="report-finance-hero"><div class="report-finance-kpis">' +
       '<div class="report-finance-kpi"><span class="report-finance-kpi__l">Mensualité (estim.)</span>' +
       '<span class="report-finance-kpi__v">' + esc(formatMoney(d.monthlyPayment, cur)) + '</span></div>' +
@@ -1332,10 +1427,15 @@
     return top + table;
   }
 
-  function renderValuationData(data) {
+  function renderValuationData(data, enrichment) {
     var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     var cur = d.currency || 'EUR';
+    var mctx = '';
+    if (enrichment && enrichment.marketCountry) {
+      mctx = '<p class="report-api-note">Cotation alignée sur le paramètre <strong>country</strong> = <code class="report-code">' + esc(String(enrichment.marketCountry)) + '</code> (marché cible, comme «&nbsp;Évaluation des véhicules&nbsp;» sur CarAPI.dev).</p>';
+    }
     return (
+      mctx +
       '<div class="report-valuation">' +
       '<div class="report-valuation__price"><span class="report-valuation__n">' + esc(formatMoney(d.valuationPrice, cur)) + '</span>' +
       '<span class="report-valuation__hint">Cote / valeur estimative sur le marché indiqué</span></div>' +
@@ -1343,17 +1443,28 @@
       '<div class="report-kv-item"><span class="report-kv-label">Marque (API)</span><span class="report-kv-value">' + esc(d.make != null ? String(d.make) : '—') + '</span></div>' +
       '<div class="report-kv-item"><span class="report-kv-label">Modèle (API)</span><span class="report-kv-value">' + esc(d.model != null ? String(d.model) : '—') + '</span></div>' +
       '<div class="report-kv-item"><span class="report-kv-label">Millésime (année)</span><span class="report-kv-value">' + esc(d.year != null ? String(d.year) : '—') + '</span></div>' +
-      '<div class="report-kv-item"><span class="report-kv-label">Marché de référence</span><span class="report-kv-value">' + esc(frCountryCode(d.country)) + '</span></div></div></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Marché de référence (réponse)</span><span class="report-kv-value">' + esc(frCountryCode(d.country)) + '</span></div></div></div>' +
       '<p class="report-footnote">Valeur indicative fournie par CarAPI, selon le millésime et le pays — à rapprocher de l’état, du kilométrage réel, des équipements et de l’offre locale (annonces, mandataire, reprise).</p>'
     );
   }
 
-  function renderListingsData(data) {
+  function renderListingsData(data, enrichment) {
     var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     var L = d.listings;
     var pag = d.pagination;
+    var listCtx = '';
+    if (enrichment) {
+      listCtx =
+        '<p class="report-api-note">Recherche d’<strong>annonces</strong> (GET /listing) : <code class="report-code">limit=' +
+        esc(String(enrichment.listingLimit != null ? enrichment.listingLimit : '—')) +
+        '</code>, <code class="report-code">offset=' +
+        esc(String(enrichment.listingOffset != null ? enrichment.listingOffset : 0)) +
+        '</code>, marché <code class="report-code">country=' +
+        esc(String(enrichment.marketCountry || '—')) + '</code> — miroir de l’option «&nbsp;Annonces de véhicules&nbsp;» sur CarAPI.</p>';
+    }
     if (!Array.isArray(L) || L.length === 0) {
       return (
+        listCtx +
         '<p class="report-lead">Aucune annonce similaire n’a été retournée (pagination ou indisponibilité des données). Les jeux d’annonces varient par marché et par moment.</p>' +
         (pag
           ? '<p class="report-subhead">Pagination : ' + esc(String(pag.offset || 0)) + ' – ' + esc(String((pag.offset || 0) + (pag.limit || 0))) + ' (limite ' + esc(String(pag.limit != null ? pag.limit : '—')) + ')</p>'
@@ -1380,6 +1491,7 @@
       );
     });
     return (
+      listCtx +
       '<p class="report-lead">' + L.length + ' annonce(s) « proches » (même famille modèle / millésime selon l’algorithme CarAPI) — repères de marché, pas d’exhaustivité.</p>' +
       '<div class="report-listing-stack">' + cards.join('') + '</div>'
     );
@@ -1408,7 +1520,13 @@
     );
   }
 
-  function renderCarApiBlockHtml(key, block) {
+  function renderCarApiBlockHtml(key, block, bundle) {
+    if (key === '_plateToVin') {
+      return renderPlateToVinInfoBlock();
+    }
+    if (key === 'decode') {
+      return renderDecodeBlock(block, bundle);
+    }
     if (block == null) {
       return '<p class="full-report-err">Bloc absent</p>';
     }
@@ -1430,13 +1548,14 @@
       return renderBlockFailureHtml(key, block);
     }
     var data = block.data;
-    if (key === 'inspection') return renderInspectionData(data);
+    var enr = bundle && bundle.enrichment;
+    if (key === 'inspection') return renderInspectionData(data, enr);
     if (key === 'stolenCheck') return renderStolenData(data);
     if (key === 'mileageHistory') return renderMileageData(data);
     if (key === 'photos') return renderPhotosData(data);
-    if (key === 'payments') return renderPaymentsData(data);
-    if (key === 'vehicleValuation') return renderValuationData(data);
-    if (key === 'listings') return renderListingsData(data);
+    if (key === 'payments') return renderPaymentsData(data, enr);
+    if (key === 'vehicleValuation') return renderValuationData(data, enr);
+    if (key === 'listings') return renderListingsData(data, enr);
     return (
       '<p class="report-lead">Données reçues pour cette section ; le format n’est pas pris en charge par l’affichage actuel. Relancez plus tard ou contactez le support si le problème persiste.</p>'
     );
@@ -1480,26 +1599,29 @@
     };
     renderVinResult(vin, out, true, bundle);
     if (fr) {
+      /** Ordre aligné sur le dashboard / playground CarAPI (Points de terminaison). */
       var panels = [
-        ['inspection', 'Contrôle technique & inspection (MOT, TÜV, EK, etc.)'],
-        ['stolenCheck', 'Recherche de vol (véhicule signalé)'],
+        ['decode', 'Décodage du VIN (fiche technique)'],
+        ['stolenCheck', 'Vérification des véhicules volés'],
+        ['inspection', 'Inspection du véhicule (CT / STK, EK)'],
         ['mileageHistory', 'Historique du kilométrage'],
-        ['photos', 'Photos / visuels'],
-        ['payments', 'Simulation de financement (mensualité)'],
-        ['vehicleValuation', 'Cote / valorisation (marché)'],
-        ['listings', 'Annonces de véhicules similaires']
+        ['listings', 'Annonces de véhicules'],
+        ['vehicleValuation', 'Évaluation (cote marché)'],
+        ['photos', 'Photos du véhicule'],
+        ['payments', 'Calculateur de financement (simulation)'],
+        ['_plateToVin', 'Plaque d’immatriculation → VIN']
       ];
       var html = panels
         .map(function (p) {
           var key = p[0];
           var label = p[1];
-          var block = bundle[key];
+          var block = key === '_plateToVin' ? { _infoOnly: true } : bundle[key];
           return (
             '<details class="full-report-panel" open>' +
             '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' + esc(label) + '</span>' +
             reportBlockStatusPill(block) + '</summary>' +
             '<div class="full-report-panel-body">' +
-            renderCarApiBlockHtml(key, block) +
+            renderCarApiBlockHtml(key, block, bundle) +
             '</div></details>'
           );
         })
