@@ -1140,25 +1140,56 @@
     } catch (e) { return String(iso); }
   }
 
-  function reportPillClass(kind) {
-    if (kind === 'ok') return 'report-pill report-pill--ok';
-    if (kind === 'warn') return 'report-pill report-pill--warn';
-    if (kind === 'err') return 'report-pill report-pill--err';
-    if (kind === 'neutral') return 'report-pill report-pill--neutral';
-    return 'report-pill';
-  }
-
-  function reportBlockStatusPill(block) {
-    if (block == null) return '<span class="' + reportPillClass('err') + '">Absent</span>';
-    if (block.skipped) return '<span class="' + reportPillClass('neutral') + '">Non requis</span>';
-    if (block.error) return '<span class="' + reportPillClass('err') + '">Erreur</span>';
-    if (block.ok === false) {
-      if (block.status === 400 || block.status === 404) {
-        return '<span class="' + reportPillClass('warn') + '">Indisponible</span>';
-      }
-      return '<span class="' + reportPillClass('err') + '">Échec</span>';
+  /**
+   * N’affiche que les blocs utiles (sources OK + données non vides) — on masque l’indisponible côté UI.
+   */
+  function shouldDisplayReportBlock(key, block) {
+    if (block == null) return false;
+    if (block.skipped) return false;
+    if (block.error) return false;
+    if (block.ok === false) return false;
+    if (block.ok !== true) return false;
+    var d = block.data;
+    if (d == null || typeof d !== 'object' || Array.isArray(d)) {
+      if (key === 'stolenCheck') return true;
+      return false;
     }
-    return '<span class="' + reportPillClass('ok') + '">Reçu</span>';
+    if (key === 'inspection') {
+      var ins = d.inspection && typeof d.inspection === 'object' ? d.inspection : {};
+      return !!(ins.stkValidTo || ins.ekValidTo);
+    }
+    if (key === 'stolenCheck') {
+      return true;
+    }
+    if (key === 'mileageHistory') {
+      var list = d.mileageHistory;
+      return Array.isArray(list) && list.length > 0;
+    }
+    if (key === 'photos') {
+      var ph = d.photos;
+      if (!Array.isArray(ph) || ph.length === 0) return false;
+      return ph.some(function (u) {
+        return u && typeof u === 'string' && u.trim() !== '';
+      });
+    }
+    if (key === 'payments') {
+      var pay = d.payments;
+      if (Array.isArray(pay) && pay.length > 0) return true;
+      if (d.monthlyPayment != null && isFinite(Number(d.monthlyPayment)) && Number(d.monthlyPayment) > 0) return true;
+      if (d.loanAmount != null && isFinite(Number(d.loanAmount)) && Number(d.loanAmount) > 0) return true;
+      if (d.totalPaid != null && isFinite(Number(d.totalPaid)) && Number(d.totalPaid) > 0) return true;
+      if (d.totalInterest != null && isFinite(Number(d.totalInterest)) && Number(d.totalInterest) > 0) return true;
+      return false;
+    }
+    if (key === 'vehicleValuation') {
+      if (d.valuationPrice == null) return false;
+      var n = Number(d.valuationPrice);
+      return isFinite(n) && n > 0;
+    }
+    if (key === 'listings') {
+      return Array.isArray(d.listings) && d.listings.length > 0;
+    }
+    return true;
   }
 
   function renderInspectionData(data) {
@@ -1459,14 +1490,16 @@
         ['listings', 'Annonces de véhicules similaires']
       ];
       var html = panels
+        .filter(function (p) {
+          return shouldDisplayReportBlock(p[0], bundle[p[0]]);
+        })
         .map(function (p) {
           var key = p[0];
           var label = p[1];
           var block = bundle[key];
           return (
             '<details class="full-report-panel" open>' +
-            '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' + esc(label) + '</span>' +
-            reportBlockStatusPill(block) + '</summary>' +
+            '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' + esc(label) + '</span></summary>' +
             '<div class="full-report-panel-body">' +
             renderCarApiBlockHtml(key, block) +
             '</div></details>'
@@ -1474,7 +1507,7 @@
         })
         .join('');
       fr.innerHTML = html;
-      fr.style.display = 'flex';
+      fr.style.display = html ? 'flex' : 'none';
     }
     if (resultEl) {
       resultEl.style.display = 'block';
