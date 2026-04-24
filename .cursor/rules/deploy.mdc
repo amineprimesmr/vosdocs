@@ -1,10 +1,29 @@
 ---
-description: Pousser sur main après les changements pour déclencher le déploiement Vercel
+description: Mettre la production à jour à chaque changement (push main → Vercel, ou CLI)
 alwaysApply: true
 ---
 
 # Déploiement à chaque modification
 
-- Le dépôt est prévu pour **Vercel** : quand le projet est **connecté à GitHub** (import Git sur [vercel.com](https://vercel.com)), **chaque push sur `main` déclenche un déploiement** automatiquement. Aucun `vercel deploy` manuel n’est nécessaire dans ce cas.
-- Après avoir **terminé une modification de code** demandée par l’utilisateur (et vérifié `node --check server.js` ou `npm run verify` si pertinent), **commit puis `git push origin main`** pour que la prod soit à jour, **sauf** si l’utilisateur a explicitement demandé de ne pas pousser.
-- Ne pas créer de commits vides ; messages de commit en français, phrase complète, liés au changement.
+## Comportement attendu de l’agent
+
+- **Dès qu’une modification de code est terminée** (tâche utilisateur ou correctif), **sans attendre une autre demande** :
+  1. Vérifier les fichiers modifiés (`git status`).
+  2. **`git add`** des fichiers concernés, **`git commit`** avec un message en français (phrase complète, décrit le changement).
+  3. **`git push origin main`** pour publier.
+- **Exception** : si l’utilisateur demande explicitement de **ne pas** pousser / de ne pas déployer.
+- Ne pas créer de commits vides ; éviter d’empiler plusieurs sujets sans rapport dans un seul commit si ce sont des lots distincts (préférer un commit par livraison logique).
+
+## Côté Vercel (prod)
+
+- Le dépôt est prévu pour **Vercel** : avec le projet **connecté à GitHub** (import Git sur [vercel.com](https://vercel.com)), **chaque push sur `main` déclenche un déploiement production** (selon les réglages du projet : branche de production = `main`).
+- Aucun `vercel deploy` manuel n’est nécessaire **tant que** cette liaison Git est active et que le push arrive bien sur `main`.
+
+## Si le déploiement Git ne tourne pas
+
+- Depuis une machine où le projet est lié (`vercel link`) : **`npm run deploy:vercel`** (équivalent à `vercel --prod`).
+- Vérifier sur Vercel : **Settings → Git** que le bon dépôt et la branche `main` sont bien reliés.
+
+## Vérifications avant push (quand c’est pertinent)
+
+- `node --check server.js` ou **`npm run verify`** si le changement touche le serveur ou le build.

@@ -341,10 +341,12 @@
 
   /**
    * Invité revenant de Stripe : récupère l'email + token d'invitation depuis session_id.
-   * Retente jusqu'à 8× (webhook peut être légèrement en retard).
+   * Polling sans limite (webhook ou réconciliation get-invite peut être en retard).
    */
   function handleGuestPostPayment(sessionId) {
     var attempts = 0;
+    var transientStrikes = 0;
+    var MAX_TRANSIENT_BEFORE_EMAIL_HINT = 90;
 
     function nextDelay() {
       if (attempts < 25) return 80;
@@ -364,29 +366,80 @@
         { credentials: 'include', cache: 'no-store' }
       )
         .then(function (r) {
-          return r.json();
+          return r.json().then(function (data) {
+            return { ok: r.ok, status: r.status, data: data || {} };
+          });
         })
-        .then(function (data) {
+        .then(function (result) {
           if (guestActivationCancelled) return;
-          if (data.error && !data.ready) {
-            showActivationFailure(data.error || 'Erreur serveur.');
+          var data = result.data;
+          var status = result.status;
+          var ok = result.ok;
+
+          if (data.ready && data.inviteToken) {
+            transientStrikes = 0;
+            inviteToken = data.inviteToken;
+            showInviteFormOverlay(data.email);
             return;
           }
+
           if (data.reason === 'no_email') {
             showActivationFailure(
               'Impossible de lire l’email de cette session. Utilisez le lien envoyé par email après l’achat.'
             );
             return;
           }
-          if (data.ready && data.inviteToken) {
-            inviteToken = data.inviteToken;
-            showInviteFormOverlay(data.email);
+
+          if (data.reason === 'no_db') {
+            showActivationFailure(
+              'Le service est momentanément indisponible. Si vous avez payé, un email avec un lien pour créer votre mot de passe vous a été envoyé — vérifiez aussi les courriers indésirables.'
+            );
             return;
           }
+
+          var retryPending = data.reason === 'pending';
+          var retryTransient =
+            data.reason === 'temporary' || (!ok && status >= 500);
+
+          if (retryPending) {
+            transientStrikes = 0;
+            setTimeout(tryFetch, nextDelay());
+            return;
+          }
+
+          if (retryTransient) {
+            transientStrikes++;
+            if (transientStrikes >= MAX_TRANSIENT_BEFORE_EMAIL_HINT) {
+              showActivationFailure(
+                'Nous n’arrivons pas à joindre le serveur pour finaliser l’activation. Vous devriez avoir reçu un email avec un lien pour créer votre mot de passe — vérifiez aussi les courriers indésirables. Vous pouvez aussi recharger cette page plus tard.'
+              );
+              return;
+            }
+            setTimeout(tryFetch, nextDelay());
+            return;
+          }
+
+          if (data.error && !data.ready) {
+            showActivationFailure(
+              typeof data.error === 'string'
+                ? data.error
+                : 'Une erreur est survenue. Utilisez le lien reçu par email ou contactez le support.'
+            );
+            return;
+          }
+
+          transientStrikes = 0;
           setTimeout(tryFetch, nextDelay());
         })
         .catch(function () {
           if (guestActivationCancelled) return;
+          transientStrikes++;
+          if (transientStrikes >= MAX_TRANSIENT_BEFORE_EMAIL_HINT) {
+            showActivationFailure(
+              'Problème de connexion au serveur. Si vous avez payé, vérifiez l’email avec le lien d’activation (y compris les indésirables), ou réessayez plus tard.'
+            );
+            return;
+          }
           setTimeout(tryFetch, nextDelay());
         });
     }

@@ -1021,22 +1021,25 @@ async function handleCheckoutAutoAccountCredit(session, pi, sm) {
   const piFresh = await stripe.paymentIntents.retrieve(piId);
   await handleStripeCreditPurchase(piFresh);
 
-  const base = appBaseUrl();
-  try {
-    if (created) {
-      const inviteTok = authLib.signAccountInviteToken(user.id);
-      await sendAccountInviteEmail({
-        to: email,
-        inviteToken: inviteTok,
-        baseUrl: base,
-        credits
-      });
-    } else {
-      await sendWalletCreditsEmail({ to: email, baseUrl: base, credits });
+  /* Ne pas bloquer la réponse HTTP / la réconciliation get-invite : Resend peut prendre plusieurs secondes. */
+  void (async () => {
+    const base = appBaseUrl();
+    try {
+      if (created) {
+        const inviteTok = authLib.signAccountInviteToken(user.id);
+        await sendAccountInviteEmail({
+          to: email,
+          inviteToken: inviteTok,
+          baseUrl: base,
+          credits
+        });
+      } else {
+        await sendWalletCreditsEmail({ to: email, baseUrl: base, credits });
+      }
+    } catch (e) {
+      console.error('Emails wallet auto-compte:', e.message);
     }
-  } catch (e) {
-    console.error('Emails wallet auto-compte:', e.message);
-  }
+  })();
 
   return { handled: true };
 }
@@ -1118,22 +1121,24 @@ async function handleCheckoutAutoSubscriptionInitial(session, pi, sm) {
   const piFresh = await stripe.paymentIntents.retrieve(piId);
   await handleStripeCreditPurchase(piFresh);
 
-  const base = appBaseUrl();
-  try {
-    if (created) {
-      const inviteTok = authLib.signAccountInviteToken(user.id);
-      await sendAccountInviteEmail({
-        to: email,
-        inviteToken: inviteTok,
-        baseUrl: base,
-        credits: creditsPerCycle
-      });
-    } else {
-      await sendWalletCreditsEmail({ to: email, baseUrl: base, credits: creditsPerCycle });
+  void (async () => {
+    const base = appBaseUrl();
+    try {
+      if (created) {
+        const inviteTok = authLib.signAccountInviteToken(user.id);
+        await sendAccountInviteEmail({
+          to: email,
+          inviteToken: inviteTok,
+          baseUrl: base,
+          credits: creditsPerCycle
+        });
+      } else {
+        await sendWalletCreditsEmail({ to: email, baseUrl: base, credits: creditsPerCycle });
+      }
+    } catch (e) {
+      console.error('Emails abonnement auto-compte:', e.message);
     }
-  } catch (e) {
-    console.error('Emails abonnement auto-compte:', e.message);
-  }
+  })();
 
   return { handled: true };
 }
@@ -1151,7 +1156,10 @@ async function handleCheckoutSessionCompleted(session) {
   const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
   if (!piId) return;
 
-  let pi = await stripe.paymentIntents.retrieve(piId);
+  let pi =
+    typeof piRef === 'object' && piRef && piRef.id
+      ? piRef
+      : await stripe.paymentIntents.retrieve(piId);
   const sm = session.metadata || {};
   const pm = pi.metadata || {};
 
@@ -2078,7 +2086,36 @@ app.get('/api/billing/get-invite', async (req, res) => {
     return res.json({ email, ready: true, inviteToken: invToken });
   } catch (e) {
     console.error('get-invite:', e);
-    return res.status(500).json({ error: e.message });
+    const msg = e && e.message ? String(e.message) : '';
+    const code = e && e.code ? String(e.code) : '';
+    const prismaConnCodes = new Set([
+      'P1000',
+      'P1001',
+      'P1002',
+      'P1003',
+      'P1008',
+      'P1009',
+      'P1010',
+      'P1011',
+      'P1012',
+      'P1013',
+      'P1014',
+      'P1015',
+      'P1016',
+      'P1017'
+    ]);
+    const isDbUnreachable =
+      prismaConnCodes.has(code) ||
+      /Can't reach database|ECONNREFUSED|ETIMEDOUT|connection.*(refused|timeout)|ENOTFOUND/i.test(
+        msg
+      );
+    if (isDbUnreachable) {
+      return res.json({ ready: false, reason: 'temporary' });
+    }
+    return res.status(500).json({
+      error:
+        'Impossible de finaliser pour le moment. Réessayez sous peu ou utilisez le lien reçu par email.'
+    });
   }
 });
 

@@ -29,6 +29,9 @@
       --ease:      cubic-bezier(.4,0,.2,1);
       --shadow-sm: 0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
       --shadow:    0 4px 12px rgba(15,23,42,.08),0 1px 3px rgba(15,23,42,.04);
+      --btn-corner-l: 11px;
+      --btn-corner-inset: 3px;
+      --btn-corner-w: 2px;
     }
 
     body {
@@ -87,19 +90,81 @@
       font-family: inherit;
       cursor: pointer;
       border: none;
+      position: relative;
     }
 
     .btn-header--ghost {
       background: none;
       color: var(--muted);
     }
-    .btn-header--ghost:hover { color: var(--text); background: var(--s2); }
+    .btn-header--ghost::before,
+    .btn-header--ghost::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: 9px;
+      height: 9px;
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .btn-header--ghost::before {
+      bottom: 2px;
+      left: 2px;
+      border-left: var(--btn-corner-w) solid var(--border2);
+      border-bottom: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 0 0 2px;
+    }
+    .btn-header--ghost::after {
+      top: 2px;
+      right: 2px;
+      border-top: var(--btn-corner-w) solid var(--border2);
+      border-right: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 2px 0 0;
+    }
+    .btn-header--ghost:hover {
+      color: var(--text);
+      background: var(--s2);
+    }
+    .btn-header--ghost:hover::before,
+    .btn-header--ghost:hover::after {
+      border-color: var(--muted);
+    }
 
     .btn-header--primary {
       background: var(--accent);
       color: white;
     }
-    .btn-header--primary:hover { background: var(--accent-h); }
+    .btn-header--primary::before,
+    .btn-header--primary::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: 9px;
+      height: 9px;
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .btn-header--primary::before {
+      bottom: 2px;
+      left: 2px;
+      border-left: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-bottom: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 0 0 2px;
+    }
+    .btn-header--primary::after {
+      top: 2px;
+      right: 2px;
+      border-top: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-right: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 2px 0 0;
+    }
+    .btn-header--primary:hover {
+      background: var(--accent-h);
+    }
+    .btn-header--primary:hover::before,
+    .btn-header--primary:hover::after {
+      border-color: rgba(255, 255, 255, 0.95);
+    }
 
     /* MAIN */
     main { max-width: 1000px; margin: 0 auto; padding: 72px 24px 96px; }
@@ -251,20 +316,130 @@
       border: none;
       transition: all .15s var(--ease);
       margin-top: auto;
+      position: relative;
     }
 
     .plan-btn--primary {
       background: var(--accent);
       color: white;
     }
-    .plan-btn--primary:hover { background: var(--accent-h); box-shadow: 0 4px 14px rgba(37,99,235,.3); }
+    .plan-btn--primary::before,
+    .plan-btn--primary::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: var(--btn-corner-l);
+      height: var(--btn-corner-l);
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .plan-btn--primary::before {
+      bottom: var(--btn-corner-inset);
+      left: var(--btn-corner-inset);
+      border-left: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-bottom: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 0 0 2px;
+    }
+    .plan-btn--primary::after {
+      top: var(--btn-corner-inset);
+      right: var(--btn-corner-inset);
+      border-top: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-right: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 2px 0 0;
+    }
+    .plan-btn--primary:hover {
+      background: var(--accent-h);
+      box-shadow: 0 4px 14px rgba(37,99,235,.3);
+    }
+    .plan-btn--primary:hover::before,
+    .plan-btn--primary:hover::after {
+      border-color: rgba(255, 255, 255, 0.95);
+    }
 
     .plan-btn--outline {
       background: transparent;
       color: var(--text-2);
-      border: 1px solid var(--border);
+      border: none;
     }
-    .plan-btn--outline:hover { background: var(--s2); border-color: var(--border2); color: var(--text); }
+    .plan-btn--outline::before,
+    .plan-btn--outline::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: var(--btn-corner-l);
+      height: var(--btn-corner-l);
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .plan-btn--outline::before {
+      bottom: var(--btn-corner-inset);
+      left: var(--btn-corner-inset);
+      border-left: var(--btn-corner-w) solid var(--border2);
+      border-bottom: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 0 0 2px;
+    }
+    .plan-btn--outline::after {
+      top: var(--btn-corner-inset);
+      right: var(--btn-corner-inset);
+      border-top: var(--btn-corner-w) solid var(--border2);
+      border-right: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 2px 0 0;
+    }
+    .plan-btn--outline:hover {
+      background: var(--s2);
+      color: var(--text);
+    }
+    .plan-btn--outline:hover::before,
+    .plan-btn--outline:hover::after {
+      border-color: var(--muted);
+    }
+
+    .sub-row-cta {
+      flex-shrink: 0;
+      position: relative;
+      padding: 13px 28px;
+      background: var(--accent);
+      color: white;
+      border-radius: var(--r);
+      font-weight: 700;
+      font-size: .9375rem;
+      text-decoration: none;
+      transition: all .15s var(--ease);
+      white-space: nowrap;
+      border: none;
+    }
+    .sub-row-cta::before,
+    .sub-row-cta::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: var(--btn-corner-l);
+      height: var(--btn-corner-l);
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .sub-row-cta::before {
+      bottom: var(--btn-corner-inset);
+      left: var(--btn-corner-inset);
+      border-left: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-bottom: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 0 0 2px;
+    }
+    .sub-row-cta::after {
+      top: var(--btn-corner-inset);
+      right: var(--btn-corner-inset);
+      border-top: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-right: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 2px 0 0;
+    }
+    .sub-row-cta:hover {
+      background: var(--accent-h);
+      box-shadow: 0 4px 14px rgba(37,99,235,.25);
+    }
+    .sub-row-cta:hover::before,
+    .sub-row-cta:hover::after {
+      border-color: rgba(255, 255, 255, 0.95);
+    }
 
     /* SUBSCRIPTION ROW */
     .sub-row {
@@ -529,11 +704,7 @@
           <a href="/resiliation-abonnement.html">espace abonnement</a>.
         </p>
       </div>
-      <a href="/api/billing/subscribe-checkout" id="link-abonnement"
-         style="flex-shrink:0;padding:13px 28px;background:var(--accent);color:white;border-radius:var(--r);
-                font-weight:700;font-size:.9375rem;text-decoration:none;transition:all .15s;white-space:nowrap;"
-         onmouseover="this.style.background='#1D4ED8'"
-         onmouseout="this.style.background='#2563EB'">
+      <a href="/api/billing/subscribe-checkout" class="sub-row-cta" id="link-abonnement">
         S'abonner →
       </a>
     </div>
