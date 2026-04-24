@@ -1081,9 +1081,22 @@
       return '<p class="full-report-err">' + esc(String(block.error)) + '</p>';
     }
     if (block.ok === false) {
+      var insHint = '';
+      if (block.data && typeof block.data === 'object' && block.data.error) {
+        var es = String(block.data.error);
+        if (/Slovakia|Only Slovakia/i.test(es)) {
+          insHint =
+            '<p class="full-report-hint">L’API CarAPI ne fournit le contrôle technique que pour la Slovaquie (SK), pas pour la France — le 400 est attendu.</p>';
+        }
+      }
       return (
-        '<p class="full-report-err">Réponse négative (HTTP ' + esc(String(block.status != null ? block.status : '?')) + ')</p>' +
-        '<pre class="full-report-pre">' + esc(safeJsonStringify(block.data)) + '</pre>'
+        insHint +
+        '<p class="full-report-err">Réponse négative (HTTP ' +
+        esc(String(block.status != null ? block.status : '?')) +
+        ')</p>' +
+        '<pre class="full-report-pre">' +
+        esc(safeJsonStringify(block.data)) +
+        '</pre>'
       );
     }
     return '<pre class="full-report-pre">' + esc(safeJsonStringify(block.data)) + '</pre>';

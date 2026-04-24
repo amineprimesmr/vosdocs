@@ -635,7 +635,9 @@ async function refundOneCredit(userId, reason, metaObj) {
 
 /** CarAPI.dev (prioritaire) ou Vehicle Databases — voir .env.example */
 function getVinDecodeProvider() {
-  const carapi = String(process.env.CARAPI_TOKEN || process.env.CARAPI_API_KEY || '').trim();
+  const carapi = String(process.env.CARAPI_TOKEN || process.env.CARAPI_API_KEY || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
   if (carapi) return { id: 'carapi', apiKey: carapi };
   const vd = String(process.env.VEHICLEDATABASES_API_KEY || '').trim();
   if (vd) return { id: 'vehicledatabases', apiKey: vd };
@@ -3195,11 +3197,43 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
     const decodeFailed = !dec || !dec.ok || !identity;
     if (decodeFailed) {
       await refundVinDecodeCredit(userId, vinMasked);
+      const st = dec && dec.status;
+      const b0 = decodeBody;
+      const apiMsg =
+        b0 && typeof b0 === 'object'
+          ? (typeof b0.error === 'string'
+              ? b0.error
+              : typeof b0.message === 'string'
+                ? b0.message
+                : '')
+          : '';
+      let message =
+        'Décodage VIN indisponible. Votre crédit a été réattribué. Vérifiez le VIN ou réessayez plus tard.';
+      if (dec && !dec.ok) {
+        if (st === 401 || st === 403) {
+          message =
+            'Clé CarAPI refusée (HTTP ' +
+            st +
+            '). Sur Vercel, définissez CARAPI_TOKEN avec la même clé qu’en playground (onglet compte, sans guillemets), puis redéployez ou attendez 1–2 min.';
+        } else if (st === 429) {
+          message = 'Quota CarAPI dépassé. Réessayez plus tard. Crédit réattribué.';
+        } else if (st === 404) {
+          message =
+            (apiMsg ? apiMsg + ' ' : '') +
+            'VIN non trouvé côté CarAPI. Crédit réattribué.';
+        } else if (apiMsg) {
+          message = 'CarAPI : ' + apiMsg + ' (HTTP ' + (st != null ? st : '?') + '). Crédit réattribué.';
+        }
+      } else if (dec && dec.ok && !identity) {
+        message =
+          'Réponse CarAPI inattendue (décodage vide). Vérifiez que CARAPI_TOKEN en production = la clé du dashboard. Crédit réattribué.';
+      }
       return res.status(502).json({
         status: 'error',
-        message:
-          'Décodage VIN indisponible. Votre crédit a été réattribué. Vérifiez le VIN ou réessayez plus tard.',
-        detail: decodeBody != null ? decodeBody : null
+        code: 'VIN_DECODE_FAILED',
+        message,
+        carapiHttpStatus: st != null ? st : null,
+        carapiError: apiMsg || null
       });
     }
     if (vinCtxId && identity) {
