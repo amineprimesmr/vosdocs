@@ -576,6 +576,7 @@
   }
 
   function handlePostPayment(params) {
+    var sessionId = params.get('session_id') || '';
     var banner = document.getElementById('postPayBanner');
     var text = document.getElementById('postPayText');
     if (!banner) return;
@@ -593,23 +594,29 @@
           'Paiement reçu. Finalisation de l’abonnement côté serveur — vos crédits s’affichent en quelques secondes…';
       } else {
         text.textContent =
-          'Paiement reçu. Attente de l’attribution des crédits (webhook Stripe / base de données)…';
+          sessionId.indexOf('cs_') === 0
+            ? 'Rattachement du paiement Stripe à votre compte en cours…'
+            : 'Paiement reçu. Vérification du solde…';
       }
     }
 
-    try {
-      var u = new URL(window.location.href);
-      u.searchParams.delete('paid');
-      u.searchParams.delete('credits');
-      u.searchParams.delete('sub');
-      u.searchParams.delete('session_id');
-      window.history.replaceState({}, '', u.pathname + (u.search || ''));
-    } catch (e) {}
-
-    var t0 = Date.now();
-    var maxMs = 120000;
     var gotCredits = !!(currentUser && currentUser.credits > 0);
-    if (!gotCredits) {
+
+    function doUrlClean() {
+      try {
+        var u = new URL(window.location.href);
+        u.searchParams.delete('paid');
+        u.searchParams.delete('credits');
+        u.searchParams.delete('sub');
+        u.searchParams.delete('session_id');
+        window.history.replaceState({}, '', u.pathname + (u.search || ''));
+      } catch (e) {}
+    }
+
+    function startPollIfNeeded() {
+      if (gotCredits) return;
+      var t0 = Date.now();
+      var maxMs = 120000;
       var iv = setInterval(function () {
         if (Date.now() - t0 > maxMs) {
           clearInterval(iv);
@@ -619,7 +626,7 @@
               'Rechargez la page, vérifiez l’email de confirmation, ou contactez le support ' +
               'si la carte a été débitée. ' +
               '<span style="display:block;margin-top:8px;font-size:0.875rem;opacity:0.95">' +
-              'Côté technique : le webhook Stripe et la base de données doivent être correctement reliés (ex. Vercel).</span>';
+              'Vérifiez aussi que l’e-mail du compte Carvinguard est le même que sur Stripe.</span>';
             banner.classList.add('post-pay--warning');
           }
           return;
@@ -640,6 +647,38 @@
           }
         });
       }, 2000);
+    }
+
+    if (sessionId.indexOf('cs_') === 0) {
+      api('/api/billing/reconcile-checkout', { method: 'POST', body: { session_id: sessionId } })
+        .then(function (r) {
+          if (r.ok && r.data && r.data.credits != null) {
+            currentUser.credits = r.data.credits;
+            updateCreditsDisplay(r.data.credits);
+            if (r.data.credits > 0) {
+              gotCredits = true;
+              if (text) {
+                text.textContent = isSub
+                  ? 'Abonnement actif — ' + r.data.credits + ' crédit(s) disponible(s).'
+                  : 'Paiement confirmé — ' + r.data.credits + ' crédit(s) sur votre compte.';
+              }
+              banner.classList.remove('post-pay--warning');
+            }
+          } else if (r.data && r.data.error) {
+            if (text) {
+              text.textContent = r.data.error;
+              banner.classList.add('post-pay--warning');
+            }
+          }
+        })
+        .catch(function () {})
+        .then(function () {
+          doUrlClean();
+          startPollIfNeeded();
+        });
+    } else {
+      doUrlClean();
+      startPollIfNeeded();
     }
   }
 

@@ -2047,6 +2047,119 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
 });
 
 /**
+ * Vrai si une ligne credit_transactions existe déjà pour ce PaymentIntent (idempotence crédit).
+ */
+async function isCheckoutSessionPaymentCredited(prisma, session) {
+  if (!prisma || !session) return true;
+  const piRef = session.payment_intent;
+  const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
+  if (!piId) return true;
+  const row = await prisma.creditTransaction.findFirst({
+    where: { stripePaymentIntentId: String(piId) }
+  });
+  return !!row;
+}
+
+/**
+ * Résout l’e-mail d’une session Checkout (même logique que get-invite).
+ * @param {import('stripe').Stripe.Checkout.Session} session
+ * @param {import('stripe').Stripe.PaymentIntent | null} piObj
+ */
+function checkoutSessionPayerEmail(session, piObj) {
+  const pm = (piObj && piObj.metadata) || {};
+  let emailRaw =
+    (session.customer_details && session.customer_details.email) ||
+    session.customer_email ||
+    (piObj && piObj.receipt_email) ||
+    (pm.email ? String(pm.email) : '') ||
+    '';
+  if (!emailRaw && session.customer) {
+    const cid = typeof session.customer === 'string' ? session.customer : session.customer && session.customer.id;
+    if (cid && String(cid).startsWith('cus_')) {
+      /* rempli côté appelant si besoin d’appel customers.retrieve */
+    }
+  }
+  return emailRaw;
+}
+
+/**
+ * Forcer la même finalisation que le webhook (checkout.session.completed) quand
+ * l’utilisateur est connecté et a encore ?session_id= sur /compte (webhook manquant, etc.).
+ */
+app.post('/api/billing/reconcile-checkout', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  if (!stripe) {
+    return res.status(500).json({ ok: false, error: 'Stripe non configuré.' });
+  }
+  const prisma = getPrisma();
+  if (!prisma) {
+    return res.status(503).json({ ok: false, error: 'Base de données requise.' });
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({ ok: false, error: 'Connexion requise.' });
+  }
+  const sessionId = String((req.body && req.body.session_id) || '');
+  if (!sessionId.startsWith('cs_')) {
+    return res.status(400).json({ ok: false, error: 'session_id invalide.' });
+  }
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(401).json({ ok: false, error: 'Session invalide.' });
+    }
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent']
+    });
+    const piObj =
+      session.payment_intent && typeof session.payment_intent === 'object'
+        ? session.payment_intent
+        : null;
+    let emailRaw = checkoutSessionPayerEmail(session, piObj);
+    if (!emailRaw && session.customer) {
+      const cid = typeof session.customer === 'string' ? session.customer : session.customer && session.customer.id;
+      if (cid && String(cid).startsWith('cus_')) {
+        try {
+          const cust = await stripe.customers.retrieve(String(cid));
+          if (cust && cust.email) emailRaw = String(cust.email);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+    const email = authLib.normalizeEmail(emailRaw);
+    const sm = session.metadata || {};
+    const sameAccount =
+      (sm.user_id && String(sm.user_id) === String(userId)) || (email && user.email === email);
+    if (!sameAccount) {
+      return res.status(403).json({
+        ok: false,
+        error:
+          "L'adresse e-mail de ce paiement Stripe ne correspond pas à votre compte. Utilisez le compte lié à l’e-mail saisi sur Stripe, ou contactez le support."
+      });
+    }
+    if (session.payment_status !== 'paid' || session.mode !== 'payment') {
+      return res.json({
+        ok: true,
+        skipped: true,
+        credits: user.credits,
+        message: 'Session déjà traitée ou type de paiement non géré ici.'
+      });
+    }
+    if (await isCheckoutSessionPaymentCredited(prisma, session)) {
+      const u2 = await prisma.user.findUnique({ where: { id: userId }, select: { credits: true } });
+      return res.json({ ok: true, already: true, credits: u2 != null ? u2.credits : 0 });
+    }
+    await handleCheckoutSessionCompleted(session);
+    const u2 = await prisma.user.findUnique({ where: { id: userId }, select: { credits: true } });
+    return res.json({ ok: true, reconciled: true, credits: u2 != null ? u2.credits : 0 });
+  } catch (e) {
+    console.error('reconcile-checkout:', e);
+    return res.status(500).json({ ok: false, error: e.message || 'Erreur serveur' });
+  }
+});
+
+/**
  * Après paiement invité : récupère l'email Stripe + génère un token d'invitation
  * pour afficher directement l'overlay "Activez votre compte" côté frontend.
  */
@@ -2097,12 +2210,20 @@ app.get('/api/billing/get-invite', async (req, res) => {
 
     let user = await prisma.user.findUnique({ where: { email } });
 
-    /** Webhook en retard ou absent (Vercel / config) : même finalisation que checkout.session.completed, idempotent. */
-    if (!user && session.payment_status === 'paid' && session.mode === 'payment') {
-      try {
-        await handleCheckoutSessionCompleted(session);
-      } catch (e) {
-        console.error('get-invite reconcile:', e.message || e);
+    /**
+     * Webhook en retard / absent : rejoue checkout.session.completed.
+     * Important : on ne l’exigeait pas seulement si `!user` : si l’utilisateur existait
+     * déjà (ex. 0 crédit) le webhook n’avait jamais été rejoué → solde restait à 0.
+     * Idempotence : si le PI a déjà une écriture, on ne rappelle pas inutilement.
+     */
+    if (session.payment_status === 'paid' && session.mode === 'payment') {
+      const credited = await isCheckoutSessionPaymentCredited(prisma, session);
+      if (!credited) {
+        try {
+          await handleCheckoutSessionCompleted(session);
+        } catch (e) {
+          console.error('get-invite reconcile:', e.message || e);
+        }
       }
       user = await prisma.user.findUnique({ where: { email } });
     }
