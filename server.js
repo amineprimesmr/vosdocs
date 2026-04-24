@@ -834,6 +834,188 @@ app.get('/api/webhook', (req, res) => {
   });
 });
 
+/** Idempotence : checkout 100 % promo sans PaymentIntent (total 0). */
+function syntheticIdForFreeCheckoutSession(sessionId) {
+  return 'zfree_' + crypto.createHash('sha256').update(String(sessionId)).digest('hex');
+}
+
+/**
+ * Avec 100 % de réduction, amount_total vaut 0 mais amount_subtotal reflète le forfait (ex. 1499).
+ */
+function inferCarvinguardPackFromAmountCents(cents) {
+  const a = Number(cents);
+  if (!Number.isFinite(a) || a < 1) {
+    return null;
+  }
+  if (a === 1499) {
+    return { credits: 1, packId: 'tier_essentiel', plan: 'essentiel' };
+  }
+  if (a === 2999) {
+    return { credits: 3, packId: 'tier_confort', plan: 'confort' };
+  }
+  if (a === 6999) {
+    return { credits: 10, packId: 'tier_premium', plan: 'premium' };
+  }
+  const e = parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10) || 1499;
+  const c = parseInt(process.env.TIER_CONFORT_CENTS || '2999', 10) || 2999;
+  const p = parseInt(process.env.TIER_PREMIUM_CENTS || '6999', 10) || 6999;
+  if (a === e) {
+    return { credits: 1, packId: 'tier_essentiel', plan: 'essentiel' };
+  }
+  if (a === c) {
+    return { credits: 3, packId: 'tier_confort', plan: 'confort' };
+  }
+  if (a === p) {
+    return { credits: 10, packId: 'tier_premium', plan: 'premium' };
+  }
+  return null;
+}
+
+/**
+ * Crédite une fois le pack (meta session) quand le montant payé est 0 € (code promo) — pas de pi_ côté Stripe.
+ */
+async function deliverCarvinguardPackCreditsOnce(prisma, { userId, credits, packId, plan, sessionId, metaExtra }) {
+  const sid = syntheticIdForFreeCheckoutSession(sessionId);
+  const existing = await prisma.creditTransaction.findUnique({ where: { stripePaymentIntentId: sid } });
+  if (existing) {
+    return { already: true };
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { credits: { increment: credits } }
+    });
+    await tx.creditTransaction.create({
+      data: {
+        userId,
+        delta: credits,
+        reason: 'purchase',
+        stripePaymentIntentId: sid,
+        meta: JSON.stringify(
+          Object.assign(
+            { plan, packId, zeroAmount: true, checkoutSessionId: sessionId },
+            metaExtra || {}
+          )
+        )
+      }
+    });
+  });
+  return { already: false };
+}
+
+/**
+ * Guest / pas de PaymentIntent : total 0 €, métadonnées pack Carvinguard (prix entièrement couvert par promo).
+ */
+async function handleZeroAmountCarvinguardCreditSession(session) {
+  const prisma = getPrisma();
+  if (!prisma) return { handled: false };
+  const sm = session.metadata || {};
+  if (String(sm.app || '') !== 'carvinguard' && !sm.carvinguard_plan) {
+    return { handled: false };
+  }
+  if (String(sm.purpose || '') === 'subscription_initial') {
+    return { handled: false };
+  }
+  const at = session.amount_total;
+  if (at != null && at !== 0) {
+    return { handled: false };
+  }
+  const ps = session.payment_status;
+  if (ps !== 'paid' && ps !== 'no_payment_required') {
+    return { handled: false };
+  }
+  if (session.mode !== 'payment') {
+    return { handled: false };
+  }
+
+  const refRaw = String(session.client_reference_id || '');
+  if (refRaw.startsWith('cguser:')) {
+    return { handled: false };
+  }
+  if (normalizeVinMeta(refRaw).length === 17) {
+    return { handled: false };
+  }
+
+  let plan = String(sm.carvinguard_plan || '')
+    .toLowerCase()
+    .trim();
+  let credits = 0;
+  let packId = '';
+  if (plan === 'essentiel') {
+    credits = 1;
+    packId = 'tier_essentiel';
+  } else if (plan === 'confort') {
+    credits = 3;
+    packId = 'tier_confort';
+  } else if (plan === 'premium') {
+    credits = 10;
+    packId = 'tier_premium';
+  }
+  if (credits < 1) {
+    const t0 = inferCarvinguardPackFromAmountCents(session.amount_subtotal);
+    if (t0) {
+      credits = t0.credits;
+      packId = t0.packId;
+      plan = t0.plan;
+    }
+  }
+  if (credits < 1) {
+    return { handled: false };
+  }
+
+  const emailRaw =
+    (session.customer_details && session.customer_details.email) || session.customer_email || '';
+  const email = authLib.normalizeEmail(emailRaw);
+  if (!email || email.indexOf('@') === -1) {
+    return { handled: false };
+  }
+
+  let user = await prisma.user.findUnique({ where: { email } });
+  const created = !user;
+  if (!user) {
+    const provisional = crypto.randomBytes(32).toString('hex');
+    user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: await authLib.hashPassword(provisional)
+      }
+    });
+  }
+
+  const d = await deliverCarvinguardPackCreditsOnce(prisma, {
+    userId: user.id,
+    credits,
+    packId,
+    plan,
+    sessionId: session.id
+  });
+  if (d && d.already) {
+    return { handled: true };
+  }
+
+  const base = appBaseUrl();
+  void (async () => {
+    try {
+      if (created) {
+        const inviteTok = authLib.signAccountInviteToken(user.id);
+        await sendAccountInviteEmail({
+          to: email,
+          inviteToken: inviteTok,
+          baseUrl: base,
+          credits
+        });
+      } else {
+        await sendWalletCreditsEmail({ to: email, baseUrl: base, credits });
+      }
+    } catch (e) {
+      console.error('Email zero-amount pack:', e.message);
+    }
+  })();
+
+  console.log('Pack crédit 0 € (promo) crédité', session.id, user.id, plan, credits);
+  return { handled: true };
+}
+
 /**
  * Client connecté : session Checkout avec client_reference_id=cguser:<id> et/ou metadata.user_id (même logique que MyFidpass / Fidelity).
  */
@@ -881,26 +1063,63 @@ async function handleCheckoutSessionAccountCredit(session) {
     packId = 'tier_premium';
   }
 
-  const piRef = session.payment_intent;
-  const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
-  if (!piId) return true;
-
-  if (!credits && session.amount_total) {
-    const a = session.amount_total;
-    if (a === 1499) {
-      credits = 1;
-      packId = 'tier_essentiel';
-    } else if (a === 2999) {
-      credits = 3;
-      packId = 'tier_confort';
-    } else if (a === 6999) {
-      credits = 10;
-      packId = 'tier_premium';
+  if (!credits) {
+    const t1 = inferCarvinguardPackFromAmountCents(session.amount_total);
+    if (t1) {
+      credits = t1.credits;
+      packId = t1.packId;
+      if (!plan) plan = t1.plan;
+    }
+  }
+  if (!credits) {
+    const t2 = inferCarvinguardPackFromAmountCents(session.amount_subtotal);
+    if (t2) {
+      credits = t2.credits;
+      packId = t2.packId;
+      if (!plan) plan = t2.plan;
     }
   }
 
   if (!credits) {
-    console.warn('checkout cguser: plan ou montant non reconnu', session.id, session.amount_total);
+    console.warn('checkout cguser: plan ou montant non reconnu', session.id, {
+      amount_total: session.amount_total,
+      amount_subtotal: session.amount_subtotal
+    });
+    return true;
+  }
+
+  const piRef = session.payment_intent;
+  const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
+  if (!piId) {
+    const at = session.amount_total;
+    const ps = session.payment_status;
+    if (
+      (at === 0 || at == null) &&
+      (ps === 'paid' || ps === 'no_payment_required') &&
+      credits >= 1
+    ) {
+      const prisma0 = getPrisma();
+      if (prisma0) {
+        await deliverCarvinguardPackCreditsOnce(prisma0, {
+          userId: user.id,
+          credits,
+          packId,
+          plan,
+          sessionId: session.id
+        });
+        const base = appBaseUrl();
+        void (async () => {
+          try {
+            await sendWalletCreditsEmail({ to: user.email, baseUrl: base, credits });
+          } catch (e) {
+            console.error('Email cguser zero-amount:', e.message);
+          }
+        })();
+        console.log('Compte connecté : pack 0 € (promo) crédité', session.id, user.id, credits);
+      }
+    } else {
+      console.warn('checkout cguser: pas de payment_intent', session.id, { at, ps, credits });
+    }
     return true;
   }
 
@@ -1179,7 +1398,11 @@ async function handleCheckoutSessionCompleted(session) {
   if (session.mode !== 'payment') return;
   const piRef = session.payment_intent;
   const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
-  if (!piId) return;
+  if (!piId) {
+    const z = await handleZeroAmountCarvinguardCreditSession(session);
+    if (z.handled) return;
+    return;
+  }
 
   let pi =
     typeof piRef === 'object' && piRef && piRef.id
@@ -2053,11 +2276,17 @@ async function isCheckoutSessionPaymentCredited(prisma, session) {
   if (!prisma || !session) return true;
   const piRef = session.payment_intent;
   const piId = typeof piRef === 'string' ? piRef : piRef && piRef.id;
-  if (!piId) return true;
-  const row = await prisma.creditTransaction.findFirst({
-    where: { stripePaymentIntentId: String(piId) }
+  if (piId) {
+    const row = await prisma.creditTransaction.findFirst({
+      where: { stripePaymentIntentId: String(piId) }
+    });
+    return !!row;
+  }
+  const zfree = syntheticIdForFreeCheckoutSession(session.id);
+  const rowZ = await prisma.creditTransaction.findFirst({
+    where: { stripePaymentIntentId: zfree }
   });
-  return !!row;
+  return !!rowZ;
 }
 
 /**
@@ -2138,7 +2367,8 @@ app.post('/api/billing/reconcile-checkout', async (req, res) => {
           "L'adresse e-mail de ce paiement Stripe ne correspond pas à votre compte. Utilisez le compte lié à l’e-mail saisi sur Stripe, ou contactez le support."
       });
     }
-    if (session.payment_status !== 'paid' || session.mode !== 'payment') {
+    const ps0 = session.payment_status;
+    if ((ps0 !== 'paid' && ps0 !== 'no_payment_required') || session.mode !== 'payment') {
       return res.json({
         ok: true,
         skipped: true,
@@ -2216,7 +2446,8 @@ app.get('/api/billing/get-invite', async (req, res) => {
      * déjà (ex. 0 crédit) le webhook n’avait jamais été rejoué → solde restait à 0.
      * Idempotence : si le PI a déjà une écriture, on ne rappelle pas inutilement.
      */
-    if (session.payment_status === 'paid' && session.mode === 'payment') {
+    const psInv = session.payment_status;
+    if ((psInv === 'paid' || psInv === 'no_payment_required') && session.mode === 'payment') {
       const credited = await isCheckoutSessionPaymentCredited(prisma, session);
       if (!credited) {
         try {
