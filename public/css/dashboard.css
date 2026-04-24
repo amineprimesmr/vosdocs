@@ -1259,6 +1259,12 @@ body.dashboard-page {
 
 .success-banner.hidden { display: none; }
 
+.success-banner.post-pay--warning {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #B45309;
+}
+
 .info-banner {
   display: flex;
   align-items: center;

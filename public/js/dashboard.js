@@ -580,11 +580,23 @@
     var text = document.getElementById('postPayText');
     if (!banner) return;
     banner.classList.remove('hidden');
+    banner.classList.remove('post-pay--warning');
     var isSub = params.get('sub') === '1';
-    if (isSub && text) {
-      text.textContent = 'Abonnement activé — vos crédits mensuels apparaîtront sous quelques instants.';
+
+    if (text) {
+      if (currentUser && currentUser.credits > 0) {
+        text.textContent = isSub
+          ? 'Abonnement actif — ' + currentUser.credits + ' crédit(s) sur le compte.'
+          : 'Paiement confirmé — ' + currentUser.credits + ' crédit(s) disponible(s).';
+      } else if (isSub) {
+        text.textContent =
+          'Paiement reçu. Finalisation de l’abonnement côté serveur — vos crédits s’affichent en quelques secondes…';
+      } else {
+        text.textContent =
+          'Paiement reçu. Attente de l’attribution des crédits (webhook Stripe / base de données)…';
+      }
     }
-    // Clean URL
+
     try {
       var u = new URL(window.location.href);
       u.searchParams.delete('paid');
@@ -593,17 +605,42 @@
       u.searchParams.delete('session_id');
       window.history.replaceState({}, '', u.pathname + (u.search || ''));
     } catch (e) {}
-    // Poll credits for 60s
+
     var t0 = Date.now();
-    var poll = setInterval(function () {
-      api('/api/auth/me').then(function (r) {
-        if (r.ok && r.data && r.data.user) {
-          updateCreditsDisplay(r.data.user.credits);
-          currentUser.credits = r.data.user.credits;
+    var maxMs = 120000;
+    var gotCredits = !!(currentUser && currentUser.credits > 0);
+    if (!gotCredits) {
+      var iv = setInterval(function () {
+        if (Date.now() - t0 > maxMs) {
+          clearInterval(iv);
+          if (text && (!currentUser || currentUser.credits < 1)) {
+            text.innerHTML =
+              'Paiement enregistré côté Stripe, mais le solde est encore à 0. ' +
+              'Rechargez la page, vérifiez l’email de confirmation, ou contactez le support ' +
+              'si la carte a été débitée. ' +
+              '<span style="display:block;margin-top:8px;font-size:0.875rem;opacity:0.95">' +
+              'Côté technique : le webhook Stripe et la base de données doivent être correctement reliés (ex. Vercel).</span>';
+            banner.classList.add('post-pay--warning');
+          }
+          return;
         }
-      });
-      if (Date.now() - t0 > 60000) clearInterval(poll);
-    }, 3000);
+        api('/api/auth/me').then(function (r) {
+          if (!r.ok || !r.data || !r.data.user) return;
+          var c = r.data.user.credits;
+          currentUser.credits = c;
+          updateCreditsDisplay(c);
+          if (c > 0) {
+            clearInterval(iv);
+            if (text) {
+              text.textContent = isSub
+                ? 'Abonnement actif — ' + c + ' crédit(s) disponible(s).'
+                : 'Paiement confirmé — ' + c + ' crédit(s) ajouté(s) à votre compte.';
+            }
+            banner.classList.remove('post-pay--warning');
+          }
+        });
+      }, 2000);
+    }
   }
 
   /* ============================================================
