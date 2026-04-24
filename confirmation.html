@@ -195,10 +195,21 @@
             var cta = document.getElementById('confirmReportCta');
             var link = document.getElementById('confirmReportLink');
 
-            function showReport(url) {
+            function showReport(url, accessToken) {
                 if (cta && link && url) {
                     cta.style.display = 'block';
                     link.href = url;
+                }
+                if (accessToken && typeof accessToken === 'string' && accessToken.length >= 16) {
+                    try {
+                        sessionStorage.setItem('carvinguard_report_token', accessToken);
+                    } catch (e) {}
+                    if (typeof VehicleService !== 'undefined') {
+                        var cur = VehicleService.getCommandeData() || {};
+                        VehicleService.saveCommandeData(
+                            Object.assign({}, cur, { accessToken: accessToken, reportUnlocked: true })
+                        );
+                    }
                 }
                 if (pollEl) pollEl.textContent = '';
             }
@@ -220,7 +231,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (j) {
                         if (j.status === 'ready' && j.reportUrl) {
-                            showReport(j.reportUrl);
+                            showReport(j.reportUrl, j.token);
                             return;
                         }
                         if (pollEl) {

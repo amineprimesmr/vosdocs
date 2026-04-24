@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, follow">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css?v=202603152600">
-    <link rel="stylesheet" href="css/rapport-preview.css?v=4">
+    <link rel="stylesheet" href="css/rapport-preview.css?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -39,6 +39,15 @@
                 </span>
             </p>
             <p class="rpt-intro">Aperçu basé sur votre <strong>VIN</strong> : la synthèse ci-dessous est lisible immédiatement ; les blocs grisés et le PDF complet sont débloqués après commande.</p>
+        </div>
+
+        <div class="rpt-pdf-bar" id="rptPdfBar" style="display:none" role="region" aria-label="Téléchargement du rapport PDF">
+            <a id="rptPdfDownload" class="rpt-pdf-btn" href="#">
+                <span class="rpt-pdf-ic" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </span>
+                Télécharger le rapport (PDF)
+            </a>
         </div>
 
         <article class="rpt-report" id="rptReport" aria-labelledby="rptHeroTitle">

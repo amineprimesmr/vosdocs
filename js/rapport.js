@@ -152,23 +152,32 @@
       });
     }
 
-    var reportToken = null;
-    try {
-      reportToken = sessionStorage.getItem('carvinguard_report_token');
-    } catch (e) {}
+    var reportToken = (commande && commande.accessToken) || null;
+    if (!reportToken) {
+      try {
+        reportToken = sessionStorage.getItem('carvinguard_report_token');
+      } catch (e) {
+        reportToken = null;
+      }
+    }
+    if (typeof reportToken === 'string' && reportToken.length >= 16) {
+      try {
+        sessionStorage.setItem('carvinguard_report_token', reportToken);
+      } catch (e) {}
+    }
+
     if (reportUnlocked && reportToken && reportToken.length >= 16) {
-      var dl = document.createElement('div');
-      dl.className = 'rpt-pdf-dl';
-      dl.style.cssText = 'text-align:center;margin:20px 0 8px;';
-      dl.innerHTML =
-        '<a class="btn btn-outline" href="' +
-        window.location.origin +
-        '/api/rapport/session/' +
-        encodeURIComponent(reportToken) +
-        '/pdf">Télécharger le PDF</a>';
-      var rptMain = document.querySelector('.rpt-main');
-      if (rptMain) {
-        rptMain.insertBefore(dl, rptMain.firstChild);
+      var pdfBar = document.getElementById('rptPdfBar');
+      var pdfA = document.getElementById('rptPdfDownload');
+      if (pdfBar && pdfA) {
+        var pdfUrl =
+          window.location.origin +
+          '/api/rapport/session/' +
+          encodeURIComponent(reportToken) +
+          '/pdf';
+        pdfA.href = pdfUrl;
+        pdfA.setAttribute('download', 'rapport-vin-carvinguard.pdf');
+        pdfBar.style.display = 'flex';
       }
     }
   });

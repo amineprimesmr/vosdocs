@@ -1790,6 +1790,7 @@ app.get('/api/rapport/session/:token', async (req, res) => {
       vehicleData,
       prix,
       reportUnlocked: true,
+      accessToken: token,
       planId: row.planId,
       planLabel: row.planLabel,
       email: row.email,
