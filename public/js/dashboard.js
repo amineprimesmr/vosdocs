@@ -40,6 +40,8 @@
   var historyLoaded = false;
   var statsLoaded = false;
   var inviteToken = null;
+  /** Session Stripe après retour paiement (relance get-invite au clic si le token n’est pas encore là). */
+  var postPaymentSessionId = null;
   /** Annule les requêtes get-invite si /auth/me dit déjà connecté (même navigateur). */
   var guestActivationCancelled = false;
   /** false = inscription directe désactivée (compte après paiement Stripe). */
@@ -194,6 +196,7 @@
     /** Retour Stripe : finalisation immédiate — ne pas attendre /api/auth/me */
     if (isPaid && sessionId) {
       guestActivationCancelled = false;
+      postPaymentSessionId = sessionId;
       showPostPayCreateAccountUi();
       handleGuestPostPayment(sessionId);
       api('/api/auth/me').then(function (r) {
@@ -449,9 +452,44 @@
 
   window.doAcceptInvite = function () {
     if (!inviteToken) {
+      if (postPaymentSessionId) {
+        setLoading('inviteBtn', 'inviteBtnText', 'inviteSpinner', true);
+        fetch(
+          window.location.origin +
+            '/api/billing/get-invite?session_id=' +
+            encodeURIComponent(postPaymentSessionId) +
+            '&_=' +
+            Date.now(),
+          { credentials: 'include', cache: 'no-store' }
+        )
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, data: data || {} };
+            });
+          })
+          .then(function (res) {
+            setLoading('inviteBtn', 'inviteBtnText', 'inviteSpinner', false);
+            var data = res.data;
+            if (data.ready && data.inviteToken) {
+              inviteToken = data.inviteToken;
+              showInviteFormOverlay(data.email);
+              window.doAcceptInvite();
+              return;
+            }
+            showError(
+              'inviteError',
+              'Le serveur n’a pas encore enregistré votre paiement (ou la connexion à la base a échoué). Rechargez la page dans une minute, ou utilisez le lien « créer votre mot de passe » reçu par email (vérifiez les indésirables).'
+            );
+          })
+          .catch(function () {
+            setLoading('inviteBtn', 'inviteBtnText', 'inviteSpinner', false);
+            showError('inviteError', 'Erreur réseau. Réessayez ou ouvrez le lien reçu par email.');
+          });
+        return;
+      }
       showError(
         'inviteError',
-        'La session est encore en cours de finalisation — réessayez le bouton dans quelques secondes, ou patientez : aucune limite de temps.'
+        'Lien d’activation incomplet. Ouvrez le lien reçu par email ou repassez par la page Tarifs après paiement.'
       );
       return;
     }
@@ -481,6 +519,7 @@
      ============================================================ */
   function onAuthSuccess(user, fromInvite) {
     currentUser = user;
+    postPaymentSessionId = null;
 
     removeTempLoginHideStyle();
     var actFail = document.getElementById('activationFailOverlay');

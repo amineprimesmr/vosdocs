@@ -958,32 +958,57 @@ async function handleCheckoutAutoAccountCredit(session, pi, sm) {
   let plan = sm.carvinguard_plan || pm.carvinguard_plan || '';
   let credits = 0;
   let packId = '';
-  if (plan === 'essentiel') {
+
+  /** Déjà posé sur le PI par /api/billing/credit-checkout — indispensable si promo / montant ≠ grilles fixes. */
+  const metaCredits = parseInt(String(pm.credits || ''), 10);
+  if (!Number.isNaN(metaCredits) && metaCredits >= 1) {
+    credits = metaCredits;
+    packId = String(pm.packId || '').trim();
+  }
+
+  if (credits < 1 && plan === 'essentiel') {
     credits = 1;
     packId = 'tier_essentiel';
-  } else if (plan === 'confort') {
+  } else if (credits < 1 && plan === 'confort') {
     credits = 3;
     packId = 'tier_confort';
-  } else if (plan === 'premium') {
+  } else if (credits < 1 && plan === 'premium') {
     credits = 10;
     packId = 'tier_premium';
   }
 
-  const amountTotal = session.amount_total;
-  if (!credits && typeof amountTotal === 'number') {
-    if (amountTotal === 1499) {
+  const piAmount = typeof pi.amount === 'number' && !Number.isNaN(pi.amount) ? pi.amount : null;
+  const sessionTotal =
+    typeof session.amount_total === 'number' && !Number.isNaN(session.amount_total)
+      ? session.amount_total
+      : null;
+  const amountForTierGuess = piAmount != null ? piAmount : sessionTotal;
+  if (credits < 1 && typeof amountForTierGuess === 'number') {
+    if (amountForTierGuess === 1499) {
       credits = 1;
       packId = 'tier_essentiel';
-    } else if (amountTotal === 2999) {
+    } else if (amountForTierGuess === 2999) {
       credits = 3;
       packId = 'tier_confort';
-    } else if (amountTotal === 6999) {
+    } else if (amountForTierGuess === 6999) {
       credits = 10;
       packId = 'tier_premium';
     }
   }
 
+  if (credits >= 1 && !packId) {
+    if (credits === 1) packId = 'tier_essentiel';
+    else if (credits === 3) packId = 'tier_confort';
+    else if (credits === 10) packId = 'tier_premium';
+    else packId = 'tier_credit_pack';
+  }
+
   if (credits < 1) {
+    console.warn(
+      'handleCheckoutAutoAccountCredit: crédits introuvables (metadata/session)',
+      session.id,
+      { plan, pmCredits: pm.credits, amount_pi: piAmount, amount_session: sessionTotal }
+    );
     return { handled: false };
   }
 
@@ -2079,6 +2104,14 @@ app.get('/api/billing/get-invite', async (req, res) => {
     }
 
     if (!user) {
+      console.warn(
+        'get-invite: toujours sans utilisateur après réconciliation',
+        sessionId.substring(0, 24),
+        'payment_status=',
+        session.payment_status,
+        'mode=',
+        session.mode
+      );
       return res.json({ email, ready: false, reason: 'pending' });
     }
 
