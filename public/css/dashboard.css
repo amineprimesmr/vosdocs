@@ -1406,19 +1406,6 @@ body.dashboard-page {
 .full-report-panel summary::after { content: '▾'; color: var(--text-muted); font-size: 0.75rem; justify-self: end; }
 .full-report-panel[open] summary::after { content: '▴'; }
 .full-report-panel-body { padding: 0 14px 16px; }
-.full-report-pre {
-  margin: 0;
-  padding: 12px;
-  font-size: 0.75rem;
-  line-height: 1.45;
-  max-height: 320px;
-  overflow: auto;
-  background: var(--surface-2);
-  border-radius: var(--r-sm);
-  color: var(--text-2);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
 .full-report-skip, .full-report-err { font-size: 0.8125rem; color: var(--text-muted); margin: 8px 0 0; }
 .full-report-err { color: var(--error); }
 .full-report-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 8px; line-height: 1.45; }
@@ -1478,9 +1465,6 @@ body.dashboard-page {
   border: 1px solid #bfdbfe;
   color: var(--text);
 }
-.report-raw { margin-top: 10px; }
-.report-raw > summary { cursor: pointer; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); padding: 4px 0; }
-.report-raw[open] > summary { margin-bottom: 8px; }
 
 .report-kv {
   display: grid;

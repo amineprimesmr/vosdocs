@@ -1056,16 +1056,6 @@
     });
   };
 
-  function safeJsonStringify(obj) {
-    try {
-      var s = JSON.stringify(obj, null, 2);
-      if (s.length > 12000) return s.slice(0, 12000) + '\n… (aperçu tronqué)';
-      return s;
-    } catch (e) {
-      return String(e);
-    }
-  }
-
   var REPORT_COUNTRY_FR = {
     ad: 'Andorre', al: 'Albanie', at: 'Autriche', ba: 'Bosnie-Herzégovine', be: 'Belgique', bg: 'Bulgarie',
     by: 'Biélorussie', ch: 'Suisse', cy: 'Chypre', cz: 'République tchèque', de: 'Allemagne', dk: 'Danemark',
@@ -1171,13 +1161,6 @@
     return '<span class="' + reportPillClass('ok') + '">Reçu</span>';
   }
 
-  function reportRawDetails(label, obj) {
-    return (
-      '<details class="report-raw"><summary>' + esc(label) + '</summary>' +
-      '<pre class="full-report-pre">' + esc(safeJsonStringify(obj)) + '</pre></details>'
-    );
-  }
-
   function renderInspectionData(data) {
     var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     var ins = d.inspection && typeof d.inspection === 'object' ? d.inspection : {};
@@ -1203,7 +1186,7 @@
       '<div class="report-mini-card__label">EK (émissions / pollution)</div>' +
       '<div class="report-mini-card__val">' + (ek ? esc(formatDate(ek)) : '<span class="empty-val">Aucune date / non applicable</span>') + '</div>' +
       '<p class="report-mini-card__hint">Contrôle des émissions (EK) lorsqu’il est enregistré côté source.</p></div></div>';
-    return hint + countryLine + two + reportRawDetails('Réponse API (détail)', d);
+    return hint + countryLine + two;
   }
 
   function renderStolenData(data) {
@@ -1233,7 +1216,7 @@
       });
       grid += '</div><p class="report-footnote">Les bases et pays couverts dépendent du fournisseur. Ne remplacez pas un contrôle auprès de la gendarmerie / police en cas de doute sur un achat.</p>';
     }
-    return badge + grid + reportRawDetails('Réponse API (détail)', d);
+    return badge + grid;
   }
 
   function renderMileageData(data) {
@@ -1242,8 +1225,7 @@
     var n = d.totalRecords != null ? Number(d.totalRecords) : (Array.isArray(list) ? list.length : 0);
     if (!Array.isArray(list) || list.length === 0) {
       return (
-        '<p class="report-lead">Aucun enregistrement d’historique de kilométrage n’a été retourné pour ce VIN. Cela n’exclut pas d’autres historiques (carnet, factures, outils d’entretien).</p>' +
-        reportRawDetails('Réponse API (détail)', d)
+        '<p class="report-lead">Aucun enregistrement d’historique de kilométrage n’a été retourné pour ce VIN. Cela n’exclut pas d’autres historiques (carnet, factures, outils d’entretien).</p>'
       );
     }
     var maxKm = 0;
@@ -1272,7 +1254,7 @@
       html +=
         '<tr><td>' + esc(formatDateTime(row.createdAt)) + '</td><td class="num">' + esc(formatKm(row.mileage)) + '</td></tr>';
     });
-    html += '</tbody></table></div>' + reportRawDetails('Réponse API (détail)', d);
+    html += '</tbody></table></div>';
     return html;
   }
 
@@ -1281,8 +1263,7 @@
     var photos = d.photos;
     if (!Array.isArray(photos) || photos.length === 0) {
       return (
-        '<p class="report-lead">Aucune photo n’a été associée à ce VIN dans le jeu de retours actuel. Les visuels peuvent provenir d’annonces classées, et varier dans le temps.</p>' +
-        reportRawDetails('Réponse API (détail)', d)
+        '<p class="report-lead">Aucune photo n’a été associée à ce VIN dans le jeu de retours actuel. Les visuels peuvent provenir d’annonces classées, et varier dans le temps.</p>'
       );
     }
     var items = photos
@@ -1297,8 +1278,7 @@
       .filter(Boolean);
     return (
       '<p class="report-lead">' + items.length + ' visuel(s) — cliquez pour ouvrir l’image en grand (nouvel onglet).</p>' +
-      '<div class="report-photo-grid">' + items.join('') + '</div>' +
-      reportRawDetails('Réponse API (détail)', d)
+      '<div class="report-photo-grid">' + items.join('') + '</div>'
     );
   }
 
@@ -1318,7 +1298,7 @@
       '<span class="report-finance-kpi__v">' + esc(formatMoney(d.totalInterest, cur)) + '</span></div></div></div>' +
       '<p class="report-footnote">Simulation indicative fournie par l’API (paramètres côté serveur : montant, apport, durée, taux). Comparez chez un établissement de crédit habilité pour une offre réelle (TAEG, assurances, frais de dossier).</p>';
     if (pay.length === 0) {
-      return top + reportRawDetails('Réponse API (détail)', d);
+      return top;
     }
     var rows = pay
       .map(function (p) {
@@ -1331,7 +1311,7 @@
     var table =
       '<div class="report-table-wrap"><table class="report-table" role="grid"><thead><tr><th>Échéance</th><th>Montant</th><th>Fréquence</th><th>Type</th><th>Description</th></tr></thead><tbody>' +
       rows + '</tbody></table></div>';
-    return top + table + reportRawDetails('Réponse API (détail)', d);
+    return top + table;
   }
 
   function renderValuationData(data) {
@@ -1346,8 +1326,7 @@
       '<div class="report-kv-item"><span class="report-kv-label">Modèle (API)</span><span class="report-kv-value">' + esc(d.model != null ? String(d.model) : '—') + '</span></div>' +
       '<div class="report-kv-item"><span class="report-kv-label">Millésime (année)</span><span class="report-kv-value">' + esc(d.year != null ? String(d.year) : '—') + '</span></div>' +
       '<div class="report-kv-item"><span class="report-kv-label">Marché de référence</span><span class="report-kv-value">' + esc(frCountryCode(d.country)) + '</span></div></div></div>' +
-      '<p class="report-footnote">Valeur indicative fournie par CarAPI, selon le millésime et le pays — à rapprocher de l’état, du kilométrage réel, des équipements et de l’offre locale (annonces, mandataire, reprise).</p>' +
-      reportRawDetails('Réponse API (détail)', d)
+      '<p class="report-footnote">Valeur indicative fournie par CarAPI, selon le millésime et le pays — à rapprocher de l’état, du kilométrage réel, des équipements et de l’offre locale (annonces, mandataire, reprise).</p>'
     );
   }
 
@@ -1360,8 +1339,7 @@
         '<p class="report-lead">Aucune annonce similaire n’a été retournée (pagination ou indisponibilité des données). Les jeux d’annonces varient par marché et par moment.</p>' +
         (pag
           ? '<p class="report-subhead">Pagination : ' + esc(String(pag.offset || 0)) + ' – ' + esc(String((pag.offset || 0) + (pag.limit || 0))) + ' (limite ' + esc(String(pag.limit != null ? pag.limit : '—')) + ')</p>'
-          : '') +
-        reportRawDetails('Réponse API (détail)', d)
+          : '')
       );
     }
     var cards = L.map(function (it) {
@@ -1385,8 +1363,7 @@
     });
     return (
       '<p class="report-lead">' + L.length + ' annonce(s) « proches » (même famille modèle / millésime selon l’algorithme CarAPI) — repères de marché, pas d’exhaustivité.</p>' +
-      '<div class="report-listing-stack">' + cards.join('') + '</div>' +
-      reportRawDetails('Réponse API (détail)', d)
+      '<div class="report-listing-stack">' + cards.join('') + '</div>'
     );
   }
 
@@ -1409,8 +1386,7 @@
     return (
       insHint +
       '<div class="report-fail"><p class="report-fail__title">La source n’a pas renvoyé de données exploitables (HTTP ' + esc(st) + ').</p>' +
-      '<p class="report-fail__sub">Cela peut indiquer une absence côté base, un pays non pris en charge, ou un format de VIN connu de la fiche d’identité mais non couvert par l’option demandée. Les détails techniques figurent ci-dessous.</p></div>' +
-      reportRawDetails('Corps de réponse (API)', block.data)
+      '<p class="report-fail__sub">Cela peut indiquer une absence côté base, un pays non pris en charge, ou un format de VIN connu de la fiche d’identité mais non couvert par l’option demandée.</p></div>'
     );
   }
 
@@ -1444,8 +1420,7 @@
     if (key === 'vehicleValuation') return renderValuationData(data);
     if (key === 'listings') return renderListingsData(data);
     return (
-      '<p class="report-lead">Données reçues sous un format non spécifiquement mappé — affichage structuré brut ci-dessous.</p>' +
-      reportRawDetails('JSON', data)
+      '<p class="report-lead">Données reçues pour cette section ; le format n’est pas pris en charge par l’affichage actuel. Relancez plus tard ou contactez le support si le problème persiste.</p>'
     );
   }
 
