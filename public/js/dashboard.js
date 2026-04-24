@@ -991,7 +991,13 @@
   function renderFullVinResult(vin, bundle) {
     var resultEl = document.getElementById('vinResult');
     var fr = document.getElementById('fullReportExtra');
-    var d = (bundle && bundle.decode && bundle.decode.data && bundle.decode.data.data) || {};
+    var dec = bundle && bundle.decode;
+    var id = dec && dec.identity;
+    var raw = (dec && dec.data) || {};
+    var d =
+      (id && typeof id === 'object' ? id : null) ||
+      (raw.data && typeof raw.data === 'object' ? raw.data : null) ||
+      {};
     var out = {
       status: 'success',
       data: {

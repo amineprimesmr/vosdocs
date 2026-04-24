@@ -643,41 +643,34 @@ function getVinDecodeProvider() {
 }
 
 /**
- * Normalise la réponse CarAPI ({ success, data }) vers le format attendu par le front (status + data).
- * @see https://docs.carapi.dev/endpoints/vin-decode
+ * Normalise la réponse CarAPI (ancien { success, data } ou actuel { vin, specifications } — OpenAPI).
+ * @see https://api.carapi.dev/openapi.json
  */
 function normalizeCarApiVinResponse(body) {
   if (!body || typeof body !== 'object') {
     return { ok: false, httpStatus: 502, message: 'Réponse VIN invalide' };
   }
-  if ((body.success === true || body.success === 'true') && body.data && typeof body.data === 'object') {
-    const d = body.data;
-    const year = d.year != null ? String(d.year) : '';
-    const detailParts = [d.engine, d.body_type, d.transmission, d.fuel_type, d.drive_type].filter(
+  const id = carapiClient.extractVinDecodeIdentity(body);
+  if (id && (String(id.make || '').trim() || String(id.model || '').trim() || id.year)) {
+    const year = id.year != null ? String(id.year) : '';
+    const detailParts = [id.engine, id.transmission, id.fuel_type, id.drivetrain].filter(
       (x) => x != null && String(x).trim() !== ''
     );
-    const summary =
-      detailParts.length > 0
-        ? detailParts.join(' · ')
-        : String(d.manufacturer || d.country || '').trim();
-    const engine = d.engine != null ? String(d.engine).trim() : '';
-    const transmission = d.transmission != null ? String(d.transmission).trim() : '';
-    const fuelType = d.fuel_type != null ? String(d.fuel_type).trim() : '';
-    const driveType = d.drive_type != null ? String(d.drive_type).trim() : '';
+    const summary = detailParts.length > 0 ? detailParts.join(' · ') : String(id.make || id.model || '').trim();
     return {
       ok: true,
       json: {
         status: 'success',
         data: {
-          make: String(d.make || '').trim(),
-          model: String(d.model || '').trim(),
+          make: String(id.make || '').trim(),
+          model: String(id.model || '').trim(),
           year,
-          trim: String(d.trim || d.body_type || '').trim(),
+          trim: String(id.trim || '').trim(),
           summary,
-          engine,
-          transmission,
-          fuel_type: fuelType,
-          drivetrain: driveType
+          engine: id.engine != null ? String(id.engine).trim() : '',
+          transmission: id.transmission != null ? String(id.transmission).trim() : '',
+          fuel_type: id.fuel_type != null ? String(id.fuel_type).trim() : '',
+          drivetrain: id.drivetrain != null ? String(id.drivetrain).trim() : ''
         }
       }
     };
@@ -3109,11 +3102,8 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
     });
     const dec = bundle.decode;
     const decodeBody = dec && dec.data;
-    const decodeFailed =
-      !dec ||
-      !dec.ok ||
-      !decodeBody ||
-      !((decodeBody.success === true || decodeBody.success === 'true') && decodeBody.data);
+    const identity = (dec && dec.identity) || carapiClient.extractVinDecodeIdentity(decodeBody);
+    const decodeFailed = !dec || !dec.ok || !identity;
     if (decodeFailed) {
       await refundVinDecodeCredit(userId, vinMasked);
       return res.status(502).json({
@@ -3123,8 +3113,8 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
         detail: decodeBody != null ? decodeBody : null
       });
     }
-    if (vinCtxId && decodeBody && decodeBody.data) {
-      const d = decodeBody.data;
+    if (vinCtxId && identity) {
+      const d = identity;
       const meta = {
         vin,
         make: d.make != null ? String(d.make) : '',
@@ -3218,7 +3208,8 @@ app.get('/api/carapi/enrichment/:vin', async (req, res) => {
       }
     });
     const dec = bundle.decode;
-    const decodeFailed = !dec.ok || !(dec.data && (dec.data.success === true || dec.data.success === 'true'));
+    const identity = (dec && dec.identity) || carapiClient.extractVinDecodeIdentity(dec && dec.data);
+    const decodeFailed = !dec || !dec.ok || !identity;
     if (decodeFailed) {
       await refundOneCredit(userId, 'carapi_enrichment_refund', { vin: vinMasked });
       return res.status(502).json({
