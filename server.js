@@ -1815,9 +1815,13 @@ app.get('/api/rapport/session/:token/pdf', async (req, res) => {
       return res.status(404).send('Not found');
     }
     let vehicleData = {};
+    let guestSnapshot = null;
     try {
       const parsed = JSON.parse(row.vehicleDataJson || '{}');
       vehicleData = parsed.vehicleData || {};
+      if (parsed.vehicleData) {
+        guestSnapshot = { vehicleData: parsed.vehicleData, decode: parsed.decode || null };
+      }
     } catch (_) {}
     const montantEur = (row.amountCents / 100).toFixed(2).replace('.', ',') + ' €';
     const pdfBuffer = await generateReportPdfBuffer(vehicleData, row.vin, {
@@ -1826,7 +1830,7 @@ app.get('/api/rapport/session/:token/pdf', async (req, res) => {
       email: row.email,
       planLabel: row.planLabel || row.planId,
       montantEur
-    });
+    }, { guestSnapshot });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="rapport-vin-carvinguard.pdf"');
     res.send(pdfBuffer);
@@ -2207,13 +2211,19 @@ app.get('/api/vin/report/:transactionId/pdf', async (req, res) => {
       select: { email: true }
     });
     const vehicleData = vehicleDataForSaaSPdfFromTransactionMeta(meta);
+    let fullBundle = null;
+    try {
+      if (meta.fullReportJson) fullBundle = JSON.parse(String(meta.fullReportJson));
+    } catch (e) {
+      fullBundle = null;
+    }
     const pdfBuffer = await generateReportPdfBuffer(vehicleData, vin, {
       prenom: '',
       nom: '',
       email: (user && user.email) || '',
       planLabel: 'Espace client — analyse VIN (crédit)',
       montantEur: '1 crédit'
-    });
+    }, { fullBundle });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="rapport-vin-carvinguard.pdf"');
     res.send(pdfBuffer);
