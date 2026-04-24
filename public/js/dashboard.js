@@ -1066,40 +1066,387 @@
     }
   }
 
-  function renderCarApiBlockHtml(block) {
+  var REPORT_COUNTRY_FR = {
+    ad: 'Andorre', al: 'Albanie', at: 'Autriche', ba: 'Bosnie-Herzégovine', be: 'Belgique', bg: 'Bulgarie',
+    by: 'Biélorussie', ch: 'Suisse', cy: 'Chypre', cz: 'République tchèque', de: 'Allemagne', dk: 'Danemark',
+    ee: 'Estonie', es: 'Espagne', fi: 'Finlande', fr: 'France', gb: 'Royaume-Uni', gr: 'Grèce', hr: 'Croatie',
+    hu: 'Hongrie', ie: 'Irlande', is: 'Islande', it: 'Italie', li: 'Liechtenstein', lt: 'Lituanie', lu: 'Luxembourg',
+    lv: 'Lettonie', md: 'Moldavie', me: 'Monténégro', mk: 'Macédoine du Nord', mt: 'Malte', nl: 'Pays-Bas', 'no': 'Norvège',
+    pl: 'Pologne', pt: 'Portugal', ro: 'Roumanie', rs: 'Serbie', se: 'Suède', si: 'Slovénie', sk: 'Slovaquie', sm: 'Saint-Marin',
+    ua: 'Ukraine', va: 'Vatican', skt: 'Slovaquie'
+  };
+
+  function frCountryCode(code) {
+    if (code == null || code === '') return '—';
+    var c = String(code).toLowerCase();
+    return REPORT_COUNTRY_FR[c] || c.toUpperCase();
+  }
+
+  function frFuel(v) {
+    if (v == null) return 'Non renseigné';
+    var s = String(v).toLowerCase().trim();
+    if (s === '' || s === 'none' || s === 'n/a' || s === 'null') return 'Non renseigné';
+    var m = {
+      petrol: 'Essence', gasoline: 'Essence', diesel: 'Diesel', electric: 'Électrique', hybrid: 'Hybride',
+      'plug-in hybrid': 'Hybride rechargeable', lpg: 'GPL / GLP', cng: 'Gaz naturel (GNC)', hydrogen: 'Hydrogène',
+      'flexible fuel': 'Bi-carburant (E85, etc.)', other: 'Autre', unknown: 'Non renseigné'
+    };
+    return m[s] || String(v);
+  }
+
+  function frTransmission(v) {
+    if (v == null) return 'Non renseigné';
+    var s = String(v).toLowerCase().trim();
+    if (s === '' || s === 'none') return 'Non renseigné';
+    var m = { manual: 'Manuelle', automatic: 'Automatique', cvt: 'CVT (variateur)', 'dual-clutch': 'Double embrayage', dct: 'Double embrayage' };
+    return m[s] || String(v);
+  }
+
+  function frDrivetrain(v) {
+    if (v == null) return 'Non renseigné';
+    var s = String(v).toLowerCase().trim();
+    if (s === '' || s === 'none') return 'Non renseigné';
+    var m = { fwd: 'Avant (traction)', rwd: 'Propulsion arrière', awd: '4 roues motrices (AWD/4x4)', '4x4': '4x4' };
+    return m[s] || String(v);
+  }
+
+  function frPayFrequency(f) {
+    if (f === 'monthly') return 'Mensuel';
+    if (f === 'one-time' || f === 'onetime' || f === 'one time') return 'Ponctuel';
+    return f ? String(f) : '—';
+  }
+
+  function frPayType(t) {
+    if (t === 'loan') return 'Mensualité de prêt';
+    if (t === 'down-payment' || t === 'down payment') return 'Apport / acompte';
+    return t ? String(t) : '—';
+  }
+
+  function formatMoney(n, currency) {
+    if (n == null || n === '' || (typeof n === 'number' && !isFinite(n))) return '—';
+    var c = (currency && String(currency)) || 'EUR';
+    try {
+      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(Number(n));
+    } catch (e) {
+      return String(n) + ' ' + c;
+    }
+  }
+
+  function formatKm(n) {
+    if (n == null || n === '' || (typeof n === 'number' && !isFinite(n))) return '—';
+    try {
+      return new Intl.NumberFormat('fr-FR').format(Math.round(Number(n))) + ' km';
+    } catch (e) {
+      return String(n) + ' km';
+    }
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('fr-FR', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) { return String(iso); }
+  }
+
+  function reportPillClass(kind) {
+    if (kind === 'ok') return 'report-pill report-pill--ok';
+    if (kind === 'warn') return 'report-pill report-pill--warn';
+    if (kind === 'err') return 'report-pill report-pill--err';
+    if (kind === 'neutral') return 'report-pill report-pill--neutral';
+    return 'report-pill';
+  }
+
+  function reportBlockStatusPill(block) {
+    if (block == null) return '<span class="' + reportPillClass('err') + '">Absent</span>';
+    if (block.skipped) return '<span class="' + reportPillClass('neutral') + '">Non requis</span>';
+    if (block.error) return '<span class="' + reportPillClass('err') + '">Erreur</span>';
+    if (block.ok === false) {
+      if (block.status === 400 || block.status === 404) {
+        return '<span class="' + reportPillClass('warn') + '">Indisponible</span>';
+      }
+      return '<span class="' + reportPillClass('err') + '">Échec</span>';
+    }
+    return '<span class="' + reportPillClass('ok') + '">Reçu</span>';
+  }
+
+  function reportRawDetails(label, obj) {
+    return (
+      '<details class="report-raw"><summary>' + esc(label) + '</summary>' +
+      '<pre class="full-report-pre">' + esc(safeJsonStringify(obj)) + '</pre></details>'
+    );
+  }
+
+  function renderInspectionData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var ins = d.inspection && typeof d.inspection === 'object' ? d.inspection : {};
+    var ctry = d.country;
+    var stk = ins.stkValidTo;
+    var ek = ins.ekValidTo;
+    var hint =
+      '<p class="report-lead">Contrôle périodique (STK) et contrôle des émissions (EK) tels qu’exposés par l’API pour le pays indiqué. ' +
+      'L’exhaustivité des pays dépend de CarAPI — pour la plupart des VIN, seuls certains jeux de données (ex. Slovaquie) sont proposés.</p>';
+    var countryLine =
+      '<div class="report-kv report-kv--hero">' +
+      '<div class="report-kv-item"><span class="report-kv-label">Pays de référence (API)</span>' +
+      '<span class="report-kv-value">' + esc(frCountryCode(ctry)) + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">VIN</span>' +
+      '<span class="report-kv-value report-kv-mono">' + esc(d.vin || '—') + '</span></div></div>';
+    var two =
+      '<div class="report-card-grid report-card-grid--2">' +
+      '<div class="report-mini-card">' +
+      '<div class="report-mini-card__label">STK (contrôle périodique)</div>' +
+      '<div class="report-mini-card__val">' + (stk ? esc(formatDate(stk)) : '<span class="empty-val">Aucune date / non applicable</span>') + '</div>' +
+      '<p class="report-mini-card__hint">Validité du contrôle technique périodique (équivalent MOT / périodicité selon le pays).</p></div>' +
+      '<div class="report-mini-card">' +
+      '<div class="report-mini-card__label">EK (émissions / pollution)</div>' +
+      '<div class="report-mini-card__val">' + (ek ? esc(formatDate(ek)) : '<span class="empty-val">Aucune date / non applicable</span>') + '</div>' +
+      '<p class="report-mini-card__hint">Contrôle des émissions (EK) lorsqu’il est enregistré côté source.</p></div></div>';
+    return hint + countryLine + two + reportRawDetails('Réponse API (détail)', d);
+  }
+
+  function renderStolenData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var stolen = d.stolen === true;
+    var badge =
+      stolen
+        ? '<div class="report-hero report-hero--alert"><div class="report-hero__icon" aria-hidden="true">!</div><div>' +
+          '<div class="report-hero__title">Signalement de vol</div>' +
+          '<p class="report-hero__text">D’après la base interrogee par l’API, ce VIN remonte comme signalé. Vérifiez auprès des autorités compétentes.</p></div></div>'
+        : '<div class="report-hero report-hero--ok"><div class="report-hero__icon" aria-hidden="true">✓</div><div>' +
+          '<div class="report-hero__title">Aucun signalement de vol</div>' +
+          '<p class="report-hero__text">Aucun vol signalé sur les sources consultées par CarAPI pour ce VIN, selon le jeu de pays retourné.</p></div></div>';
+    var map = d.countries && typeof d.countries === 'object' && !Array.isArray(d.countries) ? d.countries : null;
+    var grid = '';
+    if (map) {
+      var keys = Object.keys(map).sort();
+      grid =
+        '<p class="report-subhead">Détail par pays (recherche multi-bases)</p><div class="report-country-grid">';
+      keys.forEach(function (k) {
+        var on = map[k] === true;
+        grid +=
+          '<div class="report-country-cell ' + (on ? 'is-alert' : 'is-clear') + '">' +
+          '<span class="report-country-name">' + esc(frCountryCode(k)) + '</span>' +
+          '<span class="report-pill ' + (on ? 'report-pill--err' : 'report-pill--ok') + '">' +
+          (on ? 'Signalé' : 'Rien de signalé') + '</span></div>';
+      });
+      grid += '</div><p class="report-footnote">Les bases et pays couverts dépendent du fournisseur. Ne remplacez pas un contrôle auprès de la gendarmerie / police en cas de doute sur un achat.</p>';
+    }
+    return badge + grid + reportRawDetails('Réponse API (détail)', d);
+  }
+
+  function renderMileageData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var list = d.mileageHistory;
+    var n = d.totalRecords != null ? Number(d.totalRecords) : (Array.isArray(list) ? list.length : 0);
+    if (!Array.isArray(list) || list.length === 0) {
+      return (
+        '<p class="report-lead">Aucun enregistrement d’historique de kilométrage n’a été retourné pour ce VIN. Cela n’exclut pas d’autres historiques (carnet, factures, outils d’entretien).</p>' +
+        reportRawDetails('Réponse API (détail)', d)
+      );
+    }
+    var maxKm = 0;
+    list.forEach(function (row) {
+      var km = Number(row.mileage) || 0;
+      if (km > maxKm) maxKm = km;
+    });
+    var html =
+      '<p class="report-lead">' + n + ' relevé(s) reçu(s) — chaque point correspond à un kilométrage connu côté source à une date donnée. Surveillez d’éventuelles <strong>baisses anormales</strong> d’un relevé à l’autre (risque d’inversion ou d’imprécision).</p>';
+    if (maxKm > 0) {
+      var bars = list
+        .slice()
+        .sort(function (a, b) { return (a.createdAt || '').localeCompare(b.createdAt || ''); })
+        .map(function (row) {
+          var km = Number(row.mileage) || 0;
+          var p = maxKm > 0 ? Math.round((km / maxKm) * 100) : 0;
+          return (
+            '<div class="report-mile-bar"><div class="report-mile-bar__track"><div class="report-mile-bar__fill" style="width:' + p + '%"></div></div>' +
+            '<div class="report-mile-bar__meta"><span>' + esc(formatKm(km)) + '</span><span class="report-mile-date">' + esc(formatDateTime(row.createdAt)) + '</span></div></div>'
+          );
+        });
+      html += '<div class="report-mile-stack">' + bars.join('') + '</div>';
+    }
+    html += '<div class="report-table-wrap"><table class="report-table" role="grid"><thead><tr><th>Date d’enregistrement</th><th>Kilométrage</th></tr></thead><tbody>';
+    list.slice().forEach(function (row) {
+      html +=
+        '<tr><td>' + esc(formatDateTime(row.createdAt)) + '</td><td class="num">' + esc(formatKm(row.mileage)) + '</td></tr>';
+    });
+    html += '</tbody></table></div>' + reportRawDetails('Réponse API (détail)', d);
+    return html;
+  }
+
+  function renderPhotosData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var photos = d.photos;
+    if (!Array.isArray(photos) || photos.length === 0) {
+      return (
+        '<p class="report-lead">Aucune photo n’a été associée à ce VIN dans le jeu de retours actuel. Les visuels peuvent provenir d’annonces classées, et varier dans le temps.</p>' +
+        reportRawDetails('Réponse API (détail)', d)
+      );
+    }
+    var items = photos
+      .map(function (u) {
+        if (!u || typeof u !== 'string') return '';
+        return (
+          '<a class="report-photo" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' +
+          '<img src="' + esc(u) + '" alt="Photo associée au VIN" loading="lazy" decoding="async" />' +
+          '<span class="report-photo__cap">Agrandir</span></a>'
+        );
+      })
+      .filter(Boolean);
+    return (
+      '<p class="report-lead">' + items.length + ' visuel(s) — cliquez pour ouvrir l’image en grand (nouvel onglet).</p>' +
+      '<div class="report-photo-grid">' + items.join('') + '</div>' +
+      reportRawDetails('Réponse API (détail)', d)
+    );
+  }
+
+  function renderPaymentsData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var cur = d.currency || 'EUR';
+    var pay = Array.isArray(d.payments) ? d.payments : [];
+    var top =
+      '<div class="report-finance-hero"><div class="report-finance-kpis">' +
+      '<div class="report-finance-kpi"><span class="report-finance-kpi__l">Mensualité (estim.)</span>' +
+      '<span class="report-finance-kpi__v">' + esc(formatMoney(d.monthlyPayment, cur)) + '</span></div>' +
+      '<div class="report-finance-kpi"><span class="report-finance-kpi__l">Montant emprunté (après apport)</span>' +
+      '<span class="report-finance-kpi__v">' + esc(formatMoney(d.loanAmount, cur)) + '</span></div>' +
+      '<div class="report-finance-kpi"><span class="report-finance-kpi__l">Coût total (capital + intérêts sur la durée)</span>' +
+      '<span class="report-finance-kpi__v">' + esc(formatMoney(d.totalPaid, cur)) + '</span></div>' +
+      '<div class="report-finance-kpi"><span class="report-finance-kpi__l">Intérêts totaux (estim.)</span>' +
+      '<span class="report-finance-kpi__v">' + esc(formatMoney(d.totalInterest, cur)) + '</span></div></div></div>' +
+      '<p class="report-footnote">Simulation indicative fournie par l’API (paramètres côté serveur : montant, apport, durée, taux). Comparez chez un établissement de crédit habilité pour une offre réelle (TAEG, assurances, frais de dossier).</p>';
+    if (pay.length === 0) {
+      return top + reportRawDetails('Réponse API (détail)', d);
+    }
+    var rows = pay
+      .map(function (p) {
+        return (
+          '<tr><td>' + esc(formatDate(p.dueDate)) + '</td><td>' + esc(formatMoney(p.amount, p.currency || cur)) + '</td>' +
+          '<td>' + esc(frPayFrequency(p.frequency)) + '</td><td>' + esc(frPayType(p.type)) + '</td><td>' + esc(p.description || '—') + '</td></tr>'
+        );
+      })
+      .join('');
+    var table =
+      '<div class="report-table-wrap"><table class="report-table" role="grid"><thead><tr><th>Échéance</th><th>Montant</th><th>Fréquence</th><th>Type</th><th>Description</th></tr></thead><tbody>' +
+      rows + '</tbody></table></div>';
+    return top + table + reportRawDetails('Réponse API (détail)', d);
+  }
+
+  function renderValuationData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var cur = d.currency || 'EUR';
+    return (
+      '<div class="report-valuation">' +
+      '<div class="report-valuation__price"><span class="report-valuation__n">' + esc(formatMoney(d.valuationPrice, cur)) + '</span>' +
+      '<span class="report-valuation__hint">Cote / valeur estimative sur le marché indiqué</span></div>' +
+      '<div class="report-kv">' +
+      '<div class="report-kv-item"><span class="report-kv-label">Marque (API)</span><span class="report-kv-value">' + esc(d.make != null ? String(d.make) : '—') + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Modèle (API)</span><span class="report-kv-value">' + esc(d.model != null ? String(d.model) : '—') + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Millésime (année)</span><span class="report-kv-value">' + esc(d.year != null ? String(d.year) : '—') + '</span></div>' +
+      '<div class="report-kv-item"><span class="report-kv-label">Marché de référence</span><span class="report-kv-value">' + esc(frCountryCode(d.country)) + '</span></div></div></div>' +
+      '<p class="report-footnote">Valeur indicative fournie par CarAPI, selon le millésime et le pays — à rapprocher de l’état, du kilométrage réel, des équipements et de l’offre locale (annonces, mandataire, reprise).</p>' +
+      reportRawDetails('Réponse API (détail)', d)
+    );
+  }
+
+  function renderListingsData(data) {
+    var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    var L = d.listings;
+    var pag = d.pagination;
+    if (!Array.isArray(L) || L.length === 0) {
+      return (
+        '<p class="report-lead">Aucune annonce similaire n’a été retournée (pagination ou indisponibilité des données). Les jeux d’annonces varient par marché et par moment.</p>' +
+        (pag
+          ? '<p class="report-subhead">Pagination : ' + esc(String(pag.offset || 0)) + ' – ' + esc(String((pag.offset || 0) + (pag.limit || 0))) + ' (limite ' + esc(String(pag.limit != null ? pag.limit : '—')) + ')</p>'
+          : '') +
+        reportRawDetails('Réponse API (détail)', d)
+      );
+    }
+    var cards = L.map(function (it) {
+      var spec = it.specifications && typeof it.specifications === 'object' ? it.specifications : {};
+      var av = it.availability && typeof it.availability === 'object' ? it.availability : {};
+      return (
+        '<div class="report-listing-card">' +
+        '<div class="report-listing-card__head">Annonce liée (VIN : ' + esc((it.vin && String(it.vin)) || '—') + ')</div>' +
+        '<div class="report-listing-specs">' +
+        '<div><span class="lbl">Marque / modèle</span><span>' + esc((spec.make || '—') + ' · ' + (spec.model || '—')) + '</span></div>' +
+        '<div><span class="lbl">Carburant</span><span>' + esc(frFuel(spec.fuel)) + '</span></div>' +
+        '<div><span class="lbl">Boîte</span><span>' + esc(frTransmission(spec.transmission)) + '</span></div>' +
+        '<div><span class="lbl">1ère immatriculation (si dispo)</span><span>' + esc(formatDate(spec.registrationDate)) + '</span></div>' +
+        '</div>' +
+        '<div class="report-listing-avail">' +
+        '<span class="tag">Photos (réf.) ' + esc(String(av.imagesCount != null ? av.imagesCount : '0')) + '</span>' +
+        '<span class="tag">Immat. ' + esc(String(av.plateNumbersCount != null ? av.plateNumbersCount : '0')) + '</span>' +
+        '<span class="tag">Entrées d’hist. ' + esc(String(av.historyItemsCount != null ? av.historyItemsCount : '0')) + '</span>' +
+        '</div></div>'
+      );
+    });
+    return (
+      '<p class="report-lead">' + L.length + ' annonce(s) « proches » (même famille modèle / millésime selon l’algorithme CarAPI) — repères de marché, pas d’exhaustivité.</p>' +
+      '<div class="report-listing-stack">' + cards.join('') + '</div>' +
+      reportRawDetails('Réponse API (détail)', d)
+    );
+  }
+
+  function renderBlockFailureHtml(blockKey, block) {
+    var insHint = '';
+    if (block.data && typeof block.data === 'object' && block.data.error) {
+      var es = String(block.data.error);
+      if (/Slovakia|Only Slovakia|sk/i.test(es) && blockKey === 'inspection') {
+        insHint =
+          '<div class="report-callout report-callout--info">' +
+          '<strong>Pourquoi c’est indisponible :</strong> l’API CarAPI documente aujourd’hui le <strong>contrôle technique périodique (STK) et l’EK</strong> principalement pour la <strong>Slovaquie</strong>. ' +
+          'Pour de nombreux VIN d’immatriculation étrangère, vous ne verrez donc <strong>pas de dates françaises (CT) ou allemandes (TÜV)</strong> ici. Le code HTTP 400/404 sur ce point est fréquent — ce n’est pas un bug de votre fiche.</div>';
+      }
+    }
+    if (blockKey === 'photos' && (block.status === 404 || (block.data && /no photos|not found/i.test(String((block.data.error || block.data.message || '')))))) {
+      insHint =
+        '<div class="report-callout report-callout--info">Aucune image indexée pour ce VIN aujourd’hui — c’est souvent le cas.</div>';
+    }
+    var st = block.status != null ? String(block.status) : '?';
+    return (
+      insHint +
+      '<div class="report-fail"><p class="report-fail__title">La source n’a pas renvoyé de données exploitables (HTTP ' + esc(st) + ').</p>' +
+      '<p class="report-fail__sub">Cela peut indiquer une absence côté base, un pays non pris en charge, ou un format de VIN connu de la fiche d’identité mais non couvert par l’option demandée. Les détails techniques figurent ci-dessous.</p></div>' +
+      reportRawDetails('Corps de réponse (API)', block.data)
+    );
+  }
+
+  function renderCarApiBlockHtml(key, block) {
     if (block == null) {
       return '<p class="full-report-err">Bloc absent</p>';
     }
     if (block.skipped) {
+      var r = String(block.reason || '—');
+      var fr =
+        r === 'make_model_year_unavailable'
+          ? 'Cette section n’a pas été appelée : la marque, le modèle ou l’année n’ont pas été reconnus au format requis par CarAPI pour la cote et les annonces (liste de marques normalisée en anglais, modèle en « slug »).'
+          : 'Non requis : ' + esc(r);
       return (
-        '<p class="full-report-skip">Non requis : ' +
-        esc(String(block.reason || '—')) +
-        ' <span style="font-size:0.8rem;opacity:0.85">(cote / annonces si marque-modèle-année reconnus par CarAPI)</span></p>'
+        '<div class="report-skipped"><p class="report-skipped__text">' + fr + '</p>' +
+        '<p class="report-footnote">Quand l’identité complète (marque / modèle / année) est reconnue, le même rapport inclura valorisation de marché et annonces similaires.</p></div>'
       );
     }
     if (block.error) {
       return '<p class="full-report-err">' + esc(String(block.error)) + '</p>';
     }
     if (block.ok === false) {
-      var insHint = '';
-      if (block.data && typeof block.data === 'object' && block.data.error) {
-        var es = String(block.data.error);
-        if (/Slovakia|Only Slovakia/i.test(es)) {
-          insHint =
-            '<p class="full-report-hint">L’API CarAPI ne fournit le contrôle technique que pour la Slovaquie (SK), pas pour la France — le 400 est attendu.</p>';
-        }
-      }
-      return (
-        insHint +
-        '<p class="full-report-err">Réponse négative (HTTP ' +
-        esc(String(block.status != null ? block.status : '?')) +
-        ')</p>' +
-        '<pre class="full-report-pre">' +
-        esc(safeJsonStringify(block.data)) +
-        '</pre>'
-      );
+      return renderBlockFailureHtml(key, block);
     }
-    return '<pre class="full-report-pre">' + esc(safeJsonStringify(block.data)) + '</pre>';
+    var data = block.data;
+    if (key === 'inspection') return renderInspectionData(data);
+    if (key === 'stolenCheck') return renderStolenData(data);
+    if (key === 'mileageHistory') return renderMileageData(data);
+    if (key === 'photos') return renderPhotosData(data);
+    if (key === 'payments') return renderPaymentsData(data);
+    if (key === 'vehicleValuation') return renderValuationData(data);
+    if (key === 'listings') return renderListingsData(data);
+    return (
+      '<p class="report-lead">Données reçues sous un format non spécifiquement mappé — affichage structuré brut ci-dessous.</p>' +
+      reportRawDetails('JSON', data)
+    );
   }
 
   function renderFullVinResult(vin, bundle) {
@@ -1125,7 +1472,7 @@
         drivetrain: d.drive_type || d.drivetrain
       }
     };
-    renderVinResult(vin, out, true);
+    renderVinResult(vin, out, true, bundle);
     if (fr) {
       var panels = [
         ['inspection', 'Contrôle technique & inspection (MOT, TÜV, EK, etc.)'],
@@ -1143,9 +1490,10 @@
           var block = bundle[key];
           return (
             '<details class="full-report-panel" open>' +
-            '<summary>' + esc(label) + '</summary>' +
+            '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' + esc(label) + '</span>' +
+            reportBlockStatusPill(block) + '</summary>' +
             '<div class="full-report-panel-body">' +
-            renderCarApiBlockHtml(block) +
+            renderCarApiBlockHtml(key, block) +
             '</div></details>'
           );
         })
@@ -1159,16 +1507,90 @@
     }
   }
 
-  function renderVinResult(vin, data, keepFullPanel) {
+  function buildDecodeMetaHtml(bundle) {
+    if (!bundle || !bundle.decode || !bundle.decode.data) return '';
+    var body = bundle.decode.data;
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) return '';
+    var specs = body.specifications && typeof body.specifications === 'object' && !Array.isArray(body.specifications)
+      ? body.specifications
+      : null;
+    var dataInner = body.data && typeof body.data === 'object' && !Array.isArray(body.data) ? body.data : null;
+    var extra = [];
+    if (specs) {
+      if (specs.bodyClass) extra.push({ k: 'Classe de carrosserie', v: String(specs.bodyClass) });
+      if (specs.vehicleType) extra.push({ k: 'Type de véhicule', v: String(specs.vehicleType) });
+    }
+    if (dataInner) {
+      if (dataInner.body_type && !specs) extra.push({ k: 'Type de carrosserie', v: String(dataInner.body_type) });
+    }
+    var parts = [];
+    if (extra.length) {
+      parts.push(
+        '<div class="vin-decode-block"><h3 class="vin-decode-h">Compléments fiche constructeur / API</h3><div class="report-kv report-kv--compact">' +
+        extra
+          .map(function (x) {
+            return (
+              '<div class="report-kv-item"><span class="report-kv-label">' + esc(x.k) + '</span><span class="report-kv-value">' + esc(x.v) + '</span></div>'
+            );
+          })
+          .join('') +
+        '</div></div>'
+      );
+    }
+    var rawFeat = (specs && specs.features) != null ? specs.features : body.features;
+    if (Array.isArray(rawFeat) && rawFeat.length) {
+      parts.push(
+        '<div class="vin-decode-block"><h3 class="vin-decode-h">Équipements & options (extrait fiche)</h3><div class="report-chip-row">' +
+        rawFeat
+          .slice(0, 32)
+          .map(function (x) {
+            return '<span class="report-chip">' + esc(String(x)) + '</span>';
+          })
+          .join('') +
+        (rawFeat.length > 32 ? '<span class="report-chip report-chip--more">+' + (rawFeat.length - 32) + ' autres</span>' : '') +
+        '</div></div>'
+      );
+    } else if (typeof rawFeat === 'string' && rawFeat.trim()) {
+      try {
+        var arr = JSON.parse(rawFeat);
+        if (Array.isArray(arr) && arr.length) {
+          parts.push(
+            '<div class="vin-decode-block"><h3 class="vin-decode-h">Équipements & options (extrait fiche)</h3><div class="report-chip-row">' +
+            arr
+              .slice(0, 32)
+              .map(function (x) {
+                return '<span class="report-chip">' + esc(String(x)) + '</span>';
+              })
+              .join('') +
+            (arr.length > 32 ? '<span class="report-chip report-chip--more">+' + (arr.length - 32) + ' autres</span>' : '') +
+            '</div></div>'
+          );
+        }
+      } catch (e) {
+        parts.push(
+          '<div class="vin-decode-block"><h3 class="vin-decode-h">Équipements (texte source)</h3><p class="vin-decode-plain">' +
+          esc(rawFeat.slice(0, 2000)) + (rawFeat.length > 2000 ? '…' : '') + '</p></div>'
+        );
+      }
+    }
+    return parts.join('');
+  }
+
+  function renderVinResult(vin, data, keepFullPanel, bundle) {
     var d = data.data || {};
     var resultEl = document.getElementById('vinResult');
     var vehicleEl = document.getElementById('resultVehicle');
     var vinCodeEl = document.getElementById('resultVinCode');
     var gridEl = document.getElementById('resultGrid');
+    var metaEl = document.getElementById('resultDecodeMeta');
     var fr = document.getElementById('fullReportExtra');
     if (fr && !keepFullPanel) {
       fr.innerHTML = '';
       fr.style.display = 'none';
+    }
+    if (metaEl && !keepFullPanel) {
+      metaEl.innerHTML = '';
+      metaEl.style.display = 'none';
     }
 
     if (!resultEl) return;
@@ -1181,24 +1603,46 @@
     if (vehicleEl) vehicleEl.textContent = vehicleLabel;
     if (vinCodeEl) vinCodeEl.textContent = vin;
 
-    var fields = [
-      { label: 'Marque',                 value: make },
-      { label: 'Modèle',                 value: model },
-      { label: 'Année',                  value: year },
-      { label: 'Finition / carrosserie', value: d.trim },
-      { label: 'Moteur',                 value: d.engine },
-      { label: 'Transmission',            value: d.transmission },
-      { label: 'Carburant',               value: d.fuel_type },
-      { label: 'Motricité / 4x4',         value: d.drivetrain }
-    ].filter(function (f) { return f.value; });
+    function cell(label, value, displayFn) {
+      var rawV = value != null && value !== '' ? String(value) : '';
+      if (rawV === '' || rawV.toLowerCase() === 'none' || rawV === 'n/a') {
+        return { label: label, html: '<div class="result-field-value empty">Non renseigné</div>' };
+      }
+      var shown = displayFn ? displayFn(rawV) : rawV;
+      return { label: label, html: '<div class="result-field-value">' + esc(shown) + '</div>' };
+    }
+
+    var fieldRows = [
+      cell('Marque', make, null),
+      cell('Modèle', model, null),
+      cell('Année', year, null),
+      cell('Finition / carrosserie', d.trim, null),
+      cell('Moteur', d.engine, null),
+      cell('Transmission', d.transmission, function (s) { return frTransmission(s); }),
+      cell('Carburant', d.fuel_type, function (s) { return frFuel(s); }),
+      cell('Motricité / 4x4', d.drivetrain, function (s) { return frDrivetrain(s); })
+    ];
 
     if (gridEl) {
-      gridEl.innerHTML = fields.map(function (f) {
-        return '<div class="result-field">' +
-          '<div class="result-field-label">' + esc(f.label) + '</div>' +
-          '<div class="result-field-value">' + esc(f.value) + '</div>' +
-          '</div>';
-      }).join('');
+      gridEl.innerHTML = fieldRows
+        .map(function (f) {
+          return (
+            '<div class="result-field result-field--always">' +
+            '<div class="result-field-label">' + esc(f.label) + '</div>' + f.html + '</div>'
+          );
+        })
+        .join('');
+    }
+
+    if (metaEl) {
+      var meta = bundle ? buildDecodeMetaHtml(bundle) : '';
+      if (meta) {
+        metaEl.innerHTML = meta;
+        metaEl.style.display = 'block';
+      } else {
+        metaEl.innerHTML = '';
+        metaEl.style.display = 'none';
+      }
     }
 
     resultEl.style.display = 'block';
