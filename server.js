@@ -1921,7 +1921,9 @@ app.get('/api/saas-config', async (req, res) => {
     registrationOpen: saaSAuthReady() && isOpenRegistrationAllowed(),
     creditPacks: creditsPacks,
     /** true si CARAPI_TOKEN est posé : le dashboard peut lancer le rapport complet (tous les endpoints). */
-    carApiEnabled: !!(p && p.id === 'carapi')
+    carApiEnabled: !!(p && p.id === 'carapi'),
+    /** true si VEHICLEDATABASES_API_KEY est posé : le dashboard peut lancer le rapport complet VehicleDatabases. */
+    vdEnabled: !!(p && p.id === 'vehicledatabases')
   });
 });
 
@@ -3292,10 +3294,9 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
     });
     const dec = bundle.decode;
     const decodeBody = dec && dec.data;
-    const identity = (dec && dec.identity) || carapiClient.extractVinDecodeIdentity(decodeBody);
+    let identity = (dec && dec.identity) || carapiClient.extractVinDecodeIdentity(decodeBody);
     const decodeFailed = !dec || !dec.ok || !identity;
     if (decodeFailed) {
-      await refundVinDecodeCredit(userId, vinMasked);
       const st = dec && dec.status;
       const b0 = decodeBody;
       const apiMsg =
@@ -3306,34 +3307,56 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
                 ? b0.message
                 : '')
           : '';
-      let message =
-        'Décodage VIN indisponible. Votre crédit a été réattribué. Vérifiez le VIN ou réessayez plus tard.';
-      if (dec && !dec.ok) {
-        if (st === 401 || st === 403) {
-          message =
-            'Clé CarAPI refusée (HTTP ' +
-            st +
-            '). Sur Vercel, définissez CARAPI_TOKEN avec la même clé qu’en playground (onglet compte, sans guillemets), puis redéployez ou attendez 1–2 min.';
-        } else if (st === 429) {
-          message = 'Quota CarAPI dépassé. Réessayez plus tard. Crédit réattribué.';
-        } else if (st === 404) {
-          message =
-            (apiMsg ? apiMsg + ' ' : '') +
-            'VIN non trouvé côté CarAPI. Crédit réattribué.';
-        } else if (apiMsg) {
-          message = 'CarAPI : ' + apiMsg + ' (HTTP ' + (st != null ? st : '?') + '). Crédit réattribué.';
+      // Auth/quota errors -> hard fail + refund
+      const isHardFail = !dec || st === 401 || st === 403 || st === 429;
+      if (!isHardFail) {
+        // VIN unknown to CarAPI (often EU VINs) -> try NHTSA
+        const nhtsaJson = await decodeVinViaNhtsa(vin);
+        if (nhtsaJson && nhtsaJson.status === 'success' && nhtsaJson.data) {
+          const nd = nhtsaJson.data;
+          const yr = nd.year ? parseInt(String(nd.year), 10) : null;
+          identity = {
+            make: nd.make || '',
+            model: nd.model || '',
+            year: Number.isFinite(yr) ? yr : null,
+            trim: nd.trim || '',
+            engine: nd.engine || '',
+            transmission: nd.transmission || '',
+            fuel_type: nd.fuel_type || '',
+            drivetrain: nd.drivetrain || '',
+            fromNhtsa: true
+          };
+          if (bundle.decode) {
+            bundle.decode.identity = identity;
+            bundle.decode.ok = true;
+          }
+          console.log('CarAPI NHTSA fallback for', vinMasked, 'year:', identity.year);
+        } else {
+          await refundVinDecodeCredit(userId, vinMasked);
+          return res.status(502).json({
+            status: 'error',
+            code: 'VIN_DECODE_FAILED',
+            message: 'VIN non reconnu (CarAPI + NHTSA). Credit reattribue. Pour les vehicules europeens, activez VEHICLEDATABASES_API_KEY.'
+          });
         }
-      } else if (dec && dec.ok && !identity) {
-        message =
-          'Réponse CarAPI inattendue (décodage vide). Vérifiez que CARAPI_TOKEN en production = la clé du dashboard. Crédit réattribué.';
+      } else {
+        await refundVinDecodeCredit(userId, vinMasked);
+        let message = 'Decodage VIN indisponible. Votre credit a ete reattribue.';
+        if (st === 401 || st === 403) {
+          message = 'Cle CarAPI refusee (HTTP ' + st + '). Verifiez CARAPI_TOKEN sur Vercel.';
+        } else if (st === 429) {
+          message = 'Quota CarAPI depasse. Reessayez plus tard. Credit reattribue.';
+        } else if (apiMsg) {
+          message = 'CarAPI: ' + apiMsg + ' (HTTP ' + (st != null ? st : '?') + '). Credit reattribue.';
+        }
+        return res.status(502).json({
+          status: 'error',
+          code: 'VIN_DECODE_FAILED',
+          message,
+          carapiHttpStatus: st != null ? st : null,
+          carapiError: apiMsg || null
+        });
       }
-      return res.status(502).json({
-        status: 'error',
-        code: 'VIN_DECODE_FAILED',
-        message,
-        carapiHttpStatus: st != null ? st : null,
-        carapiError: apiMsg || null
-      });
     }
     if (vinCtxId && identity) {
       const d = identity;

@@ -1688,3 +1688,30 @@ body.dashboard-page {
   .data-table--history .history-actions { font-size: 0.75rem; }
   .btn-history-detail, .btn-history-prefill { padding: 5px 8px; }
 }
+
+/* ── VehicleDatabases panel styles ── */
+.status-pill { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
+.status-pill--ok { background: #d1fae5; color: #065f46; }
+.status-pill--err { background: #fee2e2; color: #991b1b; }
+.status-pill--skip { background: var(--surface-2); color: var(--text-muted); }
+.status-pill--na { background: var(--surface-2); color: var(--text-muted); }
+
+.stolen-status { padding: 10px 14px; border-radius: var(--r-sm); margin-bottom: 12px; font-size: 0.875rem; }
+.stolen-status--ok { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.stolen-status--alert { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-weight: 700; }
+
+.mv-trim-block { margin-bottom: 16px; }
+.mv-trim-title { font-size: 0.8rem; font-weight: 700; color: var(--text-2); margin: 0 0 6px; }
+
+.recalls-list { display: flex; flex-direction: column; gap: 10px; }
+.recall-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); }
+.recall-title { font-weight: 700; font-size: 0.8rem; color: var(--accent); margin-bottom: 4px; }
+.recall-desc { font-size: 0.8rem; color: var(--text-2); }
+.recall-remedy { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+.recall-date { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+.report-none { color: var(--text-muted); font-size: 0.85rem; font-style: italic; padding: 8px 0; }
+
+.photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 8px; }
+.photo-thumb { border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 4/3; background: var(--surface-2); }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; }

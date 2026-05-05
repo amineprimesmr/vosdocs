@@ -48,6 +48,8 @@
   var registrationOpen = false;
   /** true si le serveur a CARAPI_TOKEN : recherche = rapport complet (tous les endpoints). */
   var carApiEnabled = false;
+  /** true si le serveur a VEHICLEDATABASES_API_KEY : recherche = rapport complet VehicleDatabases. */
+  var vdEnabled = false;
 
   function removeTempLoginHideStyle() {
     var st = document.getElementById('cg-hide-login-temp');
@@ -180,12 +182,14 @@
       .then(function (r) {
         registrationOpen = !!(r.ok && r.data && r.data.registrationOpen);
         carApiEnabled = !!(r.ok && r.data && r.data.carApiEnabled);
+        vdEnabled = !!(r.ok && r.data && r.data.vdEnabled);
         applyRegistrationRestrictedUi();
         refreshSearchModeDesc();
       })
       .catch(function () {
         registrationOpen = false;
         carApiEnabled = false;
+        vdEnabled = false;
         applyRegistrationRestrictedUi();
         refreshSearchModeDesc();
       });
@@ -530,6 +534,7 @@
       .then(function (r) {
         if (r.ok && r.data) {
           carApiEnabled = !!r.data.carApiEnabled;
+          vdEnabled = !!r.data.vdEnabled;
           registrationOpen = !!r.data.registrationOpen;
           applyRegistrationRestrictedUi();
         }
@@ -696,9 +701,13 @@
   function refreshSearchModeDesc() {
     var d = document.getElementById('searchModeDesc');
     if (!d) return;
-    d.textContent = carApiEnabled
-      ? ' crédit(s) — 1 crédit couvre un rapport détaillé : identité du véhicule, vol, contrôle technique, kilométrage, annonces, cote estimative, photos et simulation de financement.'
-      : ' crédit(s) — 1 crédit par fiche véhicule.';
+    if (carApiEnabled) {
+      d.textContent = ' crédit(s) — 1 crédit couvre un rapport détaillé : identité du véhicule, vol, contrôle technique, kilométrage, annonces, cote estimative, photos et simulation de financement.';
+    } else if (vdEnabled) {
+      d.textContent = ' crédit(s) — 1 crédit couvre un rapport complet : identification, historique EU, vol, cote de marché, rappels, enchères, entretien, garantie et photos.';
+    } else {
+      d.textContent = ' crédit(s) — 1 crédit par fiche véhicule.';
+    }
   }
 
   function updateCreditsDisplay(credits) {
@@ -1011,7 +1020,9 @@
 
     var searchPath = carApiEnabled
       ? '/api/vin-full-report/' + encodeURIComponent(vin)
-      : '/api/vin-decode/' + encodeURIComponent(vin);
+      : (vdEnabled
+        ? '/api/vd/full-report/' + encodeURIComponent(vin)
+        : '/api/vin-decode/' + encodeURIComponent(vin));
     api(searchPath).then(function (r) {
       setLoading('searchBtn', 'searchBtnText', 'searchSpinner', false);
 
@@ -1045,7 +1056,9 @@
         }
       });
 
-      if (r.data && r.data.data && r.data.data.decode) {
+      if (r.data && r.data.data && r.data.data.vinDecode) {
+        renderVdResult(vin, r.data.data, r.data.transactionId);
+      } else if (r.data && r.data.data && r.data.data.decode) {
         renderFullVinResult(vin, r.data.data, r.data.transactionId);
       } else {
         renderVinResult(vin, r.data);
@@ -1564,6 +1577,399 @@
     } else {
       row.style.display = 'none';
       link.removeAttribute('href');
+    }
+  }
+
+  /* ============================================================
+     VEHICLEDATABASES RENDERING
+     ============================================================ */
+
+  function getVdSpec(specs, name) {
+    if (!Array.isArray(specs)) return null;
+    for (var _i = 0; _i < specs.length; _i++) {
+      if (specs[_i] && specs[_i][name] != null) return specs[_i][name];
+    }
+    return null;
+  }
+
+  function vdVal(v) {
+    if (v == null) return '';
+    var s = String(v).trim();
+    return (s === 'None' || s === 'N/A' || s === 'n/a' || s === 'null') ? '' : s;
+  }
+
+  function vdKv(label, value) {
+    var v = vdVal(value);
+    if (!v) return '';
+    return (
+      '<div class="report-kv-item"><span class="report-kv-label">' + esc(label) + '</span>' +
+      '<span class="report-kv-value">' + esc(v) + '</span></div>'
+    );
+  }
+
+  function renderVdIdentificationPanel(bundle) {
+    var vd = bundle.vinDecode;
+    if (!vd || !vd.ok || !vd.data) return '<p class="full-report-err">Données VIN indisponibles</p>';
+    var body = vd.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var specs = Array.isArray(d.specifications) ? d.specifications : [];
+    var eng = getVdSpec(specs, 'engine') || {};
+    var fuelSpec = getVdSpec(specs, 'fuel') || {};
+    var trans = (d.transmission && typeof d.transmission === 'object') ? d.transmission : {};
+    var engParts = [
+      vdVal(eng.type),
+      eng.cylinders_configuration ? eng.cylinders_configuration + ' cyl.' : '',
+      (eng.displacement && eng.displacement > 100) ? (eng.displacement / 1000).toFixed(1) + 'L' : (eng.displacement ? eng.displacement + 'L' : '')
+    ].filter(Boolean);
+    var engineStr = vdVal(d.engine) || engParts.join(' ');
+    var transStr = (typeof d.transmission === 'string') ? d.transmission : (vdVal(trans.type) || vdVal(trans.description));
+    var fuelStr = vdVal(d.fuel_type) || vdVal(fuelSpec.type);
+    var driveStr = vdVal(d.drivetrain) || vdVal(d.drive_type);
+    var html = '<div class="report-kv report-kv--compact">';
+    html += vdKv('Marque', d.make);
+    html += vdKv('Modèle', d.model);
+    html += vdKv('Année', d.year);
+    html += vdKv('Finition', d.trim || d.trim_and_style || d.style);
+    html += vdKv('Type carrosserie', d.body_type);
+    html += vdKv('Moteur', engineStr);
+    html += vdKv('Transmission', transStr ? (frTransmission(transStr) !== 'Non renseigné' ? frTransmission(transStr) : transStr) : '');
+    html += vdKv('Carburant', fuelStr ? (frFuel(fuelStr) !== 'Non renseigné' ? frFuel(fuelStr) : fuelStr) : '');
+    html += vdKv('Motricité', driveStr ? (frDrivetrain(driveStr) !== 'Non renseigné' ? frDrivetrain(driveStr) : driveStr) : '');
+    html += vdKv('Nombre de portes', d.doors);
+    html += vdKv('Pays d\'assemblage', d.plant_country || d.country_of_manufacture);
+    html += '</div>';
+    var exterior = getVdSpec(specs, 'exterior') || {};
+    var interior = getVdSpec(specs, 'interior') || {};
+    var features = [];
+    Object.keys(exterior).forEach(function (k) {
+      var v = vdVal(exterior[k]);
+      if (v) features.push(String(k).replace(/_/g, ' ') + ': ' + v);
+    });
+    Object.keys(interior).forEach(function (k) {
+      var v = vdVal(interior[k]);
+      if (v) features.push(String(k).replace(/_/g, ' ') + ': ' + v);
+    });
+    if (features.length) {
+      html += '<div class="vin-decode-block"><h3 class="vin-decode-h">Équipements & options</h3><div class="report-chip-row">';
+      html += features.slice(0, 32).map(function (f) { return '<span class="report-chip">' + esc(f) + '</span>'; }).join('');
+      if (features.length > 32) html += '<span class="report-chip report-chip--more">+' + (features.length - 32) + ' autres</span>';
+      html += '</div></div>';
+    }
+    return html;
+  }
+
+  function renderVdEuropePanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="report-none">Données historiques Europe non disponibles pour ce VIN.</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    if (!d || typeof d !== 'object') return '<p class="report-none">Données Europe non disponibles.</p>';
+    var html = '<div class="report-kv report-kv--compact">';
+    html += vdKv('Marque', d.make);
+    html += vdKv('Modèle', d.model);
+    html += vdKv('Année modèle', d.year || d.model_year);
+    html += vdKv('Type carrosserie', d.body_type);
+    html += vdKv('Carburant', d.fuel_type || d.fuel);
+    html += vdKv('Cylindrée', d.engine_displacement || d.displacement);
+    html += vdKv('Puissance', d.engine_power || d.power);
+    html += vdKv('Transmission', d.transmission);
+    html += vdKv('Pays de fabrication', d.country_of_manufacture || d.plant_country);
+    html += vdKv('Normes Euro', d.emission_standard || d.euro_standard);
+    html += '</div>';
+    return html;
+  }
+
+  function renderVdStolenPanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Vérification vol non disponible</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var stolen = d.stolen;
+    var statusHtml = '';
+    if (stolen === false || stolen === 'false' || String(stolen || '').toLowerCase() === 'no' || String(stolen || '').toLowerCase() === 'not stolen') {
+      statusHtml = '<div class="stolen-status stolen-status--ok"><strong>Non signalé volé</strong> — Aucun signalement dans les bases consultées.</div>';
+    } else if (stolen === true || stolen === 'true' || String(stolen || '').toLowerCase() === 'yes' || String(stolen || '').toLowerCase() === 'stolen') {
+      statusHtml = '<div class="stolen-status stolen-status--alert"><strong>SIGNALÉ VOLÉ</strong> — Ce véhicule figure dans une base de véhicules volés.</div>';
+    } else {
+      statusHtml = '<div class="stolen-status">Statut vol : ' + esc(String(stolen != null ? stolen : 'Non déterminé')) + '</div>';
+    }
+    var html = statusHtml + '<div class="report-kv report-kv--compact">';
+    html += vdKv('Pays vérifiés', d.countries_checked);
+    html += vdKv('Source', d.source);
+    html += vdKv('Date de vérification', d.check_date);
+    html += '</div>';
+    return html;
+  }
+
+  function renderVdMarketValuePanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Cote marché non disponible</p>';
+    var body = section.data;
+    var raw = (body.data && typeof body.data === 'object') ? body.data : body;
+    var rows = raw.market_value_data || raw.marketValueData || [];
+    if (!Array.isArray(rows) || !rows.length) {
+      var html2 = '<div class="report-kv report-kv--compact">';
+      html2 += vdKv('Reprise', raw.trade_in || raw.tradeIn);
+      html2 += vdKv('Entre particuliers', raw.private_party || raw.privateParty);
+      html2 += vdKv('Concessionnaire', raw.dealer_retail || raw.dealerRetail);
+      html2 += '</div>';
+      return html2;
+    }
+    var html = '';
+    rows.forEach(function (row) {
+      var trim = row.trim || '';
+      var mvArr = row['market value'] || row.market_value || [];
+      html += '<div class="mv-trim-block">';
+      if (trim) html += '<h4 class="mv-trim-title">' + esc(trim) + '</h4>';
+      if (Array.isArray(mvArr) && mvArr.length) {
+        html += '<table class="report-table"><thead><tr><th>Condition</th><th>Reprise</th><th>Particulier</th><th>Concessionnaire</th></tr></thead><tbody>';
+        mvArr.forEach(function (item) {
+          html += '<tr>';
+          html += '<td>' + esc(String(item['Condition'] || item.condition || '—')) + '</td>';
+          html += '<td>' + esc(String(item['Trade-In'] || item.trade_in || '—')) + '</td>';
+          html += '<td>' + esc(String(item['Private Party'] || item.private_party || '—')) + '</td>';
+          html += '<td>' + esc(String(item['Dealer Retail'] || item.dealer_retail || '—')) + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+    });
+    return html || '<p class="report-none">Données de cote non disponibles pour ce véhicule.</p>';
+  }
+
+  function renderVdRecallsPanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Rappels non disponibles</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var items = d.recalls || d.recall_list || (Array.isArray(d) ? d : []);
+    if (!Array.isArray(items) || !items.length) {
+      return '<p class="report-none">Aucun rappel constructeur enregistré pour ce véhicule.</p>';
+    }
+    var html = '<div class="recalls-list">';
+    items.forEach(function (item) {
+      html += '<div class="recall-item">';
+      html += '<div class="recall-title">' + esc(item.recall_number || item.nhtsa_campaign_id || item.id || '—') + '</div>';
+      if (item.consequence || item.description || item.defect_summary) {
+        html += '<div class="recall-desc">' + esc(item.consequence || item.description || item.defect_summary || '') + '</div>';
+      }
+      if (item.remedy) html += '<div class="recall-remedy"><strong>Remède :</strong> ' + esc(item.remedy) + '</div>';
+      if (item.report_received_date || item.date) html += '<div class="recall-date">Date : ' + esc(item.report_received_date || item.date) + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderVdSalesHistoryPanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Historique ventes non disponible</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var sales = d.sales || d.history || (Array.isArray(d) ? d : []);
+    if (!Array.isArray(sales) || !sales.length) {
+      return '<p class="report-none">Aucun historique de vente disponible pour ce VIN.</p>';
+    }
+    var html = '<table class="report-table"><thead><tr><th>Date</th><th>Prix</th><th>Km</th><th>Localisation</th></tr></thead><tbody>';
+    sales.forEach(function (s) {
+      html += '<tr>';
+      html += '<td>' + esc(s.date || s.sold_date || '—') + '</td>';
+      html += '<td>' + esc(s.price != null ? String(s.price) : '—') + '</td>';
+      html += '<td>' + esc((s.mileage || s.odometer) != null ? String(s.mileage || s.odometer) : '—') + '</td>';
+      var loc = s.location || (s.city ? ((s.city || '') + (s.state ? ', ' + s.state : '')).trim() : '—');
+      html += '<td>' + esc(loc) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderVdAuctionPanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Données enchères non disponibles</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var auctions = d.auctions || d.auction_list || d.results || (Array.isArray(d) ? d : []);
+    if (!Array.isArray(auctions) || !auctions.length) {
+      return '<p class="report-none">Aucune enchère enregistrée pour ce VIN.</p>';
+    }
+    var html = '<table class="report-table"><thead><tr><th>Date</th><th>Mise à prix</th><th>Prix final</th><th>Km</th></tr></thead><tbody>';
+    auctions.forEach(function (a) {
+      html += '<tr>';
+      html += '<td>' + esc(a.date || a.sale_date || '—') + '</td>';
+      html += '<td>' + esc((a.bid_start || a.starting_bid) != null ? String(a.bid_start || a.starting_bid) : '—') + '</td>';
+      html += '<td>' + esc((a.sale_price || a.final_price) != null ? String(a.sale_price || a.final_price) : '—') + '</td>';
+      html += '<td>' + esc((a.odometer || a.mileage) != null ? String(a.odometer || a.mileage) : '—') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderVdMediaPanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Photos non disponibles</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var colors = d.exterior_colors || d.colors || [];
+    var html = '';
+    if (Array.isArray(colors) && colors.length) {
+      html += '<div class="vin-decode-block"><h3 class="vin-decode-h">Couleurs disponibles</h3><div class="report-chip-row">';
+      colors.forEach(function (c) {
+        var label = (c && (c.name || c.color_name)) ? String(c.name || c.color_name) : String(c);
+        html += '<span class="report-chip">' + esc(label) + '</span>';
+      });
+      html += '</div></div>';
+    }
+    var photoUrls = [];
+    ['photos', 'images', 'media', 'exterior', 'interior'].forEach(function (cat) {
+      var arr = d[cat];
+      if (Array.isArray(arr)) {
+        arr.forEach(function (p) {
+          var url = typeof p === 'string' ? p : (p && (p.url || p.src || p.image_url || p.photo_url) || '');
+          if (url && url.startsWith('http')) photoUrls.push(url);
+        });
+      }
+    });
+    if (photoUrls.length) {
+      html += '<div class="photos-grid">';
+      photoUrls.slice(0, 12).forEach(function (url) {
+        html += '<div class="photo-thumb"><img src="' + esc(url) + '" loading="lazy" alt="Photo du véhicule" style="max-width:100%;border-radius:6px;" /></div>';
+      });
+      html += '</div>';
+    } else if (!colors.length) {
+      html += '<p class="report-none">Aucun média disponible pour ce véhicule.</p>';
+    }
+    return html;
+  }
+
+  function renderVdMaintenancePanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Carnet entretien non disponible</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var intervals = d.maintenance_intervals || d.intervals || d.schedule || (Array.isArray(d) ? d : []);
+    if (!Array.isArray(intervals) || !intervals.length) {
+      return '<p class="report-none">Aucune donnée d\'entretien disponible pour ce véhicule.</p>';
+    }
+    var html = '<table class="report-table"><thead><tr><th>Opération</th><th>Intervalle km</th><th>Mois</th></tr></thead><tbody>';
+    intervals.forEach(function (item) {
+      html += '<tr>';
+      html += '<td>' + esc(item.action || item.service || item.description || item.task || '—') + '</td>';
+      html += '<td>' + esc((item.mileage_interval || item.km_interval || item.miles) != null ? String(item.mileage_interval || item.km_interval || item.miles) : '—') + '</td>';
+      html += '<td>' + esc((item.month_interval || item.months) != null ? String(item.month_interval || item.months) : '—') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderVdWarrantyPanel(section) {
+    if (!section) return '<p class="full-report-err">Garantie non disponible</p>';
+    if (section.skipped) return '<p class="report-none">Données garantie non disponibles (véhicule non identifié).</p>';
+    if (!section.ok || !section.data) return '<p class="full-report-err">Garantie non disponible</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var warranties = d.warranties || d.warranty_data || (Array.isArray(d) ? d : []);
+    if (Array.isArray(warranties) && warranties.length) {
+      var html = '<div class="report-kv report-kv--compact">';
+      warranties.forEach(function (w) {
+        var name = w.type || w.name || w.warranty_type || 'Garantie';
+        var parts = [w.months ? w.months + ' mois' : '', w.miles ? w.miles + ' mi' : '', w.km ? w.km + ' km' : ''].filter(Boolean);
+        html += vdKv(name, parts.join(' / ') || 'Non renseigné');
+      });
+      html += '</div>';
+      return html;
+    }
+    var html2 = '<div class="report-kv report-kv--compact">';
+    html2 += vdKv('Garantie constructeur', d.basic_warranty || d.basic);
+    html2 += vdKv('Anti-perforation', d.corrosion_warranty || d.corrosion);
+    html2 += vdKv('Groupe motopropulseur', d.powertrain_warranty || d.powertrain);
+    html2 += vdKv('Assistance routière', d.roadside_warranty || d.roadside);
+    html2 += '</div>';
+    return html2;
+  }
+
+  function renderVdPanelHtml(key, bundle) {
+    var section = bundle[key];
+    if (key === 'vinDecode') return renderVdIdentificationPanel(bundle);
+    if (key === 'europeVin') return renderVdEuropePanel(section);
+    if (key === 'stolenCheck') return renderVdStolenPanel(section);
+    if (key === 'marketValue') return renderVdMarketValuePanel(section);
+    if (key === 'recalls') return renderVdRecallsPanel(section);
+    if (key === 'salesHistory') return renderVdSalesHistoryPanel(section);
+    if (key === 'auction') return renderVdAuctionPanel(section);
+    if (key === 'media') return renderVdMediaPanel(section);
+    if (key === 'maintenance') return renderVdMaintenancePanel(section);
+    if (key === 'warranty') return renderVdWarrantyPanel(section);
+    return '<p class="full-report-err">Section inconnue</p>';
+  }
+
+  function vdSectionStatusPill(section) {
+    if (!section) return '<span class="status-pill status-pill--na">N/D</span>';
+    if (section.skipped) return '<span class="status-pill status-pill--skip">N/A</span>';
+    if (section.ok) return '<span class="status-pill status-pill--ok">OK</span>';
+    return '<span class="status-pill status-pill--err">Erreur</span>';
+  }
+
+  function renderVdResult(vin, bundle, transactionId) {
+    var resultEl = document.getElementById('vinResult');
+    var fr = document.getElementById('fullReportExtra');
+    var id = bundle.identity || {};
+    var vd = bundle.vinDecode;
+    var vdBody = (vd && vd.ok && vd.data) ? vd.data : {};
+    var vdData = (vdBody.data && typeof vdBody.data === 'object') ? vdBody.data : vdBody;
+    var specs = Array.isArray(vdData.specifications) ? vdData.specifications : [];
+    var eng = getVdSpec(specs, 'engine') || {};
+    var fuel2 = getVdSpec(specs, 'fuel') || {};
+    var trans2 = (vdData.transmission && typeof vdData.transmission === 'object') ? vdData.transmission : {};
+    var engParts = [
+      vdVal(eng.type),
+      eng.cylinders_configuration ? eng.cylinders_configuration + ' cyl.' : '',
+      (eng.displacement && eng.displacement > 100) ? (eng.displacement / 1000).toFixed(1) + 'L' : (eng.displacement ? eng.displacement + 'L' : '')
+    ].filter(Boolean);
+    var out = {
+      status: 'success',
+      data: {
+        make: vdVal(vdData.make) || id.make || '',
+        model: vdVal(vdData.model) || id.model || '',
+        year: vdVal(vdData.year) || id.year || '',
+        trim: vdVal(vdData.trim) || vdVal(vdData.trim_and_style) || vdVal(vdData.style) || '',
+        engine: vdVal(vdData.engine) || engParts.join(' '),
+        transmission: (typeof vdData.transmission === 'string') ? vdData.transmission : (vdVal(trans2.type) || vdVal(trans2.description) || ''),
+        fuel_type: vdVal(vdData.fuel_type) || vdVal(fuel2.type) || '',
+        drivetrain: vdVal(vdData.drivetrain) || vdVal(vdData.drive_type) || ''
+      }
+    };
+    renderVinResult(vin, out, true, null);
+    if (fr) {
+      var panels = [
+        ['vinDecode', 'Identification & fiche technique'],
+        ['europeVin', 'Données historiques Europe'],
+        ['stolenCheck', 'Vérification vol (base internationale)'],
+        ['marketValue', 'Cote de marché'],
+        ['recalls', 'Rappels constructeur'],
+        ['salesHistory', 'Historique des ventes'],
+        ['auction', 'Enchères (historique)'],
+        ['media', 'Photos & couleurs'],
+        ['maintenance', 'Carnet d\'entretien planifié'],
+        ['warranty', 'Garantie constructeur']
+      ];
+      var html = panels.map(function (p) {
+        var key = p[0];
+        var label = p[1];
+        var section = bundle[key];
+        return (
+          '<details class="full-report-panel" open>' +
+          '<summary class="full-report-panel-summary">' +
+          '<span class="full-report-panel-title">' + esc(label) + '</span>' +
+          vdSectionStatusPill(section) +
+          '</summary>' +
+          '<div class="full-report-panel-body">' +
+          renderVdPanelHtml(key, bundle) +
+          '</div></details>'
+        );
+      }).join('');
+      fr.innerHTML = html;
+      fr.style.display = 'flex';
+    }
+    updateVinPdfButton(transactionId);
+    if (resultEl) {
+      resultEl.style.display = 'block';
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
