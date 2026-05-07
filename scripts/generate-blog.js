@@ -88,7 +88,7 @@ function headBlock(title, description, canonical, isArticle, article) {
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${escapeHtml(title)}">
     <meta name="twitter:description" content="${escapeHtml(description)}">
-    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="icon" type="image/png" href="/newlogo.png">
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="../css/blog.css">
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -158,7 +158,7 @@ ${headBlock(title, description, canonical, false)}
   <a href="#blog-main" class="skip-link">Aller au contenu</a>
   <header class="header header-light blog-header">
     <div class="container header-inner">
-      <a href="../index.html" class="logo"><img src="/logo.png" alt="Carvinguard"></a>
+      <a href="../index.html" class="logo"><img src="/newlogo.png" alt="Carvinguard"></a>
       <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
       ${navHtml('blog')}
     </div>
@@ -262,7 +262,7 @@ ${headBlock(title, article.description, canonical, true, article)}
   <a href="#article-body" class="skip-link">Aller au contenu</a>
   <header class="header header-light blog-header">
     <div class="container header-inner">
-      <a href="../index.html" class="logo"><img src="/logo.png" alt="Carvinguard"></a>
+      <a href="../index.html" class="logo"><img src="/newlogo.png" alt="Carvinguard"></a>
       <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
       ${navHtml('blog')}
     </div>
