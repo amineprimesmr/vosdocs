@@ -852,10 +852,17 @@ body.page-home-fidelity .hero-section .container {
     max-width: min(1080px, 94vw);
   }
   body.page-home-fidelity .hero-title-home {
-    font-size: clamp(2.5rem, 4vw, 3.25rem);
-    line-height: 1.15;
+    font-size: clamp(3.125rem, 5.35vw, 4.375rem);
+    line-height: 1.12;
     margin-top: 16px;
     margin-bottom: 28px;
+  }
+  body.page-home-fidelity .hero-form.hero-form-claritycheck {
+    max-width: min(428px, 100%);
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    align-self: center;
   }
   body.page-home-fidelity .hero-title-home .hero-title-line {
     display: block;
@@ -1038,6 +1045,33 @@ body.page-home-fidelity .hero-section .container {
   background: var(--cta-blue-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+/* Accueil : Rechercher — même langage visuel que la pilule liquid-glass */
+body.page-home-fidelity .hero-form.hero-form-claritycheck .btn-search.btn-search-fidelity-glass.liquid-glass {
+  border-radius: 9999px;
+  background: rgba(37, 99, 235, 0.24);
+  background-blend-mode: luminosity;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.42),
+    inset 0 -1px 1px rgba(37, 99, 235, 0.12),
+    0 4px 22px rgba(37, 99, 235, 0.18);
+}
+body.page-home-fidelity .hero-form.hero-form-claritycheck .btn-search.btn-search-fidelity-glass.liquid-glass:hover {
+  background: rgba(29, 78, 216, 0.34);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.48),
+    inset 0 -1px 1px rgba(29, 78, 216, 0.16),
+    0 8px 30px rgba(37, 99, 235, 0.26);
+  transform: translateY(-1px);
+}
+body.page-home-fidelity .hero-form.hero-form-claritycheck .btn-search.btn-search-fidelity-glass.liquid-glass:active {
+  transform: translateY(0);
+}
+body.page-home-fidelity .hero-form.hero-form-claritycheck .btn-search.btn-search-fidelity-glass.liquid-glass:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.75);
+  outline-offset: 3px;
 }
 .form-label {
   display: block;
