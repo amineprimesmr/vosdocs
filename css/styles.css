@@ -704,7 +704,7 @@ body.page-home-fidelity .hero-section .container {
     max-width: min(1080px, 94vw);
   }
   body.page-home-fidelity .hero-title-home {
-    font-size: clamp(3.125rem, 5.35vw, 4.375rem);
+    font-size: clamp(3.2rem, 5.48vw, 4.48rem);
     line-height: 1.12;
     margin-top: 16px;
     margin-bottom: 28px;
@@ -961,8 +961,8 @@ body.page-home-fidelity .hero-form.hero-form-claritycheck .btn-search.btn-search
 .hero-media-track {
   display: flex;
   align-items: center;
-  gap: 48px;
-  animation: heroMediaScroll 25s linear infinite;
+  gap: 56px;
+  animation: heroMediaScroll 33s linear infinite;
   width: max-content;
 }
 .hero-media-track:hover {
@@ -978,9 +978,9 @@ body.page-home-fidelity .hero-form.hero-form-claritycheck .btn-search.btn-search
   white-space: nowrap;
 }
 .hero-media-track img.hero-media-logo {
-  height: 32px;
+  height: 38px;
   width: auto;
-  max-width: 90px;
+  max-width: 110px;
   object-fit: contain;
   display: block;
   filter: grayscale(100%);
