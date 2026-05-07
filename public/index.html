@@ -28,10 +28,10 @@
     <meta name="twitter:image" content="https://www.carvinguard.fr/og-image.png">
     
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="css/styles.css?v=202604181530">
+    <link rel="stylesheet" href="css/styles.css?v=202605071200">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -141,7 +141,7 @@
       gtag('config', 'AW-17972633421');
     </script>
 </head>
-<body>
+<body class="page-home-fidelity">
     <script>
     (function () {
       try {
@@ -157,45 +157,39 @@
     })();
     </script>
     <a href="#hero-title" class="skip-link">Aller au contenu</a>
-    <!-- Header (ClarityCheck-inspired: blanc, épuré) -->
-    <header class="header header-light">
-        <div class="container header-inner">
-            <a href="index.html" class="logo"><img src="/logo.png" alt="CarVINGuard"></a>
-            <button type="button" class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">
-                <span></span><span></span><span></span>
-            </button>
-            <nav class="nav-main">
-                <a href="#nos-atouts" class="nav-link">Service</a>
-                <a href="#avis-clients" class="nav-link">Avis clients</a>
-                <a href="#vehicules" class="nav-link">Véhicules</a>
-                <a href="#faq" class="nav-link">Qu'est-ce que c'est ?</a>
-                <a href="#demande-rapport" class="nav-link">Comment faire</a>
-                <a href="#partenaire-carte-grise" class="nav-link">Carte grise</a>
-                <a href="guides.html" class="nav-link">Guides</a>
-                <a href="blog/index.html" class="nav-link">Blog</a>
-                <a href="compte.html" class="nav-link">Mon compte</a>
+    <!-- Menu aligné sur fidelity/frontend/src/landing-ai-agency/Navbar.tsx -->
+    <header class="fidelity-navbar">
+        <div class="fidelity-navbar-inner">
+            <a href="index.html" class="fidelity-navbar-logo">
+                <img src="/logo.png" alt="CarVINGuard" width="48" height="48" class="fidelity-navbar-logo-img" />
+            </a>
+            <nav class="liquid-glass fidelity-navbar-pill" aria-label="Navigation principale">
+                <div class="fidelity-navbar-pill-row">
+                    <a href="#home" class="fidelity-nav-link">Home</a>
+                    <a href="#services" class="fidelity-nav-link">Services</a>
+                    <a href="#work" class="fidelity-nav-link">Work</a>
+                    <a href="#process" class="fidelity-nav-link">Process</a>
+                    <a href="#pricing" class="fidelity-nav-link">Pricing</a>
+                    <a href="#demande-rapport" class="btn-fidelity-solid fidelity-nav-cta">
+                        Get Started
+                        <svg class="fidelity-nav-cta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+                    </a>
+                </div>
             </nav>
-            <a href="contact.html" class="btn btn-contact">Contact</a>
+            <div class="fidelity-navbar-spacer" aria-hidden="true"></div>
         </div>
-        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
-            <nav class="mobile-nav-inner">
-                <a href="#nos-atouts" class="mobile-nav-link">Service</a>
-                <a href="#avis-clients" class="mobile-nav-link">Avis clients</a>
-                <a href="#vehicules" class="mobile-nav-link">Véhicules</a>
-                <a href="#faq" class="mobile-nav-link">Qu'est-ce que c'est ?</a>
-                <a href="#demande-rapport" class="mobile-nav-link">Comment faire</a>
-                <a href="#partenaire-carte-grise" class="mobile-nav-link">Carte grise</a>
-                <a href="guides.html" class="mobile-nav-link">Guides</a>
-                <a href="blog/index.html" class="mobile-nav-link">Blog</a>
-                <a href="compte.html" class="mobile-nav-link">Mon compte</a>
-                <a href="contact.html" class="mobile-nav-link mobile-nav-contact">Contact</a>
-            </nav>
+        <div class="fidelity-navbar-mobile-cta">
+            <a href="#demande-rapport" class="btn-fidelity-solid fidelity-nav-cta">
+                Get Started
+                <svg class="fidelity-nav-cta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+            </a>
         </div>
     </header>
 
     <!-- Hero Section -->
     <main>
     <section class="hero-section" id="demande-rapport" aria-labelledby="hero-title">
+        <span id="home" class="cg-nav-anchor" aria-hidden="true"></span>
         <div class="container hero-grid">
             <div class="hero-content">
                 <h1 class="hero-title hero-title-gradient" id="hero-title">
@@ -249,6 +243,7 @@
 
     <!-- Partenaire carte grise en ligne -->
     <section class="partner-cg-section" id="partenaire-carte-grise" aria-labelledby="partner-cg-heading">
+        <span id="process" class="cg-nav-anchor" aria-hidden="true"></span>
         <div class="container partner-cg-inner">
             <div class="partner-cg-card">
                 <h2 class="partner-cg-badge" id="partner-cg-heading">Carte grise en ligne — partenaire</h2>
@@ -260,6 +255,7 @@
 
     <!-- Stats Section -->
     <section class="stats-section" id="nos-atouts">
+        <span id="services" class="cg-nav-anchor" aria-hidden="true"></span>
         <div class="container">
             <h2 class="section-title section-title--large">Que Pourriez-Vous Découvrir ?</h2>
             <div class="discover-grid discover-grid--compact">
@@ -380,6 +376,7 @@
 
     <!-- Aperçu document officiel -->
     <section class="document-preview-section" id="document">
+        <span id="work" class="cg-nav-anchor" aria-hidden="true"></span>
         <div class="container">
             <div class="document-preview">
                 <h2 class="doc-title">Exemple de rapport VIN (extrait)</h2>
@@ -403,6 +400,7 @@
 
     <!-- FAQ Premium - design épuré & animations -->
     <section class="faq-section" id="faq" aria-labelledby="faq-heading">
+        <span id="pricing" class="cg-nav-anchor" aria-hidden="true"></span>
         <div class="faq-bg-pattern" aria-hidden="true"></div>
         <div class="container">
             <div class="faq-header">
