@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initRadioOptions();
   initScrollAnimations();
   initSmoothScroll();
+  initHeroMediaMarquee();
   initMobileMenu();
 });
 
@@ -142,6 +143,74 @@ function initSmoothScroll() {
       }
     });
   });
+}
+
+// ===== Bandeau logos médias (marquee sans trou) =====
+let heroMarqueeTemplates = null;
+let heroMarqueeResizeBound = false;
+
+function buildHeroMediaMarquee() {
+  const track = document.querySelector('.hero-media-track');
+  if (!track) return;
+
+  const BASE = 6;
+
+  if (!heroMarqueeTemplates) {
+    const imgs = [...track.querySelectorAll('img.hero-media-logo')];
+    heroMarqueeTemplates = imgs.slice(0, BASE).map((img) => ({
+      src: img.src,
+      alt: img.alt,
+      className: img.className,
+    }));
+    if (heroMarqueeTemplates.length < BASE) return;
+  }
+
+  const strip = track.closest('.hero-media-strip');
+  const vw = Math.max(
+    (strip && strip.clientWidth) || 0,
+    typeof window.innerWidth === 'number' ? window.innerWidth : 0,
+    320
+  );
+  const targetHalfW = vw * 1.4;
+
+  track.innerHTML = '';
+
+  const appendSet = () => {
+    heroMarqueeTemplates.forEach((spec) => {
+      const im = document.createElement('img');
+      im.src = spec.src;
+      im.alt = spec.alt;
+      im.className = spec.className;
+      im.setAttribute('loading', 'eager');
+      im.decoding = 'async';
+      track.appendChild(im);
+    });
+  };
+
+  const approxSetWidth = 420;
+  let presetSets = Math.max(3, Math.ceil(targetHalfW / approxSetWidth));
+  presetSets = Math.min(presetSets, 24);
+  for (let i = 0; i < presetSets; i++) appendSet();
+
+  let guard = 0;
+  while (track.scrollWidth < targetHalfW && guard < 40) {
+    appendSet();
+    guard += 1;
+  }
+
+  [...track.children].forEach((node) => track.appendChild(node.cloneNode(true)));
+}
+
+function initHeroMediaMarquee() {
+  buildHeroMediaMarquee();
+  if (document.readyState === 'complete') {
+    buildHeroMediaMarquee();
+  } else {
+    window.addEventListener('load', () => buildHeroMediaMarquee(), { once: true });
+  }
+  if (heroMarqueeResizeBound) return;
+  heroMarqueeResizeBound = true;
+  window.addEventListener('resize', throttle(() => buildHeroMediaMarquee(), 320));
 }
 
 // ===== Menu mobile (hamburger) =====
