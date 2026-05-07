@@ -1,4 +1,4 @@
-```yaml
+# Publication planifiée des articles depuis content/blog-calendar.json
 name: Blog - Publication automatique
 
 permissions:
