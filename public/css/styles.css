@@ -446,19 +446,19 @@ img { max-width: 100%; height: auto; }
 
 /* ===== Menu fidelity (landing-ai-agency / Navbar.tsx) — page d’accueil ===== */
 body.page-home-fidelity {
-  scroll-padding-top: 118px;
+  scroll-padding-top: 140px;
 }
 @media (min-width: 768px) {
   body.page-home-fidelity {
-    scroll-padding-top: 96px;
+    scroll-padding-top: 120px;
   }
 }
 body.page-home-fidelity main {
-  padding-top: 7.35rem;
+  padding-top: 7.85rem;
 }
 @media (min-width: 768px) {
   body.page-home-fidelity main {
-    padding-top: 5.35rem;
+    padding-top: 5.95rem;
   }
 }
 
@@ -467,11 +467,11 @@ body.page-home-fidelity main {
   position: relative;
   width: 0;
   height: 0;
-  scroll-margin-top: 118px;
+  scroll-margin-top: 140px;
 }
 @media (min-width: 768px) {
   .cg-nav-anchor {
-    scroll-margin-top: 96px;
+    scroll-margin-top: 120px;
   }
 }
 
@@ -514,14 +514,20 @@ body.page-home-fidelity main {
   position: fixed;
   left: 0;
   right: 0;
-  top: 16px;
+  top: 0;
   z-index: 100;
-  padding: 0 16px;
+  padding-top: calc(36px + env(safe-area-inset-top, 0px));
+  padding-bottom: 0;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  box-sizing: border-box;
 }
 @media (min-width: 768px) {
   .fidelity-navbar {
-    padding: 0 32px;
+    padding-left: max(28px, env(safe-area-inset-left, 0px));
+    padding-right: max(28px, env(safe-area-inset-right, 0px));
+    padding-top: calc(44px + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -533,11 +539,14 @@ body.page-home-fidelity main {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-left: 2px;
+  box-sizing: border-box;
 }
 
 .fidelity-navbar-logo {
   display: inline-flex;
   flex-shrink: 0;
+  max-width: min(190px, 46vw);
   text-decoration: none;
   border-radius: 8px;
   transition: opacity var(--transition);
@@ -547,10 +556,12 @@ body.page-home-fidelity main {
   text-decoration: none;
 }
 .fidelity-navbar-logo-img {
-  width: 48px;
-  height: 48px;
+  height: 44px;
+  width: auto;
+  max-width: 100%;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: left center;
   display: block;
 }
 
