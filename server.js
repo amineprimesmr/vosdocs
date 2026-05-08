@@ -17,6 +17,9 @@ const { fulfillGuestVinOrder, paymentIntentToOrder, appBaseUrl } = require('./li
 const { sendTeamOrderEmail, sendAccountInviteEmail, sendWalletCreditsEmail } = require('./lib/order-emails');
 const { generateReportPdfBuffer } = require('./lib/report-pdf');
 const carapiClient = require('./lib/carapi-client');
+const { getVinDecodeProvider } = require('./lib/vin-provider');
+const { fetchVehicleDatabasesFullEnrichment, extractIdentityFromVdDecode } = require('./lib/vehicledatabases-client');
+const { apiResponseToVehicleData } = require('./lib/vin-decode-core');
 const { getBlogConfig } = require('./lib/blog-config');
 
 const app = express();
@@ -634,17 +637,6 @@ async function refundOneCredit(userId, reason, metaObj) {
   }
 }
 
-/** CarAPI.dev (prioritaire) ou Vehicle Databases — voir .env.example */
-function getVinDecodeProvider() {
-  const carapi = String(process.env.CARAPI_TOKEN || process.env.CARAPI_API_KEY || '')
-    .trim()
-    .replace(/^['"]|['"]$/g, '');
-  if (carapi) return { id: 'carapi', apiKey: carapi };
-  const vd = String(process.env.VEHICLEDATABASES_API_KEY || '').trim();
-  if (vd) return { id: 'vehicledatabases', apiKey: vd };
-  return null;
-}
-
 const MAX_VIN_FULL_REPORT_SNAPSHOT = 150000;
 /**
  * Stocke une copie du bundle CarAPI dans credit_transactions.meta (lecture « Mes rapports »).
@@ -669,6 +661,40 @@ function slimCarApiBundleForMetaSnapshot(bundle) {
     let s = JSON.stringify(b);
     if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
       b.listings = b.listings && b.listings.data ? { ok: b.listings.ok, data: { _truncated: true } } : b.listings;
+      s = JSON.stringify(b);
+    }
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      return null;
+    }
+    return s;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Vehicle Databases — instantané pour « Mes rapports » (taille bornée). */
+function slimVdBundleForMetaSnapshot(bundle) {
+  if (!bundle || typeof bundle !== 'object') {
+    return null;
+  }
+  try {
+    const b = JSON.parse(JSON.stringify(bundle));
+    if (b.salesHistory && b.salesHistory.data && Array.isArray(b.salesHistory.data.sales)) {
+      const a = b.salesHistory.data.sales;
+      if (a.length > 8) b.salesHistory.data.sales = a.slice(0, 8);
+    }
+    if (b.media && b.media.data && b.media.data.media && Array.isArray(b.media.data.media)) {
+      const m = b.media.data.media;
+      if (m.length > 6) b.media.data.media = m.slice(0, 6);
+    }
+    if (b.auction && b.auction.data && Array.isArray(b.auction.data.records)) {
+      const a = b.auction.data.records;
+      if (a.length > 8) b.auction.data.records = a.slice(0, 8);
+    }
+    let s = JSON.stringify(b);
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      b.salesHistory = { ok: b.salesHistory && b.salesHistory.ok, data: { _truncated: true } };
+      b.auction = { ok: b.auction && b.auction.ok, data: { _truncated: true } };
       s = JSON.stringify(b);
     }
     if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
@@ -2067,7 +2093,7 @@ app.get('/api/vin/history', async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 200);
   try {
     const transactions = await prisma.creditTransaction.findMany({
-      where: { userId, reason: { in: ['vin_decode', 'vin_full_report'] } },
+      where: { userId, reason: { in: ['vin_decode', 'vin_full_report', 'vd_full_report'] } },
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: { id: true, reason: true, meta: true, createdAt: true }
@@ -2077,14 +2103,17 @@ app.get('/api/vin/history', async (req, res) => {
       try { meta = JSON.parse(t.meta || '{}'); } catch (e) {}
       return {
         id: t.id,
-        reportKind: t.reason === 'vin_full_report' ? 'full' : 'standard',
+        reportKind: t.reason === 'vin_full_report' || t.reason === 'vd_full_report' ? 'full' : 'standard',
         vin: meta.vin || '—',
         make: meta.make || '',
         model: meta.model || '',
         year: meta.year || '',
         fuel_type: meta.fuel_type || '',
         engine: meta.engine || '',
-        hasSnapshot: !!(t.reason === 'vin_full_report' && meta.fullReportJson && String(meta.fullReportJson).length > 2),
+        hasSnapshot: !!(
+          (t.reason === 'vin_full_report' && meta.fullReportJson && String(meta.fullReportJson).length > 2) ||
+          (t.reason === 'vd_full_report' && meta.vdFullReportJson && String(meta.vdFullReportJson).length > 2)
+        ),
         createdAt: t.createdAt
       };
     });
@@ -2096,7 +2125,7 @@ app.get('/api/vin/history', async (req, res) => {
 });
 
 /**
- * Récupère l’instantané du rapport complet CarAPI (même contenu qu’au moment de l’analyse), sans crédit.
+ * Récupère l’instantané du rapport complet (CarAPI ou Vehicle Databases), sans crédit.
  */
 app.get('/api/vin/report/:transactionId', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -2114,28 +2143,42 @@ app.get('/api/vin/report/:transactionId', async (req, res) => {
   }
   try {
     const t = await prisma.creditTransaction.findFirst({
-      where: { id: tid, userId, reason: 'vin_full_report' }
+      where: { id: tid, userId, reason: { in: ['vin_full_report', 'vd_full_report'] } }
     });
     if (!t) {
       return res.status(404).json({ status: 'error', message: 'Rapport introuvable.' });
     }
     let meta = {};
-    try { meta = JSON.parse(t.meta || '{}'); } catch (e) {}
-    if (!meta.fullReportJson) {
-      return res.status(404).json({
-        status: 'error',
-        code: 'NO_SNAPSHOT',
-        message:
-          'Aucun détail enregistré pour cette entrée. Relancez une analyse depuis « Nouvelle recherche » (1 crédit) pour ce VIN — les analyses avant mise à jour n’incluaient pas l’enregistrement complet.'
-      });
-    }
-    let bundle;
     try {
-      bundle = JSON.parse(String(meta.fullReportJson));
-    } catch (e) {
-      return res.status(502).json({ status: 'error', message: 'Donnée rapport corrompue.' });
+      meta = JSON.parse(t.meta || '{}');
+    } catch (e) {}
+
+    const noSnap =
+      'Aucun détail enregistré pour cette entrée. Relancez une analyse depuis « Nouvelle recherche » (1 crédit) pour ce VIN — les analyses avant mise à jour n’incluaient pas l’enregistrement complet.';
+
+    if (meta.vdFullReportJson && String(meta.vdFullReportJson).length > 2) {
+      let bundle;
+      try {
+        bundle = JSON.parse(String(meta.vdFullReportJson));
+      } catch (e) {
+        return res.status(502).json({ status: 'error', message: 'Donnée rapport corrompue.' });
+      }
+      return res.json({ status: 'success', data: bundle });
     }
-    return res.json({ status: 'success', data: bundle });
+    if (meta.fullReportJson && String(meta.fullReportJson).length > 2) {
+      let bundle;
+      try {
+        bundle = JSON.parse(String(meta.fullReportJson));
+      } catch (e) {
+        return res.status(502).json({ status: 'error', message: 'Donnée rapport corrompue.' });
+      }
+      return res.json({ status: 'success', data: bundle });
+    }
+    return res.status(404).json({
+      status: 'error',
+      code: 'NO_SNAPSHOT',
+      message: noSnap
+    });
   } catch (e) {
     console.error('vin/report:', e);
     return res.status(500).json({ status: 'error', message: 'Erreur serveur.' });
@@ -2194,7 +2237,7 @@ app.get('/api/vin/report/:transactionId/pdf', async (req, res) => {
   }
   try {
     const t = await prisma.creditTransaction.findFirst({
-      where: { id: tid, userId, reason: 'vin_full_report' }
+      where: { id: tid, userId, reason: { in: ['vin_full_report', 'vd_full_report'] } }
     });
     if (!t) {
       return res.status(404).send('Rapport introuvable.');
@@ -2203,7 +2246,7 @@ app.get('/api/vin/report/:transactionId/pdf', async (req, res) => {
     try {
       meta = JSON.parse(t.meta || '{}');
     } catch (e) {}
-    if (!meta.fullReportJson) {
+    if (!meta.fullReportJson && !meta.vdFullReportJson) {
       return res.status(404).send(
         "Aucun relevé d'analyse enregistré pour ce rapport. Relancez une recherche (1 crédit)."
       );
@@ -2213,6 +2256,46 @@ app.get('/api/vin/report/:transactionId/pdf', async (req, res) => {
       where: { id: userId },
       select: { email: true }
     });
+
+    if (meta.vdFullReportJson && String(meta.vdFullReportJson).length > 2) {
+      let vdBundle;
+      try {
+        vdBundle = JSON.parse(String(meta.vdFullReportJson));
+      } catch (e) {
+        return res.status(404).send('Donnée rapport corrompue.');
+      }
+      const vd = vdBundle.vinDecode;
+      let decodeJson = { status: 'error', data: {} };
+      if (vd && vd.data) {
+        const raw = vd.data;
+        if (raw && raw.status === 'success' && raw.data && typeof raw.data === 'object') {
+          decodeJson = { status: 'success', data: raw.data };
+        } else if (raw && raw.status === 'success') {
+          decodeJson = raw;
+        } else if (raw && raw.data) {
+          decodeJson = { status: 'success', data: raw.data };
+        } else {
+          decodeJson = { status: 'success', data: raw };
+        }
+      }
+      const vehicleData = apiResponseToVehicleData(decodeJson);
+      const pdfBuffer = await generateReportPdfBuffer(vehicleData, vin, {
+        prenom: '',
+        nom: '',
+        email: (user && user.email) || '',
+        planLabel: 'Espace client — analyse VIN (crédit)',
+        montantEur: '1 crédit'
+      }, { vdBundle });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="rapport-vin-carvinguard.pdf"');
+      return res.send(pdfBuffer);
+    }
+
+    if (!meta.fullReportJson || String(meta.fullReportJson).length < 3) {
+      return res.status(404).send(
+        "Aucun relevé d'analyse enregistré pour ce rapport. Relancez une recherche (1 crédit)."
+      );
+    }
     const vehicleData = vehicleDataForSaaSPdfFromTransactionMeta(meta);
     let fullBundle = null;
     try {
@@ -3380,6 +3463,130 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
     console.error('Rapport VIN complet CarAPI:', e.message);
     await refundVinDecodeCredit(userId, vinMasked);
     return res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
+  }
+});
+
+/**
+ * Rapport VIN complet [Vehicle Databases](https://vehicledatabases.com/portal) (1 crédit) : décodage enrichi, vol, cote, rappels, médias, etc.
+ */
+app.get('/api/vd/full-report/:vin', async (req, res) => {
+  const prisma = getPrisma();
+  const provider = getVinDecodeProvider();
+  const vin = (req.params.vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+  const vinMasked = vin.slice(0, 11) + '…';
+  if (vin.length !== 17) {
+    return res.status(400).json({ status: 'error', message: 'VIN invalide (17 caractères requis)' });
+  }
+  if (!prisma) {
+    return res.status(503).json({ status: 'error', message: 'Base de données requise.' });
+  }
+  if (!provider || provider.id !== 'vehicledatabases') {
+    return res.status(503).json({
+      status: 'error',
+      code: 'VD_REQUIRED',
+      message:
+        'Rapport complet Vehicle Databases indisponible : définissez VEHICLEDATABASES_API_KEY. Pour forcer ce fournisseur si CarAPI est aussi défini : VIN_DECODE_PROVIDER=vehicledatabases.'
+    });
+  }
+  const userId = authLib.getUserIdFromCookies(req);
+  if (!userId) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'AUTH_REQUIRED',
+      message: 'Connectez-vous pour lancer un rapport (1 crédit).'
+    });
+  }
+  let vinCtxId = null;
+  try {
+    const charged = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: userId, credits: { gte: 1 } },
+        data: { credits: { decrement: 1 } }
+      });
+      if (updated.count === 0) {
+        const u = await tx.user.findUnique({ where: { id: userId }, select: { credits: true } });
+        return { ok: false, credits: u ? u.credits : 0 };
+      }
+      const ct = await tx.creditTransaction.create({
+        data: {
+          userId,
+          delta: -1,
+          reason: 'vd_full_report',
+          meta: JSON.stringify({ vin })
+        }
+      });
+      return { ok: true, ctxId: ct.id };
+    });
+    if (!charged.ok) {
+      return res.status(402).json({
+        status: 'error',
+        code: 'INSUFFICIENT_CREDITS',
+        message: 'Crédits insuffisants. Rechargez votre compte.',
+        credits: charged.credits
+      });
+    }
+    if (charged.ctxId) vinCtxId = charged.ctxId;
+  } catch (e) {
+    console.error('Débit rapport VD complet:', e);
+    return res.status(500).json({ status: 'error', message: 'Erreur compte' });
+  }
+
+  try {
+    const bundle = await fetchVehicleDatabasesFullEnrichment(provider.apiKey, { vin });
+    const identity = extractIdentityFromVdDecode(bundle.vinDecode);
+    const vdDec = bundle.vinDecode;
+    const decodeFailed =
+      !vdDec ||
+      !vdDec.ok ||
+      !identity ||
+      !String(identity.make || '').trim();
+
+    if (decodeFailed) {
+      await refundVinDecodeCredit(userId, vinMasked);
+      const st = vdDec && vdDec.status;
+      const apiBody = vdDec && vdDec.data;
+      const apiMsg =
+        apiBody && typeof apiBody === 'object'
+          ? String(apiBody.message || apiBody.error || '')
+          : '';
+      return res.status(502).json({
+        status: 'error',
+        code: 'VIN_DECODE_FAILED',
+        message:
+          apiMsg ||
+          (st === 401 || st === 403
+            ? 'Clé Vehicle Databases refusée. Vérifiez VEHICLEDATABASES_API_KEY.'
+            : 'VIN non reconnu ou réponse API incomplète. Crédit restitué.'),
+        vdHttpStatus: st != null ? st : null
+      });
+    }
+
+    if (vinCtxId && identity) {
+      const meta = {
+        vin,
+        make: identity.make != null ? String(identity.make) : '',
+        model: identity.model != null ? String(identity.model) : '',
+        year: identity.year != null ? String(identity.year) : '',
+        fuel_type: '',
+        engine: '',
+        reportType: 'vd_full'
+      };
+      const snap = slimVdBundleForMetaSnapshot(bundle);
+      if (snap) {
+        meta.vdFullReportJson = snap;
+      }
+      prisma.creditTransaction
+        .update({
+          where: { id: vinCtxId },
+          data: { meta: JSON.stringify(meta) }
+        })
+        .catch(function () {});
+    }
+    return res.json({ status: 'success', data: bundle, transactionId: vinCtxId || null });
+  } catch (e) {
+    console.error('Rapport VIN complet Vehicle Databases:', e.message);
+    await refundVinDecodeCredit(userId, vinMasked);
+    return res.status(500).json({ status: 'error', message: 'Erreur service Vehicle Databases' });
   }
 });
 

@@ -23,6 +23,7 @@
     "test": "VERIFY_WITH_GENERATE=1 node scripts/verify-deploy.js",
     "verify:webhook": "node scripts/verify-stripe-webhook-url.js",
     "verify:carapi": "node scripts/verify-carapi.js",
+    "verify:vehicledatabases": "node scripts/verify-vehicledatabases.js",
     "stripe:diag-webhooks": "node scripts/diag-stripe-webhooks.js",
     "fulfill:pi": "node scripts/manual-fulfill-payment.js",
     "deploy:check": "node scripts/verify-deploy.js",

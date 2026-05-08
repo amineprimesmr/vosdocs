@@ -29,8 +29,10 @@ Après avoir ajouté la variable, redéployez l’application (push Git ou redé
 
 ## Comportement
 
-- **Clé configurée** : à la soumission du VIN, l’API Vehicle Databases est appelée pour valider et enrichir les données (marque, modèle, année). Si le VIN n’est pas reconnu, un message d’erreur s’affiche.
-- **Clé non configurée** : le flux continue sans décodage, uniquement avec le VIN saisi.
+- **Choix du fournisseur** (voir `lib/vin-provider.js`) : si `VEHICLEDATABASES_API_KEY` est défini, **Vehicle Databases est utilisé en priorité** (y compris si `CARAPI_TOKEN` est aussi défini). Sinon, CarAPI seul ou NHTSA. Surcharge : `VIN_DECODE_PROVIDER=vehicledatabases` ou `carapi`.
+- **Rapport PDF invité** (`fulfill-vin-order`) : avec le fournisseur VD, l’enrichissement complet (`fetchVehicleDatabasesFullEnrichment`) alimente le PDF.
+- **Espace client** : recherche « rapport complet » appelle `GET /api/vd/full-report/:vin` lorsque le fournisseur actif est VD (1 crédit).
+- **Clé non configurée** : repli NHTSA ou message d’erreur selon le parcours.
 
 ## Flux technique
 
