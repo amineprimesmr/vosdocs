@@ -22,7 +22,7 @@ Toutes les optimisations SEO ont été implémentées sur le site. Ce document r
 
 ### Schema.org JSON-LD
 - **Organization** : nom, logo, contact (téléphone, horaires)
-- **Product** : rapport VIN / historique véhicule, prix à partir de 19,90€, avis (4.6/5)
+- **Product** : rapport VIN / historique véhicule, prix à partir de 14,99€ (rapport unique), avis (4.6/5)
 - **WebPage** : URL, breadcrumb
 - **FAQPage** : 3 questions fréquentes
 - **BreadcrumbList** : Accueil > Démarches > Rapport VIN

@@ -54,7 +54,7 @@
         demarche: 'Rapport historique véhicule (VIN)',
         vin: DEMO_VIN_PLACEHOLDER,
         vehicleData: {},
-        prix: 19.9,
+        prix: 14.99,
         isDemo: true,
         reportUnlocked: false
       });

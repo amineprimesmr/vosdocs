@@ -1634,7 +1634,10 @@ if (!cgProdRuntime) {
   app.post('/api/test-order-email', async (req, res) => {
     const fakeOrder = {
       id: 'pi_test_' + Date.now(),
-      montant: '19,90 €',
+      montant:
+        (parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10) / 100)
+          .toFixed(2)
+          .replace('.', ',') + ' €',
       nom: (req.body && req.body.nom) || 'Dupont',
       prenom: (req.body && req.body.prenom) || 'Jean',
       email: (req.body && req.body.email) || 'test@example.com',
@@ -1732,7 +1735,7 @@ app.get('/api/checkout-session-kind', async (req, res) => {
 });
 
 /**
- * Montant réel Stripe + type d’achat (pour la page confirmation — évite 19,90 € fantôme du sessionStorage).
+ * Montant réel Stripe + type d’achat (pour la page confirmation — évite un montant fantôme du sessionStorage).
  */
 app.get('/api/checkout-session-summary', async (req, res) => {
   try {
@@ -3791,8 +3794,16 @@ app.post('/api/create-payment-intent', async (req, res) => {
     return res.status(500).json({ error: 'Stripe non configuré. Vérifiez STRIPE_SECRET_KEY dans .env' });
   }
   try {
-    const { amount } = req.body;
-    const amountCents = Math.round((amount || 19.90) * 100);
+    const { amount, amountCents: bodyCents } = req.body || {};
+    const essentiel = parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10);
+    let amountCents;
+    if (bodyCents != null && Number.isFinite(Number(bodyCents))) {
+      amountCents = Math.round(Number(bodyCents));
+    } else if (amount != null && Number.isFinite(Number(amount))) {
+      amountCents = Math.round(Number(amount) * 100);
+    } else {
+      amountCents = essentiel;
+    }
     if (amountCents < 50) {
       return res.status(400).json({ error: 'Montant invalide' });
     }

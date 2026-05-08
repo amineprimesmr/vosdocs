@@ -292,7 +292,7 @@ ${headBlock(title, article.description, canonical, true, article)}
         </div>
         <div class="blog-article-cta">
           <p>Besoin d'un rapport VIN à jour ?</p>
-          <a href="../index.html" class="btn btn-primary btn-lg">Commander mon rapport — 19,90 €</a>
+          <a href="../checkout.html" class="btn btn-primary btn-lg">Commander ici</a>
         </div>
         ${relatedHtml}
       </div>

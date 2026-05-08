@@ -1,6 +1,6 @@
 # Carvinguard - Rapport historique véhicule (VIN)
 
-Site **100% fonctionnel** pour une agence prestataire proposant un **rapport historique véhicule** à partir du numéro VIN (à partir de 19,90 € selon formule).
+Site **100% fonctionnel** pour une agence prestataire proposant un **rapport historique véhicule** à partir du numéro VIN (à partir de 14,99 € — rapport unique ; packs et abonnement sur la page tarifs).
 
 ## Structure du site
 
@@ -66,4 +66,4 @@ Le site est optimisé pour le référencement. Voir **SEO-README.md** pour :
 
 ## Personnalisation
 
-- **Prix** : 19,90 € (modifier dans `server.js` et les handlers)
+- **Prix** : 14,99 € (rapport unique) ; constantes en centimes dans `server.js` et handlers Stripe

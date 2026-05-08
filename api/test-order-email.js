@@ -42,7 +42,10 @@ module.exports = async (req, res) => {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   const fakeOrder = {
     id: 'pi_test_' + Date.now(),
-    montant: '19,90 €',
+    montant:
+      (parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10) / 100)
+        .toFixed(2)
+        .replace('.', ',') + ' €',
     nom: body.nom || 'Dupont',
     prenom: body.prenom || 'Jean',
     email: body.email || 'test@example.com',
