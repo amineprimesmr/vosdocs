@@ -17,6 +17,7 @@ const { fulfillGuestVinOrder, paymentIntentToOrder, appBaseUrl } = require('./li
 const { sendTeamOrderEmail, sendAccountInviteEmail, sendWalletCreditsEmail } = require('./lib/order-emails');
 const { generateReportPdfBuffer } = require('./lib/report-pdf');
 const carapiClient = require('./lib/carapi-client');
+const { getBlogConfig } = require('./lib/blog-config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2798,18 +2799,12 @@ const blogRender = (function () {
   }
 })();
 
-function getBlogConfig() {
-  const configPath = path.join(__dirname, 'content', 'blog-config.json');
-  if (!fs.existsSync(configPath)) {
-    return { baseUrl: process.env.BASE_URL || 'https://www.carvinguard.fr', blogPath: '/blog', categories: {} };
-  }
-  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-}
-
-// CRON : génération de 2 articles (protégé par CRON_SECRET)
+// CRON : génération de 2 articles (protégé par CRON_SECRET ou en-tête Vercel Cron)
 app.get('/api/cron/generate-articles', async (req, res) => {
-  const secret = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.query.secret;
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+  const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const secret = bearer || req.query.secret;
+  const fromVercelCron = req.headers['x-vercel-cron'] === '1';
+  if (process.env.CRON_SECRET && !fromVercelCron && secret !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
   if (!blogLib) {
@@ -2954,7 +2949,7 @@ app.get('/api/blog/posts', async (req, res) => {
 
   // Sitemap dynamique (inclut les articles du blog)
   app.get('/sitemap.xml', async (req, res) => {
-    const baseUrl = (process.env.BASE_URL || getBlogConfig().baseUrl || 'https://www.carvinguard.fr').replace(/\/$/, '');
+    const baseUrl = getBlogConfig().baseUrl.replace(/\/$/, '');
     const staticUrls = [
       { loc: baseUrl + '/', changefreq: 'weekly', priority: '1.0' },
       { loc: baseUrl + '/conditions-generales-vente.html', changefreq: 'yearly', priority: '0.5' },

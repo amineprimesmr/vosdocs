@@ -1,7 +1,8 @@
 /**
- * Vercel Cron : déclenché tous les 3 jours à 9h UTC.
- * Génère 2 articles via Groq et envoie l'email de propositions.
- * Pas besoin de cron-job.org : Vercel appelle cette fonction directement.
+ * Variante serverless (non utilisée sur ce projet) : sur Vercel, `vercel.json`
+ * réécrit `/api/*` vers `server.js`, donc c’est la route Express
+ * `GET /api/cron/generate-articles` dans server.js qui s’exécute (auth CRON_SECRET ou x-vercel-cron).
+ * Ce fichier reste une référence si la réécriture API change un jour.
  */
 module.exports = async (req, res) => {
   try {

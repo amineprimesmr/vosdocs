@@ -1,7 +1,8 @@
 {
   "title": "Blog & Actualités",
   "subtitle": "Rapport VIN, carte grise, vente et achat de véhicule : conseils, démarches et actualités.",
-  "baseUrl": "https://www.carvinguard.fr",
+  "brandName": "Carvingard",
+  "baseUrl": "https://www.carvingard.fr",
   "blogPath": "/blog",
   "categories": {
     "rapport-vin": "Rapport VIN",
@@ -13,7 +14,7 @@
   },
   "pagination": { "perPage": 12 },
   "seo": {
-    "indexTitle": "Blog & Actualités | Rapport VIN, véhicule | Carvinguard",
-    "indexDescription": "Articles et conseils sur le rapport VIN, la vente et l'achat de véhicule, la carte grise. Restez informé avec Carvinguard."
+    "indexTitle": "Blog & Actualités | Rapport VIN, véhicule | Carvingard",
+    "indexDescription": "Articles et conseils sur le rapport VIN, la vente et l'achat de véhicule, la carte grise. Restez informé avec Carvingard."
   }
 }

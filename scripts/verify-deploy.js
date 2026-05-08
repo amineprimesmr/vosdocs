@@ -21,6 +21,9 @@ try {
 
 const libChecks = [
   'server.js',
+  'lib/site-identity.js',
+  'lib/blog-config.js',
+  'lib/blog.js',
   'lib/fulfill-vin-order.js',
   'lib/order-emails.js',
   'lib/report-pdf.js',

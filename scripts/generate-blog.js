@@ -12,7 +12,9 @@ const ROOT = path.join(__dirname, '..');
 const CONTENT_DIR = path.join(ROOT, 'content');
 const OUT_DIR = path.join(ROOT, 'public', 'blog');
 
-const config = JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, 'blog-config.json'), 'utf8'));
+require('dotenv').config({ path: path.join(ROOT, '.env') });
+const { getBlogConfig } = require(path.join(ROOT, 'lib', 'blog-config'));
+const config = getBlogConfig();
 let articles = [];
 try {
   articles = JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, 'blog-articles.json'), 'utf8'));
@@ -21,7 +23,7 @@ try {
 }
 
 const categories = config.categories || {};
-const baseUrl = config.baseUrl || 'https://www.carvinguard.fr';
+const baseUrl = config.baseUrl || 'https://www.carvingard.fr';
 const blogPath = config.blogPath || '/blog';
 
 // Trier par date décroissante
