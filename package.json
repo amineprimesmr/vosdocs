@@ -24,6 +24,7 @@
     "verify:webhook": "node scripts/verify-stripe-webhook-url.js",
     "verify:carapi": "node scripts/verify-carapi.js",
     "verify:vehicledatabases": "node scripts/verify-vehicledatabases.js",
+    "blog:test-email": "node scripts/send-test-blog-proposals-email.js",
     "stripe:diag-webhooks": "node scripts/diag-stripe-webhooks.js",
     "fulfill:pi": "node scripts/manual-fulfill-payment.js",
     "deploy:check": "node scripts/verify-deploy.js",
