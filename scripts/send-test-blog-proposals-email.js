@@ -4,6 +4,7 @@
  * Usage : node scripts/send-test-blog-proposals-email.js [destinataire@email.com]
  * Variables : DATABASE_URL, GROQ_API_KEY, RESEND_API_KEY, BASE_URL (liens « Publier »), MAIL_FROM (optionnel).
  */
+require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 
 const dest = (process.argv[2] || process.env.MERCHANT_EMAIL || process.env.MAIL_TO || '').trim();
