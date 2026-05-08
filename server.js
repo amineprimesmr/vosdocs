@@ -18,7 +18,11 @@ const { sendTeamOrderEmail, sendAccountInviteEmail, sendWalletCreditsEmail } = r
 const { generateReportPdfBuffer } = require('./lib/report-pdf');
 const carapiClient = require('./lib/carapi-client');
 const { getVinDecodeProvider } = require('./lib/vin-provider');
-const { fetchVehicleDatabasesFullEnrichment, extractIdentityFromVdDecode } = require('./lib/vehicledatabases-client');
+const {
+  fetchVehicleDatabasesFullEnrichment,
+  extractIdentityFromVdDecode,
+  vdGet
+} = require('./lib/vehicledatabases-client');
 const { apiResponseToVehicleData } = require('./lib/vin-decode-core');
 const { getBlogConfig } = require('./lib/blog-config');
 
@@ -770,9 +774,10 @@ function normalizeNhtsaVinResponse(body) {
   const make = String(r.Make || '').trim();
   const model = String(r.Model || '').trim();
   const year = r.ModelYear != null ? String(r.ModelYear).trim() : '';
-  // VPIC renvoie souvent ErrorCode ≠ 0 (clé de contrôle, données partielles) tout en remplissant Make / Model / Year
-  const hasIdentity = (make && !/^not applicable$/i.test(make)) || (model && !/^not applicable$/i.test(model)) || year;
-  if (!hasIdentity) {
+  const hasUsefulMake = make && !/^not applicable$/i.test(make);
+  const hasUsefulModel = model && !/^not applicable$/i.test(model);
+  // Ne pas se fier seul à ModelYear : VPIC peut renvoyer une année sans marque/modèle pour des VIN EU (ex. clé de contrôle).
+  if (!hasUsefulMake && !hasUsefulModel) {
     const errText = String(r.ErrorText || '').trim();
     return {
       ok: false,
@@ -837,6 +842,35 @@ function previewPartialVinJson() {
     },
     access: 'preview',
     partialDecode: true
+  };
+}
+
+/** Message API Vehicle Databases (souvent en anglais) → texte plus clair côté utilisateur. */
+function friendlyVehicleDatabasesDecodeMessage(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (/record\(s\)\s+were\s+not\s+found/i.test(s)) {
+    return 'Ce VIN n’a pas été identifié dans les bases connectées (décodage principal, secours Europe le cas échéant, puis NHTSA). Votre crédit a été restitué.';
+  }
+  return s;
+}
+
+/** Réponse VD (ex. europe-vin-decode) réusable comme fiche identification si advanced-vin-decode est vide. */
+function syntheticVinDecodeFromVdApiSection(section) {
+  if (!section || !section.ok || !section.data) return null;
+  const body = section.data;
+  if (!body || typeof body !== 'object' || body.status === 'error') return null;
+  const inner = body.data && typeof body.data === 'object' ? body.data : body;
+  if (!inner || typeof inner !== 'object') return null;
+  const make = String(inner.make || '').trim();
+  if (!make) return null;
+  return {
+    ok: true,
+    status: 200,
+    data: {
+      status: 'success',
+      data: Object.assign({}, inner)
+    }
   };
 }
 
@@ -3536,27 +3570,103 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
 
   try {
     const bundle = await fetchVehicleDatabasesFullEnrichment(provider.apiKey, { vin });
-    const identity = extractIdentityFromVdDecode(bundle.vinDecode);
+    let identity = extractIdentityFromVdDecode(bundle.vinDecode);
     const vdDec = bundle.vinDecode;
-    const decodeFailed =
+    let decodeFailed =
       !vdDec ||
       !vdDec.ok ||
       !identity ||
       !String(identity.make || '').trim();
 
     if (decodeFailed) {
+      const synEu = syntheticVinDecodeFromVdApiSection(bundle.europeVin);
+      if (synEu) {
+        bundle.vinDecode = synEu;
+        bundle.identificationSource = 'europe_vin_fallback';
+        identity = extractIdentityFromVdDecode(bundle.vinDecode);
+        decodeFailed =
+          !bundle.vinDecode ||
+          !bundle.vinDecode.ok ||
+          !identity ||
+          !String(identity.make || '').trim();
+        if (!decodeFailed) {
+          console.log('VD full-report: secours europe-vin-decode pour', vinMasked);
+        }
+      }
+    }
+
+    if (decodeFailed) {
+      const nhtsaJson = await decodeVinViaNhtsa(vin);
+      if (nhtsaJson && nhtsaJson.status === 'success' && nhtsaJson.data) {
+        const nd = nhtsaJson.data;
+        const mk = String(nd.make || '').trim();
+        const mo = String(nd.model || '').trim();
+        if ((mk || mo) && !/^invalid/i.test(mk) && !/^invalid/i.test(mo)) {
+          identity = {
+            make: mk,
+            model: mo,
+            year: String(nd.year || '').trim()
+          };
+          bundle.identity = identity;
+          bundle.identificationSource = 'nhtsa_fallback';
+          bundle.vinDecode = {
+            ok: true,
+            status: 200,
+            data: {
+              status: 'success',
+              data: {
+                make: nd.make,
+                model: nd.model,
+                year: nd.year,
+                trim: nd.trim || '',
+                summary: nd.summary || '',
+                engine: nd.engine || '',
+                transmission: nd.transmission || '',
+                fuel_type: nd.fuel_type || '',
+                drivetrain: nd.drivetrain || ''
+              }
+            }
+          };
+          decodeFailed = false;
+          console.log('VD full-report: secours NHTSA pour', vinMasked);
+        }
+      }
+    }
+
+    if (!decodeFailed && identity && identity.make && identity.model && identity.year) {
+      const w = bundle.warranty;
+      if (w && w.skipped) {
+        try {
+          const r = await vdGet(
+            provider.apiKey,
+            `/vehicle-warranty/${encodeURIComponent(identity.year)}/${encodeURIComponent(identity.make)}/${encodeURIComponent(identity.model)}`,
+            {}
+          );
+          bundle.warranty = { ok: r.ok, status: r.status, data: r.body };
+        } catch (e) {
+          bundle.warranty = {
+            ok: false,
+            status: 0,
+            error: e && e.message ? e.message : String(e)
+          };
+        }
+      }
+    }
+
+    if (decodeFailed) {
       await refundVinDecodeCredit(userId, vinMasked);
       const st = vdDec && vdDec.status;
       const apiBody = vdDec && vdDec.data;
-      const apiMsg =
+      const apiMsgRaw =
         apiBody && typeof apiBody === 'object'
           ? String(apiBody.message || apiBody.error || '')
           : '';
+      const apiMsgFr = friendlyVehicleDatabasesDecodeMessage(apiMsgRaw) || apiMsgRaw;
       return res.status(502).json({
         status: 'error',
         code: 'VIN_DECODE_FAILED',
         message:
-          apiMsg ||
+          apiMsgFr ||
           (st === 401 || st === 403
             ? 'Clé Vehicle Databases refusée. Vérifiez VEHICLEDATABASES_API_KEY.'
             : 'VIN non reconnu ou réponse API incomplète. Crédit restitué.'),
