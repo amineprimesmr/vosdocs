@@ -711,7 +711,7 @@
         ' crédit(s) — 1 crédit = rapport Vehicle Databases (fiche complète Europe/US, vol international, valeur, rappels, photos…) — adapté aux VIN européens (ex. Renault VF1…).';
     } else if (vinDecodeProvider === 'carapi') {
       d.textContent =
-        ' crédit(s) — 1 crédit = rapport CarAPI (US/Canada très couvert ; VIN européens souvent partiels ou sans année détaillée). Pour Renault / Peugeot / VW… : ajoutez VEHICLEDATABASES_API_KEY dans Vercel — Carvinguard passera automatiquement sur Vehicle Databases si les deux clés sont présentes.';
+        ' crédit(s) — 1 crédit = rapport CarAPI (mode rare : SKIP_VEHICLE_DATABASES=1 sur le serveur). Plutôt US/Canada. Par défaut, l’app utilise Vehicle Databases (clé incluse) pour les VIN européens.';
     } else if (carApiEnabled) {
       d.textContent =
         ' crédit(s) — 1 crédit couvre un rapport détaillé : identité du véhicule, vol, contrôle technique, kilométrage, annonces, cote estimative, photos et simulation de financement.';
