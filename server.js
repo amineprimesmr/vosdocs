@@ -2058,6 +2058,8 @@ app.get('/api/saas-config', async (req, res) => {
     authAvailable: saaSAuthReady(),
     registrationOpen: saaSAuthReady() && isOpenRegistrationAllowed(),
     creditPacks: creditsPacks,
+    /** Fournisseur réellement utilisé (voir lib/vin-provider.js) — le dashboard doit cibler le même endpoint rapport. */
+    vinDecodeProvider: p ? p.id : null,
     /** true si CARAPI_TOKEN est posé : le dashboard peut lancer le rapport complet (tous les endpoints). */
     carApiEnabled: !!(p && p.id === 'carapi'),
     /** true si VEHICLEDATABASES_API_KEY est posé : le dashboard peut lancer le rapport complet VehicleDatabases. */

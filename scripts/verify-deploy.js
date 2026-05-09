@@ -32,6 +32,7 @@ const libChecks = [
   'lib/vin-provider.js',
   'lib/vehicledatabases-client.js',
   'scripts/test-vd-report-pdf.js',
+  'public/js/dashboard.js',
   'lib/prisma.js',
   'lib/auth.js',
   'scripts/manual-fulfill-payment.js',

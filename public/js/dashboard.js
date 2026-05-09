@@ -46,9 +46,11 @@
   var guestActivationCancelled = false;
   /** false = inscription directe désactivée (compte après paiement Stripe). */
   var registrationOpen = false;
-  /** true si le serveur a CARAPI_TOKEN : recherche = rapport complet (tous les endpoints). */
+  /** Fournisseur VIN réel (`carapi` \| `vehicledatabases`), renvoyé par /api/saas-config. */
+  var vinDecodeProvider = null;
+  /** Indicateurs dérivés (exclusifs) : quel rapport « complet » est disponible côté client. */
   var carApiEnabled = false;
-  /** true si le serveur a VEHICLEDATABASES_API_KEY : recherche = rapport complet VehicleDatabases. */
+  /** true si VEHICLEDATABASES_API_KEY pilote les rapports (`vinDecodeProvider`). */
   var vdEnabled = false;
 
   function removeTempLoginHideStyle() {
@@ -181,6 +183,7 @@
     api('/api/saas-config')
       .then(function (r) {
         registrationOpen = !!(r.ok && r.data && r.data.registrationOpen);
+        vinDecodeProvider = (r.ok && r.data && r.data.vinDecodeProvider) || null;
         carApiEnabled = !!(r.ok && r.data && r.data.carApiEnabled);
         vdEnabled = !!(r.ok && r.data && r.data.vdEnabled);
         applyRegistrationRestrictedUi();
@@ -188,6 +191,7 @@
       })
       .catch(function () {
         registrationOpen = false;
+        vinDecodeProvider = null;
         carApiEnabled = false;
         vdEnabled = false;
         applyRegistrationRestrictedUi();
@@ -533,6 +537,7 @@
     api('/api/saas-config')
       .then(function (r) {
         if (r.ok && r.data) {
+          vinDecodeProvider = r.data.vinDecodeProvider || null;
           carApiEnabled = !!r.data.carApiEnabled;
           vdEnabled = !!r.data.vdEnabled;
           registrationOpen = !!r.data.registrationOpen;
@@ -701,10 +706,18 @@
   function refreshSearchModeDesc() {
     var d = document.getElementById('searchModeDesc');
     if (!d) return;
-    if (carApiEnabled) {
-      d.textContent = ' crédit(s) — 1 crédit couvre un rapport détaillé : identité du véhicule, vol, contrôle technique, kilométrage, annonces, cote estimative, photos et simulation de financement.';
+    if (vinDecodeProvider === 'vehicledatabases') {
+      d.textContent =
+        ' crédit(s) — 1 crédit = rapport Vehicle Databases (fiche complète Europe/US, vol international, valeur, rappels, photos…) — adapté aux VIN européens (ex. Renault VF1…).';
+    } else if (vinDecodeProvider === 'carapi') {
+      d.textContent =
+        ' crédit(s) — 1 crédit = rapport CarAPI (US/Canada très couvert ; VIN européens souvent partiels ou sans année détaillée). Pour Renault / Peugeot / VW… : ajoutez VEHICLEDATABASES_API_KEY dans Vercel — Carvinguard passera automatiquement sur Vehicle Databases si les deux clés sont présentes.';
+    } else if (carApiEnabled) {
+      d.textContent =
+        ' crédit(s) — 1 crédit couvre un rapport détaillé : identité du véhicule, vol, contrôle technique, kilométrage, annonces, cote estimative, photos et simulation de financement.';
     } else if (vdEnabled) {
-      d.textContent = ' crédit(s) — 1 crédit couvre un rapport complet : identification, historique EU, vol, cote de marché, rappels, enchères, entretien, garantie et photos.';
+      d.textContent =
+        ' crédit(s) — 1 crédit couvre un rapport complet : identification, historique EU, vol, cote de marché, rappels, enchères, entretien, garantie et photos.';
     } else {
       d.textContent = ' crédit(s) — 1 crédit par fiche véhicule.';
     }
@@ -1018,11 +1031,18 @@
 
     setLoading('searchBtn', 'searchBtnText', 'searchSpinner', true);
 
-    var searchPath = carApiEnabled
-      ? '/api/vin-full-report/' + encodeURIComponent(vin)
-      : (vdEnabled
-        ? '/api/vd/full-report/' + encodeURIComponent(vin)
-        : '/api/vin-decode/' + encodeURIComponent(vin));
+    var searchPath;
+    if (vinDecodeProvider === 'vehicledatabases') {
+      searchPath = '/api/vd/full-report/' + encodeURIComponent(vin);
+    } else if (vinDecodeProvider === 'carapi') {
+      searchPath = '/api/vin-full-report/' + encodeURIComponent(vin);
+    } else if (vdEnabled) {
+      searchPath = '/api/vd/full-report/' + encodeURIComponent(vin);
+    } else if (carApiEnabled) {
+      searchPath = '/api/vin-full-report/' + encodeURIComponent(vin);
+    } else {
+      searchPath = '/api/vin-decode/' + encodeURIComponent(vin);
+    }
     api(searchPath).then(function (r) {
       setLoading('searchBtn', 'searchBtnText', 'searchSpinner', false);
 
@@ -1905,33 +1925,90 @@
     return '<span class="status-pill status-pill--err">Erreur</span>';
   }
 
+  function saneModelYear(raw) {
+    if (raw == null || raw === '') return '';
+    var s = String(raw).trim();
+    if (/^\d{4}$/.test(s)) return s;
+    var n = parseInt(s, 10);
+    return n >= 1980 && n <= 2035 ? String(n) : '';
+  }
+
+  /** Données portail VD Europe (clés avec espaces possibles). */
+  function readEuropeVinFlat(bundle) {
+    var eu = bundle && bundle.europeVin;
+    if (!eu || !eu.ok || !eu.data) return {};
+    var body = eu.data;
+    var d = body.data != null && typeof body.data === 'object' ? body.data : body;
+    if (!d || typeof d !== 'object') return {};
+    var gen =
+      (d.general_information != null ? d.general_information : d['General Information']) || {};
+    var spec =
+      (d.vehicle_specification != null ? d.vehicle_specification : d['Vehicle Specification']) || {};
+    return { gen: gen, spec: spec };
+  }
+
   function renderVdResult(vin, bundle, transactionId) {
     var resultEl = document.getElementById('vinResult');
     var fr = document.getElementById('fullReportExtra');
     var id = bundle.identity || {};
     var vd = bundle.vinDecode;
-    var vdBody = (vd && vd.ok && vd.data) ? vd.data : {};
-    var vdData = (vdBody.data && typeof vdBody.data === 'object') ? vdBody.data : vdBody;
+    var vdBody = vd && vd.ok && vd.data ? vd.data : {};
+    var vdData = vdBody.data && typeof vdBody.data === 'object' ? vdBody.data : vdBody;
     var specs = Array.isArray(vdData.specifications) ? vdData.specifications : [];
     var eng = getVdSpec(specs, 'engine') || {};
     var fuel2 = getVdSpec(specs, 'fuel') || {};
-    var trans2 = (vdData.transmission && typeof vdData.transmission === 'object') ? vdData.transmission : {};
+    var trans2 = vdData.transmission && typeof vdData.transmission === 'object' ? vdData.transmission : {};
     var engParts = [
       vdVal(eng.type),
       eng.cylinders_configuration ? eng.cylinders_configuration + ' cyl.' : '',
-      (eng.displacement && eng.displacement > 100) ? (eng.displacement / 1000).toFixed(1) + 'L' : (eng.displacement ? eng.displacement + 'L' : '')
+      eng.displacement && eng.displacement > 100 ? (eng.displacement / 1000).toFixed(1) + 'L' : eng.displacement ? eng.displacement + 'L' : ''
     ].filter(Boolean);
+    var eu = readEuropeVinFlat(bundle || {});
+    var g = eu.gen || {};
+    var sp = eu.spec || {};
+    var euYear =
+      saneModelYear(g.year) ||
+      saneModelYear(g.ModelYear || g.Years) ||
+      '';
+    var euEngine = String(g.engine_type || g['Engine type'] || '').trim();
+    if (!euEngine) {
+      var cylEu = sp['Engine cylinders'];
+      var dnEu = sp['Displacement nominal'];
+      if (cylEu || dnEu) {
+        euEngine =
+          [cylEu ? String(cylEu).trim() + ' cyl.' : '', dnEu ? String(dnEu).trim() + ' L (nom.)' : '']
+            .filter(Boolean)
+            .join(' · ');
+      }
+    }
+    var euFuel = String(g.fuel_type || g['Fuel type'] || '').trim();
+    var euTrans = String(
+      (typeof vdData.transmission === 'string' && vdData.transmission) ||
+      g.transmission ||
+      g['Transmission'] ||
+      ''
+    ).trim();
+    var euTrim = String(g.trim_level || g['Trim level'] || '').trim();
+    var euDrive = String(sp.Driveline || sp['Driveline'] || '').trim();
+
     var out = {
       status: 'success',
       data: {
-        make: vdVal(vdData.make) || id.make || '',
-        model: vdVal(vdData.model) || id.model || '',
-        year: vdVal(vdData.year) || id.year || '',
-        trim: vdVal(vdData.trim) || vdVal(vdData.trim_and_style) || vdVal(vdData.style) || '',
-        engine: vdVal(vdData.engine) || engParts.join(' '),
-        transmission: (typeof vdData.transmission === 'string') ? vdData.transmission : (vdVal(trans2.type) || vdVal(trans2.description) || ''),
-        fuel_type: vdVal(vdData.fuel_type) || vdVal(fuel2.type) || '',
-        drivetrain: vdVal(vdData.drivetrain) || vdVal(vdData.drive_type) || ''
+        make: vdVal(vdData.make) || id.make || vdVal(g.make) || '',
+        model: vdVal(vdData.model) || id.model || vdVal(g.model) || '',
+        year: saneModelYear(vdData.year) ? saneModelYear(vdData.year) : euYear || saneModelYear(id.year) || '',
+        trim:
+          vdVal(vdData.trim) ||
+          vdVal(vdData.trim_and_style) ||
+          vdVal(vdData.style) ||
+          euTrim ||
+          String(g.body_style || g['Body style'] || '').trim() ||
+          '',
+        engine: (vdVal(vdData.engine) || engParts.join(' ') || '').trim() || euEngine,
+        transmission:
+          (typeof vdData.transmission === 'string' ? vdData.transmission : vdVal(trans2.type) || vdVal(trans2.description) || '').trim() || euTrans,
+        fuel_type: vdVal(vdData.fuel_type) || vdVal(fuel2.type) || euFuel,
+        drivetrain: vdVal(vdData.drivetrain) || vdVal(vdData.drive_type) || euDrive
       }
     };
     renderVinResult(vin, out, true, null);
