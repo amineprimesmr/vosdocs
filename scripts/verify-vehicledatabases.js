@@ -1,22 +1,19 @@
 #!/usr/bin/env node
 /**
- * Vérifie que VEHICLEDATABASES_API_KEY atteint api.vehicledatabases.com (décodage avancé + un appel liste).
+ * Vérifie l’accès à api.vehicledatabases.com (clé env ou valeur par défaut dans lib/vin-provider.js).
  * Usage : node scripts/verify-vehicledatabases.js [VIN]
  * Réf. portail : https://vehicledatabases.com/portal
  */
 require('dotenv').config();
+const { getVehicleDatabasesApiKey } = require('../lib/vin-provider');
 
 const DEFAULT_VIN = '1HGBH41JXMN109186';
 
-const apiKey = String(process.env.VEHICLEDATABASES_API_KEY || '').trim();
+const apiKey = getVehicleDatabasesApiKey();
 const vin = String(process.argv[2] || DEFAULT_VIN)
   .replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '')
   .toUpperCase();
 
-if (!apiKey) {
-  console.error('VEHICLEDATABASES_API_KEY manquant dans .env');
-  process.exit(1);
-}
 if (vin.length !== 17) {
   console.error('VIN invalide (17 caractères requis)');
   process.exit(1);
