@@ -52,6 +52,8 @@
   var carApiEnabled = false;
   /** true si VEHICLEDATABASES_API_KEY pilote les rapports (`vinDecodeProvider`). */
   var vdEnabled = false;
+  /** true si CARAPI_TOKEN est défini alors que VD est utilisé comme source principale — complément gratuit au rapport VD (même crédit). */
+  var carApiComplementConfigured = false;
 
   function removeTempLoginHideStyle() {
     var st = document.getElementById('cg-hide-login-temp');
@@ -186,6 +188,7 @@
         vinDecodeProvider = (r.ok && r.data && r.data.vinDecodeProvider) || null;
         carApiEnabled = !!(r.ok && r.data && r.data.carApiEnabled);
         vdEnabled = !!(r.ok && r.data && r.data.vdEnabled);
+        carApiComplementConfigured = !!(r.ok && r.data && r.data.carApiComplementConfigured);
         applyRegistrationRestrictedUi();
         refreshSearchModeDesc();
       })
@@ -194,6 +197,7 @@
         vinDecodeProvider = null;
         carApiEnabled = false;
         vdEnabled = false;
+        carApiComplementConfigured = false;
         applyRegistrationRestrictedUi();
         refreshSearchModeDesc();
       });
@@ -540,6 +544,7 @@
           vinDecodeProvider = r.data.vinDecodeProvider || null;
           carApiEnabled = !!r.data.carApiEnabled;
           vdEnabled = !!r.data.vdEnabled;
+          carApiComplementConfigured = !!r.data.carApiComplementConfigured;
           registrationOpen = !!r.data.registrationOpen;
           applyRegistrationRestrictedUi();
         }
@@ -708,7 +713,10 @@
     if (!d) return;
     if (vinDecodeProvider === 'vehicledatabases') {
       d.textContent =
-        ' crédit(s) — 1 crédit = rapport Vehicle Databases (fiche complète Europe/US, vol international, valeur, rappels, photos…) — adapté aux VIN européens (ex. Renault VF1…).';
+        ' crédit(s) — 1 crédit = rapport Vehicle Databases (fiche Europe/US, vol, valeur, rappels…)' +
+        (carApiComplementConfigured
+          ? ' + complément CarAPI.dev automatique si CARAPI_TOKEN est configuré sur le serveur (CT/km/cote FR, annonces, photos, financement).'
+          : ' — pour ajouter automatiquement kilometrage, CT (ref. données dispo.), cote FR et annonces, définissez aussi CARAPI_TOKEN sur le serveur.');
     } else if (vinDecodeProvider === 'carapi') {
       d.textContent =
         ' crédit(s) — 1 crédit = rapport CarAPI (mode rare : SKIP_VEHICLE_DATABASES=1 sur le serveur). Plutôt US/Canada. Par défaut, l’app utilise Vehicle Databases (clé incluse) pour les VIN européens.';
@@ -982,7 +990,13 @@
         if (errEl) {
           errEl.style.display = 'none';
         }
-        renderFullVinResult(v, bundle, txId);
+        if (bundle && bundle.vinDecode) {
+          renderVdResult(v, bundle, txId);
+        } else if (bundle && bundle.decode) {
+          renderFullVinResult(v, bundle, txId);
+        } else {
+          renderFullVinResult(v, bundle, txId);
+        }
       }, 50);
     });
   }
@@ -2040,6 +2054,47 @@
           '</div></details>'
         );
       }).join('');
+      if (
+        bundle.carapiAddon &&
+        typeof bundle.carapiAddon === 'object' &&
+        bundle.multiSource &&
+        bundle.multiSource.carapi === true &&
+        !bundle.carapiAddon.fetchError
+      ) {
+        var ca = bundle.carapiAddon;
+        var caPanels = [
+          ['decode', 'CarAPI.dev — fiche véhicule (complément)'],
+          ['stolenCheck', 'CarAPI.dev — antivol (autre jeu de références)'],
+          ['inspection', 'CarAPI.dev — contrôle technique / émissions'],
+          ['mileageHistory', 'CarAPI.dev — historique du kilométrage'],
+          ['listings', 'CarAPI.dev — annonces de véhicules'],
+          ['vehicleValuation', 'CarAPI.dev — estimation (cotation)'],
+          ['photos', 'CarAPI.dev — photos'],
+          ['payments', 'CarAPI.dev — financement (simulation)']
+        ];
+        html +=
+          '<div class="full-report-panel report-callout report-callout--info" style="border-style:solid">' +
+          '<p class="full-report-hint" style="margin:0;line-height:1.5">' +
+          '<strong>Sources croisées :</strong> blocs suivants issus de <strong>CarAPI.dev</strong> au même rapport (réutilise votre fiche VD pour marque/modèle/année quand leur décodage VIN seul est partiel).' +
+          '</p></div>';
+        html += caPanels
+          .map(function (row) {
+            var ckey = row[0];
+            var clbl = row[1];
+            var block = ca[ckey];
+            return (
+              '<details class="full-report-panel" open>' +
+              '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' +
+              esc(clbl) +
+              '</span>' +
+              reportBlockStatusPill(block) +
+              '</summary><div class="full-report-panel-body">' +
+              renderCarApiBlockHtml(ckey, block, ca) +
+              '</div></details>'
+            );
+          })
+          .join('');
+      }
       fr.innerHTML = html;
       fr.style.display = 'flex';
     }

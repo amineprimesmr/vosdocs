@@ -17,7 +17,7 @@ const { fulfillGuestVinOrder, paymentIntentToOrder, appBaseUrl } = require('./li
 const { sendTeamOrderEmail, sendAccountInviteEmail, sendWalletCreditsEmail } = require('./lib/order-emails');
 const { generateReportPdfBuffer } = require('./lib/report-pdf');
 const carapiClient = require('./lib/carapi-client');
-const { getVinDecodeProvider } = require('./lib/vin-provider');
+const { getVinDecodeProvider, getOptionalCarApiToken } = require('./lib/vin-provider');
 const {
   fetchVehicleDatabasesFullEnrichment,
   extractIdentityFromVdDecode,
@@ -652,6 +652,14 @@ function vdEditableInner(section) {
   return body;
 }
 
+/** Données fiche VD (racine sous `vinDecode`) pour fusion CarAPI complémentaire. */
+function vdInnerDataFromVinDecodeBundle(bundle) {
+  const vd = bundle && bundle.vinDecode;
+  if (!vd || !vd.ok || !vd.data || typeof vd.data !== 'object') return {};
+  const raw = vd.data;
+  return raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data) ? raw.data : raw;
+}
+
 function sliceArrayMax(arr, max) {
   if (!Array.isArray(arr) || arr.length <= max) return;
   arr.length = max;
@@ -708,6 +716,19 @@ function slimVdBundleForMetaSnapshot(bundle) {
       flatKeys.forEach((k) => {
         if (Array.isArray(mid && mid[k])) sliceArrayMax(mid[k], 12);
       });
+    }
+
+    if (b.carapiAddon && typeof b.carapiAddon === 'object' && !b.carapiAddon.fetchError) {
+      const caSlim = slimCarApiBundleForMetaSnapshot(b.carapiAddon);
+      if (caSlim) {
+        try {
+          b.carapiAddon = JSON.parse(caSlim);
+        } catch (_) {
+          delete b.carapiAddon;
+        }
+      } else {
+        b.carapiAddon = { _truncated: true };
+      }
     }
 
     let s = JSON.stringify(b);
@@ -2049,6 +2070,8 @@ app.get('/api/saas-config', async (req, res) => {
     vinDecodeProvider: p ? p.id : null,
     /** true si CARAPI_TOKEN est posé : le dashboard peut lancer le rapport complet (tous les endpoints). */
     carApiEnabled: !!(p && p.id === 'carapi'),
+    /** true si CARAPI_TOKEN est défini alors que VD est le fournisseur VIN principal (rapport VD + complément CarAPI au même crédit). */
+    carApiComplementConfigured: !!getOptionalCarApiToken(),
     /** true si VEHICLEDATABASES_API_KEY est posé : le dashboard peut lancer le rapport complet VehicleDatabases. */
     vdEnabled: !!(p && p.id === 'vehicledatabases')
   });
@@ -3716,6 +3739,58 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
       }
     }
 
+    if (!decodeFailed) {
+      const carapiTok = getOptionalCarApiToken();
+      if (carapiTok) {
+        try {
+          const q = req.query || {};
+          const vdSheet = vdInnerDataFromVinDecodeBundle(bundle);
+          const pick = (...vals) => {
+            for (let i = 0; i < vals.length; i++) {
+              const v = vals[i];
+              if (v != null && String(v).trim() !== '') return String(v).trim();
+            }
+            return undefined;
+          };
+          const identityFallback = {
+            make: identity.make != null ? String(identity.make).trim() : '',
+            model: identity.model != null ? String(identity.model).trim() : '',
+            year:
+              identity.year != null && String(identity.year).trim() !== ''
+                ? identity.year
+                : pick(vdSheet.year, vdSheet.ModelYear),
+            trim: pick(vdSheet.trim, vdSheet.trim_and_style, vdSheet.style),
+            engine: vdSheet.engine != null ? String(vdSheet.engine) : undefined,
+            fuel_type: pick(vdSheet.fuel_type, vdSheet.fuel),
+            transmission:
+              typeof vdSheet.transmission === 'string'
+                ? vdSheet.transmission
+                : vdSheet.transmission && typeof vdSheet.transmission === 'object'
+                  ? pick(vdSheet.transmission.type, vdSheet.transmission.description)
+                  : undefined,
+            drivetrain: pick(vdSheet.drivetrain, vdSheet.drive_type)
+          };
+          bundle.carapiAddon = await carapiClient.fetchCarApiFullEnrichment(carapiTok, {
+            vin,
+            country: q.country,
+            listingLimit: q.listingLimit,
+            listingOffset: q.listingOffset,
+            payment: {
+              price: q.price,
+              downPayment: q.downPayment,
+              loanTerm: q.loanTerm,
+              interestRate: q.interestRate
+            },
+            identityFallback
+          });
+          bundle.multiSource = { vehicleDatabases: true, carapi: true };
+        } catch (cae) {
+          console.warn('VD full-report complément CarAPI:', cae && cae.message ? cae.message : cae);
+          bundle.multiSource = { vehicleDatabases: true, carapi: false };
+        }
+      }
+    }
+
     if (decodeFailed) {
       await refundVinDecodeCredit(userId, vinMasked);
       const st = vdDec && vdDec.status;
@@ -3745,7 +3820,8 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
         year: identity.year != null ? String(identity.year) : '',
         fuel_type: '',
         engine: '',
-        reportType: 'vd_full'
+        reportType:
+          bundle.multiSource && bundle.multiSource.carapi === true ? 'vd_full_carapi_addon' : 'vd_full'
       };
       const snap = slimVdBundleForMetaSnapshot(bundle);
       if (snap) {
