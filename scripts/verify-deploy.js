@@ -31,6 +31,7 @@ const libChecks = [
   'lib/carapi-client.js',
   'lib/vin-provider.js',
   'lib/vehicledatabases-client.js',
+  'scripts/test-vd-report-pdf.js',
   'lib/prisma.js',
   'lib/auth.js',
   'scripts/manual-fulfill-payment.js',

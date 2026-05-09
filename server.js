@@ -641,7 +641,113 @@ async function refundOneCredit(userId, reason, metaObj) {
   }
 }
 
-const MAX_VIN_FULL_REPORT_SNAPSHOT = 150000;
+const MAX_VIN_FULL_REPORT_SNAPSHOT = 380000;
+
+function vdEditableInner(section) {
+  if (!section || typeof section !== 'object' || section.data == null) return null;
+  const body = section.data;
+  if (!body || typeof body !== 'object') return null;
+  if (body.data != null && typeof body.data === 'object') return body.data;
+  return body;
+}
+
+function sliceArrayMax(arr, max) {
+  if (!Array.isArray(arr) || arr.length <= max) return;
+  arr.length = max;
+}
+
+/** Vehicle Databases — instantané pour « Mes rapports » (taille bornée). */
+function slimVdBundleForMetaSnapshot(bundle) {
+  if (!bundle || typeof bundle !== 'object') {
+    return null;
+  }
+  try {
+    const b = JSON.parse(JSON.stringify(bundle));
+
+    let vinSheet = null;
+    if (b.vinDecode && b.vinDecode.data && typeof b.vinDecode.data === 'object') {
+      const root = b.vinDecode.data;
+      if (root.data && typeof root.data === 'object' && !Array.isArray(root.data)) vinSheet = root.data;
+      else vinSheet = root;
+    }
+    if (vinSheet && typeof vinSheet === 'object') {
+      if (Array.isArray(vinSheet.specifications) && vinSheet.specifications.length > 100) {
+        vinSheet.specifications = vinSheet.specifications.slice(0, 100);
+      }
+      const colorsObj = vinSheet.colors;
+      if (colorsObj && typeof colorsObj === 'object') {
+        if (Array.isArray(colorsObj.exterior) && colorsObj.exterior.length > 40)
+          colorsObj.exterior = colorsObj.exterior.slice(0, 40);
+        if (Array.isArray(colorsObj.interior) && colorsObj.interior.length > 35)
+          colorsObj.interior = colorsObj.interior.slice(0, 35);
+      }
+    }
+
+    const shInner = vdEditableInner(b.salesHistory);
+    if (shInner && typeof shInner === 'object') {
+      ['sales', 'sales_history', 'history'].forEach((k) => sliceArrayMax(shInner[k], 12));
+    }
+
+    const auInner = vdEditableInner(b.auction);
+    if (auInner && typeof auInner === 'object') {
+      ['auctions', 'auction_list', 'results', 'records', 'data'].forEach((k) =>
+        sliceArrayMax(auInner[k], 12));
+    }
+
+    if (b.media && b.media.data) {
+      const body = b.media.data;
+      const mid = vdEditableInner({ data: body });
+      const imgs = mid && typeof mid.images === 'object' ? mid.images : null;
+      if (imgs) {
+        if (Array.isArray(imgs.exterior)) sliceArrayMax(imgs.exterior, 10);
+        if (Array.isArray(imgs.interior)) sliceArrayMax(imgs.interior, 8);
+        if (Array.isArray(imgs.colors)) sliceArrayMax(imgs.colors, 8);
+      }
+      const flatKeys = ['photos', 'media', 'exterior', 'interior'];
+      flatKeys.forEach((k) => {
+        if (Array.isArray(mid && mid[k])) sliceArrayMax(mid[k], 12);
+      });
+    }
+
+    let s = JSON.stringify(b);
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      if (vinSheet && vinSheet.colors && typeof vinSheet.colors === 'object') vinSheet.colors = { _truncated: true };
+
+      const shFallback = vdEditableInner(b.salesHistory);
+      if (shFallback && typeof shFallback === 'object') {
+        sliceArrayMax(shFallback.sales, 4);
+        sliceArrayMax(shFallback.sales_history, 4);
+        sliceArrayMax(shFallback.history, 4);
+      }
+      const auFallback = vdEditableInner(b.auction);
+      if (auFallback && typeof auFallback === 'object') {
+        ['auctions', 'auction_list', 'results', 'records', 'data'].forEach((k) =>
+          sliceArrayMax(auFallback[k], 5));
+      }
+      if (b.media && b.media.data) {
+        b.media.data = { _truncated: true };
+      }
+      if (vinSheet && typeof vinSheet.colors === 'object') vinSheet.colors = { _truncated: true };
+
+      if (vinSheet && typeof vinSheet === 'object' && Array.isArray(vinSheet.specifications)) {
+        vinSheet.specifications = vinSheet.specifications.slice(0, 16);
+      }
+      s = JSON.stringify(b);
+    }
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      b.salesHistory = { ok: b.salesHistory && b.salesHistory.ok, data: { _truncated: true } };
+      b.auction = { ok: b.auction && b.auction.ok, data: { _truncated: true } };
+      s = JSON.stringify(b);
+    }
+    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
+      return null;
+    }
+    return s;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Stocke une copie du bundle CarAPI dans credit_transactions.meta (lecture « Mes rapports »).
  */
@@ -657,7 +763,9 @@ function slimCarApiBundleForMetaSnapshot(bundle) {
     }
     if (b.mileageHistory && b.mileageHistory.data && b.mileageHistory.data.mileageHistory) {
       const m = b.mileageHistory.data.mileageHistory;
-      if (Array.isArray(m) && m.length > 6) b.mileageHistory.data = Object.assign({}, b.mileageHistory.data, { mileageHistory: m.slice(0, 6) });
+      if (Array.isArray(m) && m.length > 6) {
+        b.mileageHistory.data = Object.assign({}, b.mileageHistory.data, { mileageHistory: m.slice(0, 6) });
+      }
     }
     if (b.photos && b.photos.data && b.photos.data.media && Array.isArray(b.photos.data.media) && b.photos.data.media.length > 5) {
       b.photos.data = Object.assign({}, b.photos.data, { media: b.photos.data.media.slice(0, 5) });
@@ -665,40 +773,6 @@ function slimCarApiBundleForMetaSnapshot(bundle) {
     let s = JSON.stringify(b);
     if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
       b.listings = b.listings && b.listings.data ? { ok: b.listings.ok, data: { _truncated: true } } : b.listings;
-      s = JSON.stringify(b);
-    }
-    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
-      return null;
-    }
-    return s;
-  } catch (e) {
-    return null;
-  }
-}
-
-/** Vehicle Databases — instantané pour « Mes rapports » (taille bornée). */
-function slimVdBundleForMetaSnapshot(bundle) {
-  if (!bundle || typeof bundle !== 'object') {
-    return null;
-  }
-  try {
-    const b = JSON.parse(JSON.stringify(bundle));
-    if (b.salesHistory && b.salesHistory.data && Array.isArray(b.salesHistory.data.sales)) {
-      const a = b.salesHistory.data.sales;
-      if (a.length > 8) b.salesHistory.data.sales = a.slice(0, 8);
-    }
-    if (b.media && b.media.data && b.media.data.media && Array.isArray(b.media.data.media)) {
-      const m = b.media.data.media;
-      if (m.length > 6) b.media.data.media = m.slice(0, 6);
-    }
-    if (b.auction && b.auction.data && Array.isArray(b.auction.data.records)) {
-      const a = b.auction.data.records;
-      if (a.length > 8) b.auction.data.records = a.slice(0, 8);
-    }
-    let s = JSON.stringify(b);
-    if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
-      b.salesHistory = { ok: b.salesHistory && b.salesHistory.ok, data: { _truncated: true } };
-      b.auction = { ok: b.auction && b.auction.ok, data: { _truncated: true } };
       s = JSON.stringify(b);
     }
     if (s.length > MAX_VIN_FULL_REPORT_SNAPSHOT) {
