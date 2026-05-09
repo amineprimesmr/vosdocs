@@ -21,7 +21,8 @@ const { getVinDecodeProvider } = require('./lib/vin-provider');
 const {
   fetchVehicleDatabasesFullEnrichment,
   extractIdentityFromVdDecode,
-  vdGet
+  vdGet,
+  vinDecodeSyntheticFromEuropeSection
 } = require('./lib/vehicledatabases-client');
 const { apiResponseToVehicleData } = require('./lib/vin-decode-core');
 const { getBlogConfig } = require('./lib/blog-config');
@@ -929,23 +930,9 @@ function friendlyVehicleDatabasesDecodeMessage(raw) {
   return s;
 }
 
-/** Réponse VD (ex. europe-vin-decode) réusable comme fiche identification si advanced-vin-decode est vide. */
+/** Réponse VD (ex. europe-vin-decode) réutilisable comme fiche identification si advanced-vin-decode est vide. */
 function syntheticVinDecodeFromVdApiSection(section) {
-  if (!section || !section.ok || !section.data) return null;
-  const body = section.data;
-  if (!body || typeof body !== 'object' || body.status === 'error') return null;
-  const inner = body.data && typeof body.data === 'object' ? body.data : body;
-  if (!inner || typeof inner !== 'object') return null;
-  const make = String(inner.make || '').trim();
-  if (!make) return null;
-  return {
-    ok: true,
-    status: 200,
-    data: {
-      status: 'success',
-      data: Object.assign({}, inner)
-    }
-  };
+  return vinDecodeSyntheticFromEuropeSection(section);
 }
 
 async function decodeVinViaNhtsa(vin) {
