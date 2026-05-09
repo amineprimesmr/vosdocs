@@ -1939,6 +1939,24 @@
     return '<span class="status-pill status-pill--err">Erreur</span>';
   }
 
+  /** Masque les blocs VD en erreur / absents ; garde OK et N/A (skipped). */
+  function vdPanelShouldInclude(key, bundle) {
+    var section = bundle[key];
+    if (key === 'vinDecode') return !!(bundle.vinDecode && bundle.vinDecode.ok);
+    if (!section) return false;
+    if (section.skipped) return true;
+    return section.ok === true;
+  }
+
+  /** Masque les blocs CarAPI en échec (et absents). */
+  function carApiPanelShouldInclude(key, block) {
+    if (key === '_plateToVin') return true;
+    if (!block) return false;
+    if (block._infoOnly) return true;
+    if (block.skipped) return true;
+    return block.ok === true;
+  }
+
   function saneModelYear(raw) {
     if (raw == null || raw === '') return '';
     var s = String(raw).trim();
@@ -2039,21 +2057,26 @@
         ['maintenance', 'Carnet d\'entretien planifié'],
         ['warranty', 'Garantie constructeur']
       ];
-      var html = panels.map(function (p) {
-        var key = p[0];
-        var label = p[1];
-        var section = bundle[key];
-        return (
-          '<details class="full-report-panel" open>' +
-          '<summary class="full-report-panel-summary">' +
-          '<span class="full-report-panel-title">' + esc(label) + '</span>' +
-          vdSectionStatusPill(section) +
-          '</summary>' +
-          '<div class="full-report-panel-body">' +
-          renderVdPanelHtml(key, bundle) +
-          '</div></details>'
-        );
-      }).join('');
+      var html = panels
+        .filter(function (p) {
+          return vdPanelShouldInclude(p[0], bundle);
+        })
+        .map(function (item) {
+          var key = item[0];
+          var label = item[1];
+          var section = bundle[key];
+          return (
+            '<details class="full-report-panel" open>' +
+            '<summary class="full-report-panel-summary">' +
+            '<span class="full-report-panel-title">' + esc(label) + '</span>' +
+            vdSectionStatusPill(section) +
+            '</summary>' +
+            '<div class="full-report-panel-body">' +
+            renderVdPanelHtml(key, bundle) +
+            '</div></details>'
+          );
+        })
+        .join('');
       if (
         bundle.carapiAddon &&
         typeof bundle.carapiAddon === 'object' &&
@@ -2072,28 +2095,33 @@
           ['photos', 'CarAPI.dev — photos'],
           ['payments', 'CarAPI.dev — financement (simulation)']
         ];
-        html +=
-          '<div class="full-report-panel report-callout report-callout--info" style="border-style:solid">' +
-          '<p class="full-report-hint" style="margin:0;line-height:1.5">' +
-          '<strong>Sources croisées :</strong> blocs suivants issus de <strong>CarAPI.dev</strong> au même rapport (réutilise votre fiche VD pour marque/modèle/année quand leur décodage VIN seul est partiel).' +
-          '</p></div>';
-        html += caPanels
-          .map(function (row) {
-            var ckey = row[0];
-            var clbl = row[1];
-            var block = ca[ckey];
-            return (
-              '<details class="full-report-panel" open>' +
-              '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' +
-              esc(clbl) +
-              '</span>' +
-              reportBlockStatusPill(block) +
-              '</summary><div class="full-report-panel-body">' +
-              renderCarApiBlockHtml(ckey, block, ca) +
-              '</div></details>'
-            );
-          })
-          .join('');
+        var caBuilt = caPanels.filter(function (row) {
+          return carApiPanelShouldInclude(row[0], ca[row[0]]);
+        });
+        if (caBuilt.length) {
+          html +=
+            '<div class="full-report-panel report-callout report-callout--info" style="border-style:solid">' +
+            '<p class="full-report-hint" style="margin:0;line-height:1.5">' +
+            '<strong>Sources croisées :</strong> blocs suivants issus de <strong>CarAPI.dev</strong> au même rapport (réutilise votre fiche VD pour marque/modèle/année quand leur décodage VIN seul est partiel).' +
+            '</p></div>';
+          html += caBuilt
+            .map(function (row) {
+              var ckey = row[0];
+              var clbl = row[1];
+              var block = ca[ckey];
+              return (
+                '<details class="full-report-panel" open>' +
+                '<summary class="full-report-panel-summary"><span class="full-report-panel-title">' +
+                esc(clbl) +
+                '</span>' +
+                reportBlockStatusPill(block) +
+                '</summary><div class="full-report-panel-body">' +
+                renderCarApiBlockHtml(ckey, block, ca) +
+                '</div></details>'
+              );
+            })
+            .join('');
+        }
       }
       fr.innerHTML = html;
       fr.style.display = 'flex';
@@ -2155,6 +2183,11 @@
         ['_plateToVin', 'Plaque d’immatriculation → VIN']
       ];
       var html = panels
+        .filter(function (p) {
+          var key = p[0];
+          var block = key === '_plateToVin' ? { _infoOnly: true } : bundle[key];
+          return carApiPanelShouldInclude(key, block);
+        })
         .map(function (p) {
           var key = p[0];
           var label = p[1];
