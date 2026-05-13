@@ -1,5 +1,7 @@
 # Carvinguard - Guide SEO Complet
 
+**Accès agence (GitHub, Vercel, Google Search Console, dossier `public/`) :** voir **`docs/ACCES-AGENCE-SEO.md`**. Commande utile : `npm run seo:pages`.
+
 Toutes les optimisations SEO ont été implémentées sur le site. Ce document récapitule ce qui a été fait et ce que vous devez personnaliser avant mise en production.
 
 ## ✅ Implémenté

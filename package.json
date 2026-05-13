@@ -29,7 +29,8 @@
     "stripe:diag-webhooks": "node scripts/diag-stripe-webhooks.js",
     "fulfill:pi": "node scripts/manual-fulfill-payment.js",
     "deploy:check": "node scripts/verify-deploy.js",
-    "deploy:vercel": "vercel --prod"
+    "deploy:vercel": "vercel --prod",
+    "seo:pages": "git ls-files public/ | grep '\\.html$' | sort"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

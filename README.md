@@ -4,6 +4,8 @@ Site **100% fonctionnel** pour une agence prestataire proposant un **rapport his
 
 ## Structure du site
 
+**Production (Vercel) :** les pages HTML servies au public sont dans **`public/`**. Les noms de fichiers ci‑dessous correspondent aux chemins sous `public/` (ex. `public/index.html`).
+
 ### Pages principales
 - **index.html** - Page d'accueil (recherche VIN / rapport)
 - **recapitulatif.html** - Récapitulatif (dates, titulaire, email)
@@ -63,6 +65,8 @@ Le site est optimisé pour le référencement. Voir **SEO-README.md** pour :
 - Récapitulatif des optimisations implémentées
 - Checklist avant mise en production
 - Personnalisation du domaine et des images
+
+**Agence SEO (accès Git + Search Console, pages en `public/`) :** guide pas à pas **`docs/ACCES-AGENCE-SEO.md`**. Lister les pages HTML déployées : `npm run seo:pages`.
 
 ## Personnalisation
 
