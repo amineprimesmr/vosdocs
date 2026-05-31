@@ -1733,6 +1733,34 @@
     return html;
   }
 
+  function renderVdTitleCheckPanel(section) {
+    if (!section || !section.ok || !section.data) return '<p class="full-report-err">Vérification du titre non disponible</p>';
+    var body = section.data;
+    var d = (body.data && typeof body.data === 'object') ? body.data : body;
+    var sv = d.salvage;
+    var salvage = sv === true || String(sv || '').toLowerCase() === 'true' || String(sv || '').toLowerCase() === 'yes';
+    var statusHtml;
+    if (salvage) {
+      statusHtml = '<div class="stolen-status stolen-status--alert"><strong>TITRE ÉPAVE / SALVAGE</strong> — Véhicule déclaré épave ou perte totale après sinistre. Alerte majeure avant achat.</div>';
+    } else {
+      statusHtml = '<div class="stolen-status stolen-status--ok"><strong>Titre sain</strong> — Aucun titre « salvage » (épave / perte totale) enregistré pour ce VIN.</div>';
+    }
+    var details = Array.isArray(d.salvage_details) ? d.salvage_details : [];
+    var html = statusHtml;
+    if (details.length) {
+      html += '<div class="recalls-list">';
+      details.forEach(function (ev) {
+        html += '<div class="recall-item">';
+        html += '<div class="recall-title">' + esc(String(ev.type || ev.title_type || ev.brand || 'Événement')) + '</div>';
+        var line = [ev.date || ev.loss_date, ev.state || ev.region, ev.damage || ev.primary_damage].filter(Boolean).join(' · ');
+        if (line) html += '<div class="recall-desc">' + esc(line) + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
   function renderVdMarketValuePanel(section) {
     if (!section || !section.ok || !section.data) return '<p class="full-report-err">Cote marché non disponible</p>';
     var body = section.data;
@@ -1922,6 +1950,7 @@
     if (key === 'vinDecode') return renderVdIdentificationPanel(bundle);
     if (key === 'europeVin') return renderVdEuropePanel(section);
     if (key === 'stolenCheck') return renderVdStolenPanel(section);
+    if (key === 'titleCheck') return renderVdTitleCheckPanel(section);
     if (key === 'marketValue') return renderVdMarketValuePanel(section);
     if (key === 'recalls') return renderVdRecallsPanel(section);
     if (key === 'salesHistory') return renderVdSalesHistoryPanel(section);
@@ -2049,6 +2078,7 @@
         ['vinDecode', 'Identification & fiche technique'],
         ['europeVin', 'Données historiques Europe'],
         ['stolenCheck', 'Vérification vol (base internationale)'],
+        ['titleCheck', 'Titre / sinistre (épave, salvage)'],
         ['marketValue', 'Cote de marché'],
         ['recalls', 'Rappels constructeur'],
         ['salesHistory', 'Historique des ventes'],
