@@ -701,6 +701,9 @@ body.page-home-fidelity main {
     padding: 5px 9px;
     font-size: 13px;
   }
+  .fidelity-navbar-pill .fidelity-nav-link--desktop-only {
+    display: none;
+  }
   .fidelity-navbar-pill .btn-fidelity-solid {
     font-size: 13px;
     padding: 0 12px;
