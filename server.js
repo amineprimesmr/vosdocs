@@ -22,7 +22,8 @@ const {
   fetchVehicleDatabasesFullEnrichment,
   extractIdentityFromVdDecode,
   vdGet,
-  vinDecodeSyntheticFromEuropeSection
+  vinDecodeSyntheticFromEuropeSection,
+  fillIdentityYearFromVin
 } = require('./lib/vehicledatabases-client');
 const { apiResponseToVehicleData } = require('./lib/vin-decode-core');
 const { getBlogConfig } = require('./lib/blog-config');
@@ -952,8 +953,8 @@ function friendlyVehicleDatabasesDecodeMessage(raw) {
 }
 
 /** Réponse VD (ex. europe-vin-decode) réutilisable comme fiche identification si advanced-vin-decode est vide. */
-function syntheticVinDecodeFromVdApiSection(section) {
-  return vinDecodeSyntheticFromEuropeSection(section);
+function syntheticVinDecodeFromVdApiSection(section, vin) {
+  return vinDecodeSyntheticFromEuropeSection(section, vin);
 }
 
 async function decodeVinViaNhtsa(vin) {
@@ -3656,7 +3657,8 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
 
   try {
     const bundle = await fetchVehicleDatabasesFullEnrichment(provider.apiKey, { vin });
-    let identity = extractIdentityFromVdDecode(bundle.vinDecode);
+    let identity = extractIdentityFromVdDecode(bundle.vinDecode, vin);
+    identity = fillIdentityYearFromVin(identity, vin);
     const vdDec = bundle.vinDecode;
     let decodeFailed =
       !vdDec ||
@@ -3665,11 +3667,12 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
       !String(identity.make || '').trim();
 
     if (decodeFailed) {
-      const synEu = syntheticVinDecodeFromVdApiSection(bundle.europeVin);
+      const synEu = syntheticVinDecodeFromVdApiSection(bundle.europeVin, vin);
       if (synEu) {
         bundle.vinDecode = synEu;
         bundle.identificationSource = 'europe_vin_fallback';
-        identity = extractIdentityFromVdDecode(bundle.vinDecode);
+        identity = extractIdentityFromVdDecode(bundle.vinDecode, vin);
+        identity = fillIdentityYearFromVin(identity, vin);
         decodeFailed =
           !bundle.vinDecode ||
           !bundle.vinDecode.ok ||

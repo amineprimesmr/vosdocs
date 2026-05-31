@@ -1994,6 +1994,98 @@
     return n >= 1980 && n <= 2035 ? String(n) : '';
   }
 
+  /** Secours : 10ᵉ caractère du VIN quand l’API renvoie une année invalide (ex. "Renault"). */
+  function decodeModelYearFromVin(vin) {
+    var v = String(vin || '').replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+    if (v.length !== 17) return '';
+    var code = v.charAt(9);
+    var dual = {
+      A: [1980, 2010], B: [1981, 2011], C: [1982, 2012], D: [1983, 2013], E: [1984, 2014],
+      F: [1985, 2015], G: [1986, 2016], H: [1987, 2017], J: [1988, 2018], K: [1989, 2019],
+      L: [1990, 2020], M: [1991, 2021], N: [1992, 2022], P: [1993, 2023], R: [1994, 2024],
+      S: [1995, 2025], T: [1996, 2026], V: [1997, 2027], W: [1998, 2028], X: [1999, 2029],
+      Y: [2000, 2030],
+      1: [2001], 2: [2002], 3: [2003], 4: [2004], 5: [2005], 6: [2006], 7: [2007], 8: [2008], 9: [2009]
+    };
+    var candidates = dual[code];
+    if (!candidates || !candidates.length) return '';
+    var now = new Date().getFullYear();
+    var best = '';
+    for (var i = 0; i < candidates.length; i++) {
+      if (candidates[i] <= now + 1) best = String(candidates[i]);
+    }
+    return best || String(candidates[candidates.length - 1]);
+  }
+
+  function vdSectionBrief(key, section) {
+    if (!section) return { level: 'na', label: 'Non consulté', hint: '' };
+    if (section.skipped) return { level: 'na', label: 'N/A', hint: section.reason || 'Données non applicables' };
+    if (section.status === 401 || (section.data && section.data.statusCode === 401)) {
+      return { level: 'na', label: 'Hors formule', hint: 'Non inclus dans le forfait Basic Vehicle Databases' };
+    }
+    if (section.ok !== true) return { level: 'na', label: 'Aucune trace', hint: 'Aucun enregistrement pour ce VIN dans cette base' };
+    if (key === 'titleCheck') {
+      var td = section.data && section.data.data ? section.data.data : section.data;
+      var salvage = td && (td.salvage === true || String(td.salvage).toLowerCase() === 'true');
+      return salvage
+        ? { level: 'danger', label: 'Épave / salvage', hint: 'Titre endommagé signalé' }
+        : { level: 'ok', label: 'Titre sain', hint: 'Pas de titre épave enregistré' };
+    }
+    if (key === 'stolenCheck') {
+      var sd = section.data && section.data.data ? section.data.data : section.data;
+      var st = sd && sd.stolen;
+      if (st === true || String(st).toLowerCase() === 'yes') return { level: 'danger', label: 'Signalé volé', hint: '' };
+      if (st === false || String(st).toLowerCase() === 'no') return { level: 'ok', label: 'Non signalé', hint: '' };
+      return { level: 'warn', label: 'Indéterminé', hint: '' };
+    }
+    return { level: 'ok', label: 'Données reçues', hint: '' };
+  }
+
+  function renderVdReportSummary(vin, bundle) {
+    var rows = [
+      ['vinDecode', 'Identification véhicule'],
+      ['europeVin', 'Données Europe VIN'],
+      ['titleCheck', 'Titre / sinistre (épave)'],
+      ['stolenCheck', 'Antivol international'],
+      ['salesHistory', 'Historique des ventes'],
+      ['auction', 'Enchères'],
+      ['marketValue', 'Cote de marché'],
+      ['recalls', 'Rappels constructeur']
+    ];
+    var pills = rows.map(function (row) {
+      var key = row[0];
+      var title = row[1];
+      var section = bundle[key];
+      var brief = vdSectionBrief(key, section);
+      var cls = brief.level === 'ok' ? 'status-pill--ok' : brief.level === 'danger' ? 'status-pill--err' : brief.level === 'warn' ? 'status-pill--skip' : 'status-pill--na';
+      return (
+        '<div class="report-summary-row">' +
+        '<span class="report-summary-label">' + esc(title) + '</span>' +
+        '<span class="status-pill ' + cls + '">' + esc(brief.label) + '</span>' +
+        (brief.hint ? '<span class="report-summary-hint">' + esc(brief.hint) + '</span>' : '') +
+        '</div>'
+      );
+    }).join('');
+    var yearNote = '';
+    var eu = readEuropeVinFlat(bundle);
+    var badYear = eu.gen && String(eu.gen.Year || eu.gen.year || '').trim();
+    if (badYear && !saneModelYear(badYear) && decodeModelYearFromVin(vin)) {
+      yearNote =
+        '<p class="full-report-hint" style="margin:10px 0 0">L’API Vehicle Databases a renvoyé une année invalide (« ' +
+        esc(badYear) +
+        ' »). Estimation depuis le code année du VIN (position 10) : <strong>' +
+        esc(decodeModelYearFromVin(vin)) +
+        '</strong> — sur VIN européen, à confirmer avec la carte grise.</p>';
+    }
+    return (
+      '<div class="report-callout report-callout--info full-report-summary">' +
+      '<p class="full-report-hint" style="margin:0 0 10px"><strong>Synthèse du rapport</strong> — forfait Vehicle Databases Basic (Europe VIN, antivol, titre, ventes, enchères). Les rubriques « Hors formule » ou « Aucune trace » ne signifient pas une panne : soit elles ne sont pas dans votre abonnement, soit ce VIN n’a pas d’historique dans cette base.</p>' +
+      pills +
+      yearNote +
+      '</div>'
+    );
+  }
+
   /** Données portail VD Europe (clés avec espaces possibles). */
   function readEuropeVinFlat(bundle) {
     var eu = bundle && bundle.europeVin;
@@ -2030,6 +2122,7 @@
     var euYear =
       saneModelYear(g.year) ||
       saneModelYear(g.ModelYear || g.Years) ||
+      decodeModelYearFromVin(vin) ||
       '';
     var euEngine = String(g.engine_type || g['Engine type'] || '').trim();
     if (!euEngine) {
@@ -2057,7 +2150,7 @@
       data: {
         make: vdVal(vdData.make) || id.make || vdVal(g.make) || '',
         model: vdVal(vdData.model) || id.model || vdVal(g.model) || '',
-        year: saneModelYear(vdData.year) ? saneModelYear(vdData.year) : euYear || saneModelYear(id.year) || '',
+        year: saneModelYear(vdData.year) ? saneModelYear(vdData.year) : euYear || saneModelYear(id.year) || decodeModelYearFromVin(vin) || '',
         trim:
           vdVal(vdData.trim) ||
           vdVal(vdData.trim_and_style) ||
@@ -2087,7 +2180,8 @@
         ['maintenance', 'Carnet d\'entretien planifié'],
         ['warranty', 'Garantie constructeur']
       ];
-      var html = panels
+      var html = renderVdReportSummary(vin, bundle);
+      html += panels
         .filter(function (p) {
           return vdPanelShouldInclude(p[0], bundle);
         })

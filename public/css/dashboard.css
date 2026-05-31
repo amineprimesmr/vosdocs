@@ -1493,6 +1493,29 @@ body.dashboard-page {
   color: var(--text);
 }
 
+.full-report-summary .report-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(191, 219, 254, 0.5);
+}
+.full-report-summary .report-summary-row:last-child {
+  border-bottom: none;
+}
+.full-report-summary .report-summary-label {
+  flex: 1 1 160px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+.full-report-summary .report-summary-hint {
+  flex: 1 1 100%;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-left: 0;
+}
+
 .report-kv {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
