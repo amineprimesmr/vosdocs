@@ -2,42 +2,21 @@
  * Vercel serverless: POST /api/test-order-email
  * Simule une commande et envoie l'email à l'équipe via Resend.
  */
-const { Resend } = require('resend');
-const { getTeamRecipients } = require('../lib/email-recipients');
-
-function getOrderEmailContent(order) {
-  const lines = [
-    'Nouvelle commande Carvinguard – Paiement validé',
-    '-------------------------------------------',
-    'Référence Stripe: ' + (order.id || '—'),
-    'Montant: ' + (order.montant || '—'),
-    '',
-    '— Client —',
-    'Nom: ' + (order.nom || '—'),
-    'Prénom: ' + (order.prenom || '—'),
-    'Email: ' + (order.email || '—'),
-    'Téléphone: ' + (order.phone || '—'),
-    '',
-    '— Véhicule / démarche —',
-    'VIN: ' + (order.vin || '—'),
-    'Type: ' + (order.typePersonne === 'professionnel' ? 'Professionnel' : 'Particulier'),
-    'Titulaire (C.1): ' + (order.titulaire || '—'),
-    'Date 1ère immat. (B): ' + (order.miseCirculation || '—'),
-    'Date case (I) carte grise: ' + (order.dateCertificat || '—'),
-    '',
-    '— Adresse (si renseignée) —',
-    'CP: ' + (order.cp || '—'),
-    'Ville: ' + (order.ville || '—'),
-    '',
-    'Envoyé le ' + new Date().toLocaleString('fr-FR')
-  ];
-  return lines.join('\n');
-}
+const { sendTeamOrderEmail } = require('../lib/order-emails');
 
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Méthode non autorisée' });
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    return res.status(200).json({
+      ok: false,
+      emailSent: false,
+      error:
+        'RESEND_API_KEY non configurée. Vercel → Settings → Environment Variables → ajouter RESEND_API_KEY puis Redéployer.'
+    });
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
@@ -60,40 +39,13 @@ module.exports = async (req, res) => {
     ville: body.ville || ''
   };
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return res.status(200).json({
-      ok: false,
-      emailSent: false,
-      error: 'RESEND_API_KEY non configurée. Vercel → Settings → Environment Variables → ajouter RESEND_API_KEY puis Redéployer.'
-    });
-  }
-
-  const to = getTeamRecipients();
-  if (!to.length) {
-    return res.status(200).json({
-      ok: false,
-      emailSent: false,
-      error: 'MAIL_TO non configuré (ex. starkxgroup@gmail.com,amine35ennasri@gmail.com)'
-    });
-  }
-  const subject = 'Carvinguard – Nouvelle commande ' + (fakeOrder.vin || fakeOrder.id || '');
-  const text = getOrderEmailContent(fakeOrder);
-
-  try {
-    const resend = new Resend(apiKey);
-    const { data, error } = await resend.emails.send({
-      from: process.env.MAIL_FROM || 'onboarding@resend.dev',
-      to,
-      subject,
-      text,
-      replyTo: fakeOrder.email || undefined
-    });
-    if (error) {
-      return res.status(200).json({ ok: false, emailSent: false, error: error.message || String(error) });
-    }
-    return res.status(200).json({ ok: true, emailSent: true });
-  } catch (e) {
-    return res.status(200).json({ ok: false, emailSent: false, error: e.message || String(e) });
-  }
+  const result = await sendTeamOrderEmail(fakeOrder);
+  return res.status(200).json({
+    ok: result.sent,
+    emailSent: result.sent,
+    partial: result.partial || false,
+    sentTo: result.sentTo || null,
+    skipped: result.skipped || null,
+    error: result.error || null
+  });
 };
