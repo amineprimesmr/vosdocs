@@ -1742,9 +1742,12 @@ const cgProdRuntime =
   process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 if (!cgProdRuntime) {
   app.get('/api/email-status', (req, res) => {
+    const { getTeamRecipients } = require('./lib/email-recipients');
+    const recipients = getTeamRecipients();
     res.json({
       resendConfigured: !!process.env.RESEND_API_KEY,
-      mailTo: process.env.MAIL_TO || 'infos.carvinguard@gmail.com'
+      mailFrom: process.env.MAIL_FROM || 'onboarding@resend.dev',
+      mailTo: recipients.length ? recipients : ['infos.carvinguard@gmail.com']
     });
   });
 

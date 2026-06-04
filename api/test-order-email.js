@@ -3,6 +3,7 @@
  * Simule une commande et envoie l'email à l'équipe via Resend.
  */
 const { Resend } = require('resend');
+const { getTeamRecipients } = require('../lib/email-recipients');
 
 function getOrderEmailContent(order) {
   const lines = [
@@ -68,7 +69,14 @@ module.exports = async (req, res) => {
     });
   }
 
-  const to = process.env.MAIL_TO || 'infos.carvinguard@gmail.com';
+  const to = getTeamRecipients();
+  if (!to.length) {
+    return res.status(200).json({
+      ok: false,
+      emailSent: false,
+      error: 'MAIL_TO non configuré (ex. starkxgroup@gmail.com,amine35ennasri@gmail.com)'
+    });
+  }
   const subject = 'Carvinguard – Nouvelle commande ' + (fakeOrder.vin || fakeOrder.id || '');
   const text = getOrderEmailContent(fakeOrder);
 

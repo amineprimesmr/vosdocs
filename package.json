@@ -26,6 +26,7 @@
     "verify:vehicledatabases": "node scripts/verify-vehicledatabases.js",
     "test:vd-pdf": "node scripts/test-vd-report-pdf.js",
     "blog:test-email": "node scripts/send-test-blog-proposals-email.js",
+    "resend:dns": "node scripts/setup-resend-dns-hostinger.js",
     "stripe:diag-webhooks": "node scripts/diag-stripe-webhooks.js",
     "fulfill:pi": "node scripts/manual-fulfill-payment.js",
     "deploy:check": "node scripts/verify-deploy.js",

@@ -32,10 +32,28 @@ Tu as déjà un compte Resend. Récupère ta clé :
 1. Va sur **https://vercel.com** → projet **carvinguard** → **Settings** → **Environment Variables**.
 2. Ajoute (pour l’environnement **Production**) :
    - **RESEND_API_KEY** = ta clé Resend (celle qui commence par `re_`)
-   - **MAIL_TO** = `infos.carvinguard@gmail.com` (optionnel, c’est déjà la valeur par défaut)
+   - **MAIL_FROM** = `contact@carvinguard.fr` (domaine **carvinguard.fr** vérifié sur Resend — voir §4)
+   - **MAIL_TO** = `starkxgroup@gmail.com,amine35ennasri@gmail.com` (plusieurs adresses séparées par une virgule)
+   - **MERCHANT_EMAIL** = idem pour les emails de validation du blog auto
 3. **Redéploie** le projet (Deployments → … → Redeploy).
 
-Après ça, chaque paiement validé (et le bouton test) enverra un email à **infos.carvinguard@gmail.com** via Resend.
+Après ça, chaque paiement validé (et le bouton test) enverra un email à **toutes** les adresses listées dans `MAIL_TO`.
+
+## 4. Vérifier le domaine carvinguard.fr sur Resend (obligatoire pour starkxgroup@gmail.com)
+
+Sans domaine vérifié, Resend n’envoie qu’à l’email du compte (mode test `onboarding@resend.dev`).
+
+**Hostinger** → Domaines → **carvinguard.fr** → Gestion DNS, ajoute :
+
+| Type | Nom | Valeur | Priorité |
+|------|-----|--------|----------|
+| TXT | `resend._domainkey` | (valeur DKIM affichée sur [resend.com/domains](https://resend.com/domains)) | — |
+| MX | `send` | `feedback-smtp.us-east-1.amazonses.com` | 10 |
+| TXT | `send` | `v=spf1 include:amazonses.com ~all` | — |
+
+Ou en local : `HOSTINGER_API_TOKEN=… node scripts/setup-resend-dns-hostinger.js`
+
+Puis sur Resend : bouton **Verify** sur le domaine. Délai DNS : 5–30 min.
 
 ---
 
