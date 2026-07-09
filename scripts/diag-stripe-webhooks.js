@@ -40,12 +40,24 @@ async function main() {
       console.log('Statut  :', e.status);
       console.log('Mode    :', e.livemode ? 'LIVE (reçoit seulement les paiements live)' : 'TEST');
       console.log('Evts    :', (e.enabled_events || []).length ? e.enabled_events.join(', ') : '(aucun — problème !)');
-      const need = ['checkout.session.completed', 'payment_intent.succeeded'];
-      const miss = need.filter((n) => !(e.enabled_events || []).includes(n));
+      const need = [
+        'checkout.session.completed',
+        'payment_intent.succeeded',
+        'invoice.paid'
+      ];
+      const evts = e.enabled_events || [];
+      const hasAll = evts.includes('*');
+      const miss = hasAll ? [] : need.filter((n) => !evts.includes(n) && !(n === 'invoice.paid' && evts.includes('invoice.payment_succeeded')));
       if (miss.length) {
-        console.log('\n⚠️  Manque pour Carvinguard (recommandé) : ' + need.join(', '));
+        console.log(
+          '\n⚠️  Manque pour Carvinguard (recommandé) : ' +
+            miss.join(', ') +
+            ' (invoice.paid OU invoice.payment_succeeded pour le mensuel)'
+        );
       } else {
-        console.log("\n✓  Types d’événements contiennent au minimum l’essentiel pour le checkout.");
+        console.log(
+          "\n✓  Types d’événements OK (checkout + payment_intent + facture abonnement)."
+        );
       }
     }
   }

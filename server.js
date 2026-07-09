@@ -325,37 +325,130 @@ async function handleStripeCreditPurchase(pi) {
       return true;
     }
 
-    // Crée ou récupère le customer Stripe
-    const existingCustomers = await stripe.customers.list({ email: user.email, limit: 1 });
-    const customer =
-      existingCustomers.data && existingCustomers.data.length > 0
-        ? existingCustomers.data[0]
-        : await stripe.customers.create({ email: user.email });
-
-    // Associer le moyen de paiement du PaymentIntent au customer
-    if (pi.payment_method) {
-      try {
-        await stripe.paymentMethods.attach(pi.payment_method, { customer: customer.id });
-      } catch (_) {
-        /* si déjà attaché, on ignore */
+    // Customer : prioriser celui du PaymentIntent (créé par Checkout avec la carte),
+    // sinon reprendre / créer par email. Sans ça on peut créer un 2e customer sans PM.
+    let customerId =
+      typeof pi.customer === 'string'
+        ? pi.customer
+        : pi.customer && pi.customer.id
+          ? pi.customer.id
+          : '';
+    if (!customerId) {
+      const existingCustomers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (existingCustomers.data && existingCustomers.data.length > 0) {
+        customerId = existingCustomers.data[0].id;
+      } else {
+        const created = await stripe.customers.create({ email: user.email });
+        customerId = created.id;
       }
-      await stripe.customers.update(customer.id, {
-        invoice_settings: { default_payment_method: pi.payment_method }
-      });
+    } else {
+      try {
+        await stripe.customers.update(customerId, { email: user.email });
+      } catch (_) {
+        /* ignore */
+      }
     }
 
-    // Crée l’abonnement mensuel avec trial jusqu’au lendemain
-    const subscription = await stripe.subscriptions.create({
-      customer: customer.id,
+    // Moyen de paiement du 1€ — obligatoire pour le prélèvement mensuel off-session
+    let paymentMethodId =
+      typeof pi.payment_method === 'string'
+        ? pi.payment_method
+        : pi.payment_method && pi.payment_method.id
+          ? pi.payment_method.id
+          : '';
+    if (!paymentMethodId) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 });
+        const sess = sessions.data[0];
+        if (sess && sess.payment_method) {
+          paymentMethodId =
+            typeof sess.payment_method === 'string' ? sess.payment_method : sess.payment_method.id;
+        }
+        if (!customerId && sess && sess.customer) {
+          customerId = typeof sess.customer === 'string' ? sess.customer : sess.customer.id;
+        }
+      } catch (e) {
+        console.warn('subscription_initial: lookup session PM', e.message);
+      }
+    }
+
+    if (paymentMethodId) {
+      try {
+        await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+      } catch (e) {
+        // Déjà attaché au même customer = OK ; autre customer = on log
+        if (e && e.code !== 'resource_already_exists') {
+          console.warn('subscription_initial: attach PM', paymentMethodId, e.message);
+        }
+      }
+      try {
+        await stripe.customers.update(customerId, {
+          invoice_settings: { default_payment_method: paymentMethodId }
+        });
+      } catch (e) {
+        console.warn('subscription_initial: default PM customer', e.message);
+      }
+    } else {
+      console.error(
+        'subscription_initial: aucun payment_method sur',
+        pi.id,
+        '— le mensuel ne pourra pas être prélevé'
+      );
+    }
+
+    // Trial ~24h (trial_period_days = jours calendaires Stripe ; on ancre à maintenant + N*24h)
+    const trialSeconds = Math.max(0, trialDays) * 24 * 60 * 60;
+    const trialEnd =
+      trialSeconds > 0 ? Math.floor(Date.now() / 1000) + trialSeconds : undefined;
+
+    const subPayload = {
+      customer: customerId,
       items: [{ price: subscriptionMonthlyPriceId, quantity: 1 }],
-      trial_period_days: Math.max(0, trialDays),
-      payment_behavior: 'default_incomplete',
+      // Ne pas utiliser default_incomplete : à la fin du trial Stripe doit encaisser
+      // automatiquement avec le PM enregistré (off_session), pas laisser l’abo « incomplete ».
+      payment_behavior: 'error_if_incomplete',
+      payment_settings: {
+        save_default_payment_method: 'on_subscription',
+        payment_method_types: ['card']
+      },
       metadata: {
         purpose: 'subscription_monthly_credits',
         userId: String(userId),
         creditsPerCycle: String(creditsPerCycle)
-      },
-    });
+      }
+    };
+    if (paymentMethodId) {
+      subPayload.default_payment_method = paymentMethodId;
+    }
+    if (trialEnd) {
+      subPayload.trial_end = trialEnd;
+    }
+
+    let subscription;
+    try {
+      subscription = await stripe.subscriptions.create(subPayload);
+    } catch (e) {
+      // Fallback si error_if_incomplete refuse (ex. SCA edge) : créer en allow_incomplete
+      // mais avec default_payment_method pour que le renouvellement parte quand même.
+      console.warn('subscription_initial: create retry allow_incomplete', e.message);
+      subPayload.payment_behavior = 'allow_incomplete';
+      subscription = await stripe.subscriptions.create(subPayload);
+    }
+
+    if (!paymentMethodId) {
+      console.error('subscription_initial: abo créé sans PM', subscription.id);
+    } else {
+      console.log(
+        'subscription_initial: abo',
+        subscription.id,
+        'status=',
+        subscription.status,
+        'trial_end=',
+        subscription.trial_end,
+        'pm=',
+        paymentMethodId
+      );
+    }
 
     // Reset crédits = 7 au moment de l’essai (et on journalise)
     try {
@@ -505,15 +598,30 @@ async function handleSubscriptionInvoicePayment(invoice) {
   if (!stripe) return true;
 
   if (!invoice) return true;
-  const paymentIntentId = invoice.payment_intent && invoice.payment_intent.id ? invoice.payment_intent.id : invoice.payment_intent;
-  if (!paymentIntentId) return true;
+
+  // Ignorer les factures d’essai à 0 € (pas de renouvellement)
+  const amountPaid = typeof invoice.amount_paid === 'number' ? invoice.amount_paid : 0;
+  if (amountPaid <= 0) return true;
+
+  const paymentIntentId =
+    invoice.payment_intent && invoice.payment_intent.id
+      ? invoice.payment_intent.id
+      : invoice.payment_intent;
+  // Clé d’idempotence : PI si présent, sinon invoice_… (certains flux n’exposent pas le PI)
+  const idemKey = paymentIntentId || ('inv_' + String(invoice.id || ''));
+  if (!idemKey || idemKey === 'inv_') return true;
 
   const dup = await prisma.creditTransaction.findUnique({
-    where: { stripePaymentIntentId: paymentIntentId }
+    where: { stripePaymentIntentId: idemKey }
   });
   if (dup) return true;
 
-  const subscriptionId = invoice.subscription;
+  const subscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription && invoice.subscription.id
+        ? invoice.subscription.id
+        : '';
   if (!subscriptionId) return true;
 
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
@@ -528,7 +636,7 @@ async function handleSubscriptionInvoicePayment(invoice) {
     await prisma.$transaction(async (tx) => {
       // Double-check idempotence pendant les rejouements webhook
       const dup2 = await tx.creditTransaction.findUnique({
-        where: { stripePaymentIntentId: paymentIntentId }
+        where: { stripePaymentIntentId: idemKey }
       });
       if (dup2) return;
 
@@ -550,10 +658,11 @@ async function handleSubscriptionInvoicePayment(invoice) {
           userId,
           delta,
           reason: 'subscription_cycle_reset',
-          stripePaymentIntentId: paymentIntentId,
+          stripePaymentIntentId: idemKey,
           meta: JSON.stringify({
             subscriptionId: sub.id,
-            invoiceId: invoice.id
+            invoiceId: invoice.id,
+            amountPaid
           })
         }
       });
@@ -2546,6 +2655,8 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
     allow_promotion_codes: true,
     line_items: [{ price: initialPriceId, quantity: 1 }],
     payment_intent_data: {
+      /** SCA UE : carte réutilisable pour le prélèvement mensuel off-session à J+1. */
+      setup_future_usage: 'off_session',
       metadata: piMeta
     },
     success_url:
@@ -2553,11 +2664,26 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
     cancel_url: base + '/checkout.html',
     metadata: {
       app: 'carvinguard',
-      carvinguard_plan: 'abonnement'
+      carvinguard_plan: 'abonnement',
+      purpose: 'subscription_initial'
     }
   };
   if (user && user.email) {
-    sessionPayload.customer_email = user.email;
+    try {
+      const existingCustomers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (existingCustomers.data && existingCustomers.data.length > 0) {
+        sessionPayload.customer = existingCustomers.data[0].id;
+      } else {
+        sessionPayload.customer_email = user.email;
+        sessionPayload.customer_creation = 'always';
+      }
+    } catch (_) {
+      sessionPayload.customer_email = user.email;
+      sessionPayload.customer_creation = 'always';
+    }
+  } else {
+    // Invité : Stripe doit créer un Customer pour attacher la carte (setup_future_usage).
+    sessionPayload.customer_creation = 'always';
   }
 
   try {
@@ -2977,12 +3103,27 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
       metadata.trialDays = String(p.trialDays);
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    const piCreate = {
       amount: amountCents,
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
       metadata
-    });
+    };
+    // Abonnement : enregistrer la carte pour le prélèvement mensuel off-session (SCA UE).
+    if (p.type === 'subscription_initial') {
+      piCreate.setup_future_usage = 'off_session';
+      try {
+        const existingCustomers = await stripe.customers.list({ email: user.email, limit: 1 });
+        const customer =
+          existingCustomers.data && existingCustomers.data.length > 0
+            ? existingCustomers.data[0]
+            : await stripe.customers.create({ email: user.email });
+        piCreate.customer = customer.id;
+      } catch (e) {
+        console.warn('create-credit-purchase-intent: customer', e.message);
+      }
+    }
+    const paymentIntent = await stripe.paymentIntents.create(piCreate);
     return res.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id
