@@ -13,15 +13,11 @@
  *    puis `BLOG_TEST_MAIL_FROM=…` + domaine vérifié.
  *
  * Usage : npm run blog:test-email -- destinataire@email.com
- * Option : `GROQ_MODEL=...` si tu veux forcer un autre modèle.
+ * Option : `GROQ_MODEL=...` si tu veux forcer un autre modèle
+ * (défaut dans lib/blog.js : openai/gpt-oss-120b, successeur de llama-3.3-70b-versatile).
  */
 require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
-
-// Modèle Groq : le 8b a un plafond TPM trop bas pour notre gros prompt JSON ; défaut = 70B.
-if (!process.env.GROQ_MODEL) {
-  process.env.GROQ_MODEL = 'llama-3.3-70b-versatile';
-}
 
 // Expéditeur : par défaut uniquement l’adresse test Resend (sinon un MAIL_FROM @carvinguard.fr
 // non vérifié dans .env.local fait échouer l’envoi). Pour tester ton domaine vérifié :

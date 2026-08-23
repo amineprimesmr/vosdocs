@@ -38,6 +38,7 @@ node scripts/seed-blog-db.js
 |------------------|-------------------------------------------------------------|
 | `DATABASE_URL`   | Neon ou Supabase → connection string PostgreSQL             |
 | `GROQ_API_KEY`   | [console.groq.com](https://console.groq.com) → API Keys      |
+| `GROQ_MODEL`     | Optionnel. Défaut `openai/gpt-oss-120b` (remplace `llama-3.3-70b-versatile`, retiré le 16/08/2026). |
 | `CRON_SECRET`    | Générer : `openssl rand -hex 32`                            |
 | `MERCHANT_EMAIL` | Adresse qui reçoit les 2 propositions (ex. infos.carvinguard@gmail.com) |
 | `BASE_URL`       | URL du site (ex. https://www.carvinguard.fr)                    |
