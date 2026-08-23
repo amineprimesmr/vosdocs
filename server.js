@@ -3220,10 +3220,28 @@ app.get('/api/blog/posts', async (req, res) => {
     res.send(html || '<p>Module de rendu indisponible.</p>');
   });
 
+  const staticBlogArticle = (slug) => {
+    const safe = String(slug || '');
+    if (!/^[a-z0-9-]+$/i.test(safe)) return null;
+    const file = path.join(__dirname, 'public', 'blog', safe + '.html');
+    return fs.existsSync(file) ? file : null;
+  };
+  const staticBlogIndex = () => {
+    const file = path.join(__dirname, 'public', 'blog', 'index.html');
+    return fs.existsSync(file) ? file : null;
+  };
+
   const serveBlogIndex = async (req, res) => {
-    if (!blogLib || !blogRender) return res.redirect(302, '/blog/index.html');
+    const fallback = staticBlogIndex();
+    if (!blogLib || !blogRender) {
+      if (fallback) return res.sendFile(fallback);
+      return res.redirect(302, '/blog/index.html');
+    }
     try {
       const posts = await blogLib.getBlogPosts();
+      if (!posts || posts.length === 0) {
+        if (fallback) return res.sendFile(fallback);
+      }
       const config = getBlogConfig();
       const html = blogRender ? blogRender.renderBlogIndex(config, posts) : '';
       res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -3231,6 +3249,7 @@ app.get('/api/blog/posts', async (req, res) => {
       res.send(html || '<p>Aucun article.</p>');
     } catch (e) {
       console.error('Blog index:', e);
+      if (fallback) return res.sendFile(fallback);
       res.status(500).send('Erreur chargement du blog.');
     }
   };
@@ -3239,10 +3258,17 @@ app.get('/api/blog/posts', async (req, res) => {
 
   app.get('/blog/:slug', async (req, res, next) => {
     if (req.params.slug === 'index.html' || req.params.slug === 'published') return next();
-    if (!blogLib || !blogRender) return next();
+    const fallback = staticBlogArticle(req.params.slug);
+    if (!blogLib || !blogRender) {
+      if (fallback) return res.sendFile(fallback);
+      return next();
+    }
     try {
       const post = await blogLib.getBlogPostBySlug(req.params.slug);
-      if (!post) return next();
+      if (!post) {
+        if (fallback) return res.sendFile(fallback);
+        return next();
+      }
       const posts = await blogLib.getBlogPosts();
       const config = getBlogConfig();
       const html = blogRender ? blogRender.renderBlogArticle(config, post, posts) : '';
@@ -3250,18 +3276,27 @@ app.get('/api/blog/posts', async (req, res) => {
       res.send(html);
     } catch (e) {
       console.error('Blog article:', e);
+      if (fallback) return res.sendFile(fallback);
       res.status(500).send('Erreur.');
     }
   });
 
   // Compatibilité ancienne URL /blog/mon-article.html
   app.get('/blog/:slug.html', async (req, res, next) => {
-    if (!blogLib) return next();
+    const fallback = staticBlogArticle(req.params.slug);
+    if (!blogLib) {
+      if (fallback) return res.sendFile(fallback);
+      return next();
+    }
     try {
       const post = await blogLib.getBlogPostBySlug(req.params.slug);
-      if (!post) return next();
+      if (!post) {
+        if (fallback) return res.sendFile(fallback);
+        return next();
+      }
       return res.redirect(301, '/blog/' + encodeURIComponent(req.params.slug));
     } catch (e) {
+      if (fallback) return res.sendFile(fallback);
       return next();
     }
   });
