@@ -25,5 +25,13 @@
       "path": "/api/cron/generate-articles",
       "schedule": "0 9 */3 * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/cron/generate-articles.js": {
+      "maxDuration": 60
+    },
+    "server.js": {
+      "maxDuration": 60
+    }
+  }
 }
