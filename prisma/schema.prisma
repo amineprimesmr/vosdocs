@@ -63,6 +63,7 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
   credits      Int      @default(0)
+  subscriptionCredits Int @default(0) @map("subscription_credits")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -105,4 +106,21 @@ model VinOrder {
   createdAt             DateTime  @default(now()) @map("created_at")
 
   @@map("vin_orders")
+}
+
+model EmailDelivery {
+  id String @id
+  payload Json
+  sentAt DateTime? @map("sent_at")
+  attempts Int @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("email_deliveries")
+}
+
+model RequestLimit {
+  id String @id
+  hits Int @default(1)
+  expiresAt DateTime @map("expires_at")
+  @@index([expiresAt])
+  @@map("request_limits")
 }

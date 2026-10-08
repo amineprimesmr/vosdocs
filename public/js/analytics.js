@@ -4,6 +4,8 @@
  * dans ce fichier uniquement, puis déploie le site.
  */
 (function () {
+  // Account and report URLs can contain private activation/payment tokens.
+  if (/\/(compte|confirmation|mon-rapport|rapport)(\.html)?\/?$/.test(window.location.pathname) || window.location.search) return;
   var GA_MEASUREMENT_ID = 'G-VL0J44Y6GG';
   if (!GA_MEASUREMENT_ID || GA_MEASUREMENT_ID === 'G-XXXXXXXXXX') return;
 

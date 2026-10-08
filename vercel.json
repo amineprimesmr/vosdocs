@@ -1,25 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "redirects": [
-    { "source": "/index.html", "destination": "/", "permanent": true },
-    { "source": "/blog/index.html", "destination": "/blog", "permanent": true },
-    { "source": "/blog/:slug.html", "destination": "/blog/:slug", "permanent": true },
-    { "source": "/certificat-non-gage-obligatoire.html", "destination": "/guide-rapport-vin-achat.html", "permanent": true },
-    { "source": "/validite-certificat-non-gage.html", "destination": "/guide-fraicheur-donnees-vin.html", "permanent": true },
-    { "source": "/difference-carte-grise-certificat-non-gage.html", "destination": "/guide-carte-grise-vs-rapport-vin.html", "permanent": true },
-    { "source": "/verifier-vehicule-non-gage.html", "destination": "/guide-verifier-historique-vin.html", "permanent": true },
-    { "source": "/blog/validite-15-jours-certificat-non-gage", "destination": "/blog/fraicheur-donnees-rapport-vin", "permanent": true },
-    { "source": "/blog/validite-15-jours-certificat-non-gage.html", "destination": "/blog/fraicheur-donnees-rapport-vin", "permanent": true },
-    { "source": "/blog/certificat-non-gage-vente-obligatoire", "destination": "/blog/rapport-vin-et-cession-vehicule", "permanent": true },
-    { "source": "/blog/certificat-non-gage-vente-obligatoire.html", "destination": "/blog/rapport-vin-et-cession-vehicule", "permanent": true },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap", "permanent": false }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server.js" },
-    { "source": "/blog", "destination": "/server.js" },
-    { "source": "/blog/(.*)", "destination": "/server.js" },
-    { "source": "/sitemap.xml", "destination": "/server.js" }
-  ],
   "crons": [
     {
       "path": "/api/cron/generate-articles",
@@ -27,11 +7,147 @@
     }
   ],
   "functions": {
+    "api/router.js": {
+      "maxDuration": 60
+    },
     "api/cron/generate-articles.js": {
       "maxDuration": 60
     },
     "server.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "^/ma$",
+      "headers": {
+        "Location": "/ma/"
+      },
+      "status": 307
+    },
+    {
+      "src": "^/ma/$",
+      "dest": "/ma/index.html",
+      "headers": {
+        "X-Robots-Tag": "noindex, follow"
+      }
+    },
+    {
+      "src": "^/index\\.html$",
+      "headers": {
+        "Location": "/"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/blog/index\\.html$",
+      "headers": {
+        "Location": "/blog"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/blog(?:/([^/]+?))\\.html$",
+      "headers": {
+        "Location": "/blog/$1"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/certificat-non-gage-obligatoire\\.html$",
+      "headers": {
+        "Location": "/guide-rapport-vin-achat.html"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/validite-certificat-non-gage\\.html$",
+      "headers": {
+        "Location": "/guide-fraicheur-donnees-vin.html"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/difference-carte-grise-certificat-non-gage\\.html$",
+      "headers": {
+        "Location": "/guide-carte-grise-vs-rapport-vin.html"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/verifier-vehicule-non-gage\\.html$",
+      "headers": {
+        "Location": "/guide-verifier-historique-vin.html"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/blog/validite-15-jours-certificat-non-gage$",
+      "headers": {
+        "Location": "/blog/fraicheur-donnees-rapport-vin"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/blog/validite-15-jours-certificat-non-gage\\.html$",
+      "headers": {
+        "Location": "/blog/fraicheur-donnees-rapport-vin"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/blog/certificat-non-gage-vente-obligatoire$",
+      "headers": {
+        "Location": "/blog/rapport-vin-et-cession-vehicule"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/blog/certificat-non-gage-vente-obligatoire\\.html$",
+      "headers": {
+        "Location": "/blog/rapport-vin-et-cession-vehicule"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/sitemap\\.xml$",
+      "headers": {
+        "Location": "/api/sitemap"
+      },
+      "status": 307
+    },
+    {
+      "src": "^(?:/(.*))$",
+      "headers": {
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/api(?:/(.*))$",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/api/sitemap$",
+      "dest": "/api/sitemap"
+    },
+    {
+      "src": "^/api/(.*)$",
+      "dest": "/api/router",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/api/$1"
+        }
+      ]
+    },
+    {
+      "handle": "filesystem"
+    }
+  ]
 }

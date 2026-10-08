@@ -5,6 +5,7 @@
 const { sendTeamOrderEmail } = require('../lib/order-emails');
 
 module.exports = async (req, res) => {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return res.status(404).end();
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Méthode non autorisée' });

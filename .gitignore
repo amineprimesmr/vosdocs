@@ -11,6 +11,7 @@ data/commandes.json
 
 # Node
 node_modules/
+tmp/
 
 # Logs
 *.log

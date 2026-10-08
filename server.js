@@ -5,7 +5,6 @@
 
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -27,8 +26,23 @@ const {
 } = require('./lib/vehicledatabases-client');
 const { apiResponseToVehicleData } = require('./lib/vin-decode-core');
 const { getBlogConfig } = require('./lib/blog-config');
+const { trustedOrigin } = require('./lib/public-origin');
+const wallet = require('./lib/wallet');
+const {allowRequest} = require('./lib/rate-limit');
+const {queuePurchaseEmail,retryPurchaseEmail} = require('./lib/email-delivery');
+const purchaseEmailSenders = {invite:sendAccountInviteEmail,wallet:sendWalletCreditsEmail};
+const { ensureSubscription } = require('./lib/subscription-create');
+const {ownedSubscriptions,cancelOwnedSubscription} = require('./lib/subscriptions');
 
 const app = express();
+// Express 4 does not forward rejected async handlers to its error middleware.
+for (const method of ['get','post']) {
+  const register=app[method].bind(app);
+  app[method]=(route,...handlers)=>register(route,...handlers.map(handler=>
+    handler.constructor.name==='AsyncFunction'
+      ? (req,res,next)=>Promise.resolve(handler(req,res,next)).catch(next)
+      : handler));
+}
 const PORT = process.env.PORT || 3000;
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
@@ -37,7 +51,21 @@ function isOpenRegistrationAllowed() {
   return String(process.env.REGISTRATION_OPEN || '').toLowerCase() === 'true';
 }
 
-app.use(cors({ origin: true, credentials: true }));
+app.disable('x-powered-by');
+// Explicit Moroccan API namespace; never inferred from an untrusted header.
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/ma/')) {
+    req.market = 'MA';
+    req.url = '/api/' + req.url.slice('/api/ma/'.length);
+  }
+  next();
+});
+app.use((req, res, next) => {
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 // Webhook Stripe doit recevoir le body brut AVANT express.json()
 const ORDERS_FILE = path.join(__dirname, 'data', 'commandes.json');
 
@@ -288,7 +316,7 @@ async function handleStripeCreditPurchase(pi) {
         });
       });
     } catch (e) {
-      console.error('Webhook crédits:', e);
+      if (e.code !== 'P2002') throw e;
     }
     return true;
   }
@@ -338,7 +366,7 @@ async function handleStripeCreditPurchase(pi) {
       if (existingCustomers.data && existingCustomers.data.length > 0) {
         customerId = existingCustomers.data[0].id;
       } else {
-        const created = await stripe.customers.create({ email: user.email });
+        const created = await stripe.customers.create({ email: user.email }, {idempotencyKey:'carvinguard-customer-'+userId});
         customerId = created.id;
       }
     } else {
@@ -396,97 +424,13 @@ async function handleStripeCreditPurchase(pi) {
       );
     }
 
-    // Trial ~24h (trial_period_days = jours calendaires Stripe ; on ancre à maintenant + N*24h)
-    const trialSeconds = Math.max(0, trialDays) * 24 * 60 * 60;
-    const trialEnd =
-      trialSeconds > 0 ? Math.floor(Date.now() / 1000) + trialSeconds : undefined;
+    const subscription = await ensureSubscription(stripe, pi, {
+      customerId, paymentMethodId, priceId:subscriptionMonthlyPriceId,
+      userId, creditsPerCycle, trialDays
+    });
 
-    const subPayload = {
-      customer: customerId,
-      items: [{ price: subscriptionMonthlyPriceId, quantity: 1 }],
-      // Ne pas utiliser default_incomplete : à la fin du trial Stripe doit encaisser
-      // automatiquement avec le PM enregistré (off_session), pas laisser l’abo « incomplete ».
-      payment_behavior: 'error_if_incomplete',
-      payment_settings: {
-        save_default_payment_method: 'on_subscription',
-        payment_method_types: ['card']
-      },
-      metadata: {
-        purpose: 'subscription_monthly_credits',
-        userId: String(userId),
-        creditsPerCycle: String(creditsPerCycle)
-      }
-    };
-    if (paymentMethodId) {
-      subPayload.default_payment_method = paymentMethodId;
-    }
-    if (trialEnd) {
-      subPayload.trial_end = trialEnd;
-    }
-
-    let subscription;
-    try {
-      subscription = await stripe.subscriptions.create(subPayload);
-    } catch (e) {
-      // Fallback si error_if_incomplete refuse (ex. SCA edge) : créer en allow_incomplete
-      // mais avec default_payment_method pour que le renouvellement parte quand même.
-      console.warn('subscription_initial: create retry allow_incomplete', e.message);
-      subPayload.payment_behavior = 'allow_incomplete';
-      subscription = await stripe.subscriptions.create(subPayload);
-    }
-
-    if (!paymentMethodId) {
-      console.error('subscription_initial: abo créé sans PM', subscription.id);
-    } else {
-      console.log(
-        'subscription_initial: abo',
-        subscription.id,
-        'status=',
-        subscription.status,
-        'trial_end=',
-        subscription.trial_end,
-        'pm=',
-        paymentMethodId
-      );
-    }
-
-    // Reset crédits = 7 au moment de l’essai (et on journalise)
-    try {
-      await prisma.$transaction(async (tx) => {
-        const current = await tx.user.findUnique({
-          where: { id: userId },
-          select: { credits: true }
-        });
-        if (!current) return;
-
-        // Double-check idempotence au cas où le webhook rejoue pendant la création abonnement
-        const dup2 = await tx.creditTransaction.findUnique({
-          where: { stripePaymentIntentId: pi.id }
-        });
-        if (dup2) return;
-
-        const delta = creditsPerCycle - (current.credits || 0);
-
-        await tx.user.update({
-          where: { id: userId },
-          data: { credits: creditsPerCycle }
-        });
-
-        await tx.creditTransaction.create({
-          data: {
-            userId,
-            delta,
-            reason: 'subscription_initial_grant',
-            stripePaymentIntentId: pi.id,
-            meta: JSON.stringify({
-              subscriptionId: subscription.id
-            })
-          }
-        });
-      });
-    } catch (e) {
-      console.error('subscription_initial_grant:', e);
-    }
+    await wallet.grantSubscription(prisma, userId, creditsPerCycle, pi.id,
+      'subscription_initial_grant', {subscriptionId: subscription.id});
 
     return true;
   }
@@ -616,12 +560,11 @@ async function handleSubscriptionInvoicePayment(invoice) {
   });
   if (dup) return true;
 
-  const subscriptionId =
-    typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : invoice.subscription && invoice.subscription.id
-        ? invoice.subscription.id
-        : '';
+  // Stripe Basil places the subscription under parent.subscription_details.
+  const invoiceSubscription = invoice.parent?.type === 'subscription_details'
+    ? invoice.parent.subscription_details?.subscription : invoice.subscription;
+  const subscriptionId = typeof invoiceSubscription === 'string'
+    ? invoiceSubscription : invoiceSubscription?.id || '';
   if (!subscriptionId) return true;
 
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
@@ -632,124 +575,21 @@ async function handleSubscriptionInvoicePayment(invoice) {
   const creditsPerCycle = parseInt(String(md.creditsPerCycle || '7'), 10);
   if (!userId || creditsPerCycle < 1) return true;
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      // Double-check idempotence pendant les rejouements webhook
-      const dup2 = await tx.creditTransaction.findUnique({
-        where: { stripePaymentIntentId: idemKey }
-      });
-      if (dup2) return;
-
-      const current = await tx.user.findUnique({
-        where: { id: userId },
-        select: { credits: true }
-      });
-      if (!current) return;
-
-      const delta = creditsPerCycle - (current.credits || 0);
-
-      await tx.user.update({
-        where: { id: userId },
-        data: { credits: creditsPerCycle }
-      });
-
-      await tx.creditTransaction.create({
-        data: {
-          userId,
-          delta,
-          reason: 'subscription_cycle_reset',
-          stripePaymentIntentId: idemKey,
-          meta: JSON.stringify({
-            subscriptionId: sub.id,
-            invoiceId: invoice.id,
-            amountPaid
-          })
-        }
-      });
-    });
-  } catch (e) {
-    console.error('subscription_cycle_reset:', e);
-  }
+  await wallet.grantSubscription(prisma, userId, creditsPerCycle, idemKey,
+    'subscription_cycle_reset', {subscriptionId: sub.id, invoiceId: invoice.id, amountPaid});
 
   return true;
 }
 
-async function refundVinDecodeCredit(userId, vinMasked) {
+async function refundVinDecodeCredit(userId, vinMasked, transactionId) {
   const prisma = getPrisma();
-  if (!prisma || !userId) return;
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: { credits: { increment: 1 } }
-      });
-      await tx.creditTransaction.create({
-        data: {
-          userId,
-          delta: 1,
-          reason: 'vin_decode_refund',
-          meta: JSON.stringify({ vin: vinMasked })
-        }
-      });
-    });
-  } catch (e) {
-    console.error('Remboursement crédit VIN:', e);
-  }
+  if (prisma && userId) return wallet.refundCredit(prisma, userId, transactionId);
 }
 
 async function debitOneCredit(userId, reason, metaObj) {
   const prisma = getPrisma();
-  if (!prisma || !userId) return { ok: false, credits: 0 };
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const updated = await tx.user.updateMany({
-        where: { id: userId, credits: { gte: 1 } },
-        data: { credits: { decrement: 1 } }
-      });
-      if (updated.count === 0) {
-        const u = await tx.user.findUnique({
-          where: { id: userId },
-          select: { credits: true }
-        });
-        return { ok: false, credits: u != null ? u.credits : 0 };
-      }
-      await tx.creditTransaction.create({
-        data: {
-          userId,
-          delta: -1,
-          reason,
-          meta: JSON.stringify(metaObj || {})
-        }
-      });
-      return { ok: true };
-    });
-  } catch (e) {
-    console.error('Débit crédit:', e);
-    return { ok: false, credits: 0 };
-  }
-}
-
-async function refundOneCredit(userId, reason, metaObj) {
-  const prisma = getPrisma();
-  if (!prisma || !userId) return;
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: { credits: { increment: 1 } }
-      });
-      await tx.creditTransaction.create({
-        data: {
-          userId,
-          delta: 1,
-          reason,
-          meta: JSON.stringify(metaObj || {})
-        }
-      });
-    });
-  } catch (e) {
-    console.error('Remboursement crédit:', e);
-  }
+  if (!prisma || !userId) return {ok:false,credits:0};
+  return wallet.chargeCredit(prisma, userId, reason, metaObj);
 }
 
 const MAX_VIN_FULL_REPORT_SNAPSHOT = 380000;
@@ -1036,19 +876,7 @@ function fetchTimeoutSignal(ms) {
  * Dernier recours page d'accueil (?preview=1) : VIN au format ISO valide mais APIs indispo ou VIN EU peu couvert.
  */
 function previewPartialVinJson() {
-  return {
-    status: 'success',
-    data: {
-      make: '',
-      model: '',
-      year: '',
-      trim: '',
-      summary:
-        'VIN enregistré. Les informations détaillées (marque, modèle, millésime) seront complétées dans votre rapport après commande.'
-    },
-    access: 'preview',
-    partialDecode: true
-  };
+  return {status:'error',code:'VIN_NOT_IDENTIFIED',message:'Ce VIN n’a pas pu être identifié dans les sources disponibles. Vérifiez le numéro ou réessayez plus tard. La disponibilité d’un historique ne peut pas être garantie.'};
 }
 
 /** Message API Vehicle Databases (souvent en anglais) → texte plus clair côté utilisateur. */
@@ -1282,24 +1110,12 @@ async function handleZeroAmountCarvinguardCreditSession(session) {
     return { handled: true };
   }
 
-  const base = appBaseUrl();
-  void (async () => {
-    try {
-      if (created) {
-        const inviteTok = authLib.signAccountInviteToken(user.id);
-        await sendAccountInviteEmail({
-          to: email,
-          inviteToken: inviteTok,
-          baseUrl: base,
-          credits
-        });
-      } else {
-        await sendWalletCreditsEmail({ to: email, baseUrl: base, credits });
-      }
-    } catch (e) {
-      console.error('Email zero-amount pack:', e.message);
-    }
-  })();
+  const base = trustedOrigin((session.metadata || {}).publicOrigin) || appBaseUrl();
+  await queuePurchaseEmail(prisma, session.id, {
+    kind:created?'invite':'wallet',
+    options:{to:email,baseUrl:base,credits:credits,
+      ...(created?{inviteToken:authLib.signAccountInviteToken(user.id,user.passwordHash)}:{})}
+  },purchaseEmailSenders);
 
   console.log('Pack crédit 0 € (promo) crédité', session.id, user.id, plan, credits);
   return { handled: true };
@@ -1396,8 +1212,8 @@ async function handleCheckoutSessionAccountCredit(session) {
           plan,
           sessionId: session.id
         });
-        const base = appBaseUrl();
-        void (async () => {
+        const base = trustedOrigin((session.metadata || {}).publicOrigin) || appBaseUrl();
+        await (async () => {
           try {
             await sendWalletCreditsEmail({ to: user.email, baseUrl: base, credits });
           } catch (e) {
@@ -1554,25 +1370,12 @@ async function handleCheckoutAutoAccountCredit(session, pi, sm) {
   const piFresh = await stripe.paymentIntents.retrieve(piId);
   await handleStripeCreditPurchase(piFresh);
 
-  /* Ne pas bloquer la réponse HTTP / la réconciliation get-invite : Resend peut prendre plusieurs secondes. */
-  void (async () => {
-    const base = appBaseUrl();
-    try {
-      if (created) {
-        const inviteTok = authLib.signAccountInviteToken(user.id);
-        await sendAccountInviteEmail({
-          to: email,
-          inviteToken: inviteTok,
-          baseUrl: base,
-          credits
-        });
-      } else {
-        await sendWalletCreditsEmail({ to: email, baseUrl: base, credits });
-      }
-    } catch (e) {
-      console.error('Emails wallet auto-compte:', e.message);
-    }
-  })();
+  /* Attendre l'envoi avant la fin de la fonction serverless. */
+  await queuePurchaseEmail(prisma, session.id, {
+    kind:created?'invite':'wallet',
+    options:{to:email,baseUrl:trustedOrigin(pm.publicOrigin) || appBaseUrl(),credits:credits,
+      ...(created?{inviteToken:authLib.signAccountInviteToken(user.id,user.passwordHash)}:{})}
+  },purchaseEmailSenders);
 
   return { handled: true };
 }
@@ -1654,24 +1457,11 @@ async function handleCheckoutAutoSubscriptionInitial(session, pi, sm) {
   const piFresh = await stripe.paymentIntents.retrieve(piId);
   await handleStripeCreditPurchase(piFresh);
 
-  void (async () => {
-    const base = appBaseUrl();
-    try {
-      if (created) {
-        const inviteTok = authLib.signAccountInviteToken(user.id);
-        await sendAccountInviteEmail({
-          to: email,
-          inviteToken: inviteTok,
-          baseUrl: base,
-          credits: creditsPerCycle
-        });
-      } else {
-        await sendWalletCreditsEmail({ to: email, baseUrl: base, credits: creditsPerCycle });
-      }
-    } catch (e) {
-      console.error('Emails abonnement auto-compte:', e.message);
-    }
-  })();
+  await queuePurchaseEmail(prisma, session.id, {
+    kind:created?'invite':'wallet',
+    options:{to:email,baseUrl:trustedOrigin(pm.publicOrigin) || appBaseUrl(),credits:creditsPerCycle,
+      ...(created?{inviteToken:authLib.signAccountInviteToken(user.id,user.passwordHash)}:{})}
+  },purchaseEmailSenders);
 
   return { handled: true };
 }
@@ -1681,7 +1471,15 @@ async function handleCheckoutAutoSubscriptionInitial(session, pi, sm) {
  * On fusionne email + VIN + métadonnées du lien puis on exécute la même finalisation que l’Embedded Checkout.
  */
 async function handleCheckoutSessionCompleted(session) {
+  await handleCheckoutSessionCompletedCore(session);
+  if (session && ['paid','no_payment_required'].includes(session.payment_status)) {
+    await retryPurchaseEmail(getPrisma(),session.id,purchaseEmailSenders);
+  }
+}
+
+async function handleCheckoutSessionCompletedCore(session) {
   if (!stripe || !session) return;
+  if (!['paid', 'no_payment_required'].includes(session.payment_status)) return;
   const accountDone = await handleCheckoutSessionAccountCredit(session);
   if (accountDone) return;
   if (session.mode !== 'payment') return;
@@ -1715,6 +1513,7 @@ async function handleCheckoutSessionCompleted(session) {
       await handleStripeCreditPurchase(pi);
     } catch (e) {
       console.error('handleCheckoutSessionCompleted (credit/sub):', e);
+      throw e;
     }
     return;
   }
@@ -1766,9 +1565,11 @@ async function handleCheckoutSessionCompleted(session) {
     const order = paymentIntentToOrder(pi);
     saveOrder(order);
     try {
-      await fulfillGuestVinOrder(stripe, pi);
+      const result = await fulfillGuestVinOrder(stripe, pi);
+      if (!result.ok) throw new Error(result.error || 'Livraison du rapport incomplète');
     } catch (e) {
       console.error('fulfillGuestVinOrder (checkout.session):', e);
+      throw e;
     }
   }
 }
@@ -1792,6 +1593,7 @@ async function handleStripeWebhookPost(req, res) {
     console.error('Webhook signature invalide:', e.message);
     return res.status(400).send('Signature invalide');
   }
+  try {
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object;
     let skipGuestForAccountLink = false;
@@ -1821,22 +1623,29 @@ async function handleStripeWebhookPost(req, res) {
       const order = paymentIntentToOrder(pi);
       saveOrder(order);
       try {
-        await fulfillGuestVinOrder(stripe, pi);
+        const result = await fulfillGuestVinOrder(stripe, pi);
+        if (!result.ok) throw new Error(result.error || 'Livraison du rapport incomplète');
       } catch (e) {
         console.error('fulfillGuestVinOrder:', e);
+        throw e;
       }
     }
-  } else if (event.type === 'checkout.session.completed') {
+  } else if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     try {
       await handleCheckoutSessionCompleted(event.data.object);
     } catch (e) {
       console.error('checkout.session.completed:', e);
+      throw e;
     }
   } else if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
     const invoice = event.data.object;
     await handleSubscriptionInvoicePayment(invoice);
   }
   res.status(200).send('ok');
+  } catch (e) {
+    console.error('Webhook processing failed:', e.message);
+    return res.status(500).send('Traitement incomplet, nouvelle tentative nécessaire');
+  }
 }
 
 const stripeWebhookRaw = express.raw({ type: 'application/json' });
@@ -1848,7 +1657,7 @@ app.use(express.json());
 
 // Diagnostics de test : désactivés en prod (Vercel ou NODE_ENV)
 const cgProdRuntime =
-  process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+  !!process.env.VERCEL || process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 if (!cgProdRuntime) {
   app.get('/api/email-status', (req, res) => {
     const { getTeamRecipients } = require('./lib/email-recipients');
@@ -2075,9 +1884,11 @@ app.get('/api/rapport/session/:token/pdf', async (req, res) => {
     }
     let vehicleData = {};
     let guestSnapshot = null;
+    let vdBundle = null;
     try {
       const parsed = JSON.parse(row.vehicleDataJson || '{}');
       vehicleData = parsed.vehicleData || {};
+      vdBundle = parsed.vdBundle && typeof parsed.vdBundle === 'object' ? parsed.vdBundle : null;
       if (parsed.vehicleData) {
         guestSnapshot = { vehicleData: parsed.vehicleData, decode: parsed.decode || null };
       }
@@ -2089,7 +1900,7 @@ app.get('/api/rapport/session/:token/pdf', async (req, res) => {
       email: row.email,
       planLabel: row.planLabel || row.planId,
       montantEur
-    }, { guestSnapshot });
+    }, { guestSnapshot, vdBundle });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="rapport-vin-carvinguard.pdf"');
     res.send(pdfBuffer);
@@ -2175,6 +1986,7 @@ app.get('/api/saas-config', async (req, res) => {
 
   const p = getVinDecodeProvider();
   res.json({
+    market: req.market || 'FR',
     vinRequiresAccount: false,
     authAvailable: saaSAuthReady(),
     registrationOpen: saaSAuthReady() && isOpenRegistrationAllowed(),
@@ -2239,6 +2051,7 @@ app.post('/api/auth/login', async (req, res) => {
   const email = authLib.normalizeEmail(req.body && req.body.email);
   const password = (req.body && req.body.password) || '';
   try {
+    if (!await allowRequest(prisma,'login',email,20,900)) return res.status(429).json({error:'Trop de tentatives. Réessayez dans 15 minutes.'});
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await authLib.verifyPassword(password, user.passwordHash))) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
@@ -2269,24 +2082,53 @@ app.post('/api/auth/accept-invite', async (req, res) => {
     });
   }
   try {
+    const current = await prisma.user.findUnique({ where: { id: userId } });
+    if (!current || !authLib.verifyAccountInviteToken(token, current.passwordHash)) {
+      return res.status(400).json({ error: 'Lien expiré ou déjà utilisé. Contactez le support pour un nouveau lien.' });
+    }
     const hash = await authLib.hashPassword(password);
-    await prisma.user.update({
-      where: { id: userId },
+    // La comparaison atomique empêche deux utilisations concurrentes du même lien.
+    const updated = await prisma.user.updateMany({
+      where: { id: userId, passwordHash: current.passwordHash },
       data: { passwordHash: hash }
     });
+    if (updated.count !== 1) {
+      return res.status(400).json({ error: 'Lien déjà utilisé.' });
+    }
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, credits: true }
     });
-    if (!user) {
-      return res.status(404).json({ error: 'Compte introuvable.' });
-    }
     authLib.setAuthCookie(res, authLib.signAuthToken(user.id));
     return res.json({ ok: true, user });
   } catch (e) {
     console.error('accept-invite:', e);
     return res.status(500).json({ error: 'Erreur serveur.' });
   }
+});
+
+// Demande explicite depuis le formulaire : seul le propriétaire de la boîte
+// reçoit un lien. L’API ne révèle ni l’existence du compte ni le jeton.
+app.post('/api/auth/request-access', async (req, res) => {
+  if (!saaSAuthReady()) return res.status(503).json({ error: 'Service indisponible.' });
+  const email = authLib.normalizeEmail(req.body && req.body.email);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    return res.status(400).json({ error: 'Adresse email invalide.' });
+  }
+  const message = 'Si un compte correspond à cette adresse, un lien vous sera envoyé. Vérifiez aussi les indésirables.';
+  try {
+    if (!await allowRequest(getPrisma(),'account-access',email,1,60)) return res.status(202).json({message});
+    const user = await getPrisma().user.findUnique({ where: { email } });
+    if (user) {
+      const inviteToken = authLib.signAccountInviteToken(user.id, user.passwordHash, '30m');
+      const result = await sendAccountInviteEmail({
+        to: user.email, inviteToken, baseUrl: appBaseUrl(req), credits: user.credits, recovery: true,
+        idempotencyKey: 'access-' + crypto.createHash('sha256').update(inviteToken).digest('hex')
+      });
+      if (!result.sent) console.error('Account access email unavailable');
+    }
+  } catch (_) { console.error('Account access request failed'); }
+  return res.status(202).json({ message });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -2585,12 +2427,38 @@ app.get('/api/auth/me', async (req, res) => {
  * — Client connecté : email + userId sur le PaymentIntent.
  * — Invité : paiement d’abord, création de compte dans le webhook (pas de compte avant Stripe).
  */
+app.get('/api/billing/subscriptions', async (req,res) => {
+  const userId=authLib.getUserIdFromCookies(req);
+  if(!userId)return res.status(401).json({error:'Connexion requise.'});
+  if(!stripe || !getPrisma())return res.status(503).json({error:'Service indisponible.'});
+  try {
+    const user=await getPrisma().user.findUnique({where:{id:userId}});
+    if(!user)return res.status(401).json({error:'Connexion requise.'});
+    return res.json({subscriptions:await ownedSubscriptions(stripe,user)});
+  }catch(e){console.error('Subscription list failed:',e.message);return res.status(502).json({error:'Impossible de charger les abonnements.'});}
+});
+
+app.post('/api/billing/cancel-subscription', async (req,res) => {
+  const userId=authLib.getUserIdFromCookies(req);
+  if(!userId)return res.status(401).json({error:'Connexion requise.'});
+  if(!stripe)return res.status(503).json({error:'Service indisponible.'});
+  const id=String(req.body?.subscriptionId || '');
+  if(!/^sub_[a-zA-Z0-9]+$/.test(id))return res.status(400).json({error:'Abonnement invalide.'});
+  if(req.headers.origin && req.headers.origin !== new URL(appBaseUrl(req)).origin)return res.status(403).json({error:'Origine refusée.'});
+  try {
+    const sub=await cancelOwnedSubscription(stripe,userId,id);
+    if(!sub)return res.status(404).json({error:'Abonnement introuvable.'});
+    return res.json({ok:true,cancelAtPeriodEnd:sub.cancel_at_period_end,status:sub.status});
+  }catch(e){console.error('Subscription cancellation failed:',e.message);return res.status(502).json({error:'Résiliation indisponible. Réessayez ou contactez-nous.'});}
+});
+
 app.get('/api/billing/subscribe-checkout', async (req, res) => {
   if (!stripe) {
     return res.status(500).send('Stripe non configuré.');
   }
+  if (!saaSAuthReady()) return res.status(503).send('Le paiement est temporairement indisponible. Réessayez plus tard.');
   const userId = authLib.getUserIdFromCookies(req);
-  const base = appBaseUrl();
+  const base = appBaseUrl(req);
   const prisma = getPrisma();
 
   let user = null;
@@ -2641,6 +2509,7 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
 
   const piMeta = {
     purpose: 'subscription_initial',
+    publicOrigin: base,
     creditsPerCycle: String(creditsPerCycle),
     subscriptionMonthlyPriceId,
     trialDays: String(trialDays)
@@ -2664,6 +2533,7 @@ app.get('/api/billing/subscribe-checkout', async (req, res) => {
     cancel_url: base + '/checkout.html',
     metadata: {
       app: 'carvinguard',
+      publicOrigin: base,
       carvinguard_plan: 'abonnement',
       purpose: 'subscription_initial'
     }
@@ -2733,8 +2603,9 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
     return res.status(400).send('Formule inconnue ou montant invalide.');
   }
 
+  if (!saaSAuthReady()) return res.status(503).send('Le paiement est temporairement indisponible. Réessayez plus tard.');
   const userId = authLib.getUserIdFromCookies(req);
-  const base = appBaseUrl();
+  const base = appBaseUrl(req);
 
   const cat = await resolveCarvinguardStripeCatalog(stripe);
 
@@ -2746,11 +2617,13 @@ app.get('/api/billing/credit-checkout', async (req, res) => {
     line_items: creditPackCheckoutLineItems(planKey, plan, cat.credit[planKey]),
     metadata: {
       app: 'carvinguard',
+      publicOrigin: base,
       carvinguard_plan: planKey
     },
     payment_intent_data: {
       metadata: {
         purpose: 'credit_purchase',
+        publicOrigin: base,
         credits: String(plan.credits),
         packId: plan.packId,
         carvinguard_plan: planKey
@@ -2927,6 +2800,10 @@ app.get('/api/billing/get-invite', async (req, res) => {
       expand: ['payment_intent']
     });
 
+    if (session.mode !== 'payment' || !['paid', 'no_payment_required'].includes(session.payment_status)) {
+      return res.status(400).json({ ready: false, reason: 'unpaid', error: 'Paiement non confirmé.' });
+    }
+
     const piObj =
       session.payment_intent && typeof session.payment_intent === 'object'
         ? session.payment_intent
@@ -2993,8 +2870,9 @@ app.get('/api/billing/get-invite', async (req, res) => {
       return res.json({ email, ready: false, reason: 'pending' });
     }
 
-    const invToken = authLib.signAccountInviteToken(user.id);
-    return res.json({ email, ready: true, inviteToken: invToken });
+    // L’ID Checkout ne prouve pas la possession de l’adresse email : ne jamais
+    // l’échanger contre un jeton permettant de remplacer un mot de passe.
+    return res.json({ ready: false, reason: 'email_link_required' });
   } catch (e) {
     console.error('get-invite:', e);
     const msg = e && e.message ? String(e.message) : '';
@@ -3117,7 +2995,7 @@ app.post('/api/create-credit-purchase-intent', async (req, res) => {
         const customer =
           existingCustomers.data && existingCustomers.data.length > 0
             ? existingCustomers.data[0]
-            : await stripe.customers.create({ email: user.email });
+            : await stripe.customers.create({ email: user.email }, {idempotencyKey:'carvinguard-customer-'+userId});
         piCreate.customer = customer.id;
       } catch (e) {
         console.warn('create-credit-purchase-intent: customer', e.message);
@@ -3150,12 +3028,10 @@ const blogRender = (function () {
   }
 })();
 
-// CRON : génération de 2 articles (protégé par CRON_SECRET ou en-tête Vercel Cron)
+// CRON : génération de 2 articles, protégée par CRON_SECRET.
 app.get('/api/cron/generate-articles', async (req, res) => {
   const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const secret = bearer || req.query.secret;
-  const fromVercelCron = req.headers['x-vercel-cron'] === '1';
-  if (process.env.CRON_SECRET && !fromVercelCron && secret !== process.env.CRON_SECRET) {
+  if (!process.env.CRON_SECRET || bearer !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
   if (!blogLib) {
@@ -3393,6 +3269,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
 
   const requireAccountForVin = !!(prisma && provider) && !isPreview;
   let userId = null;
+  let vinCtxId = null;
 
   if (requireAccountForVin) {
     const tokenUserId = authLib.getUserIdFromCookies(req);
@@ -3404,30 +3281,8 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       });
     }
     userId = tokenUserId;
-    let vinCtxId = null;
     try {
-      const charged = await prisma.$transaction(async (tx) => {
-        const updated = await tx.user.updateMany({
-          where: { id: userId, credits: { gte: 1 } },
-          data: { credits: { decrement: 1 } }
-        });
-        if (updated.count === 0) {
-          const u = await tx.user.findUnique({
-            where: { id: userId },
-            select: { credits: true }
-          });
-          return { ok: false, credits: u ? u.credits : 0 };
-        }
-        const ct = await tx.creditTransaction.create({
-          data: {
-            userId,
-            delta: -1,
-            reason: 'vin_decode',
-            meta: JSON.stringify({ vin })
-          }
-        });
-        return { ok: true, ctxId: ct.id };
-      });
+      const charged = await wallet.chargeCredit(prisma, userId, 'vin_decode', {vin});
       if (!charged.ok) {
         return res.status(402).json({
           status: 'error',
@@ -3451,7 +3306,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       return res.json(out);
     }
     if (isPreview) {
-      return res.json(previewPartialVinJson());
+      return res.status(503).json(previewPartialVinJson());
     }
     return res.status(503).json({
       status: 'error',
@@ -3479,17 +3334,17 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
           // Enrich creditTransaction with vehicle data for history
           if (vinCtxId && prisma && norm.json && norm.json.data) {
             const d = norm.json.data;
-            prisma.creditTransaction.update({
+            await prisma.creditTransaction.update({
               where: { id: vinCtxId },
               data: { meta: JSON.stringify({ vin, make: d.make || '', model: d.model || '', year: d.year || '', fuel_type: d.fuel_type || '', engine: d.engine || '' }) }
-            }).catch(function () {});
+            });
           }
           return res.json(outCar);
         }
       }
 
       if (requireAccountForVin) {
-        await refundVinDecodeCredit(userId, vinMasked);
+        await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
       }
 
       const nhtsaCar = await decodeVinViaNhtsa(vin);
@@ -3498,17 +3353,17 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         if (isPreview) out.access = 'preview';
         if (vinCtxId && prisma && nhtsaCar.data) {
           const d = nhtsaCar.data;
-          prisma.creditTransaction.update({
+          await prisma.creditTransaction.update({
             where: { id: vinCtxId },
             data: { meta: JSON.stringify({ vin, make: d.make || '', model: d.model || '', year: d.year || '' }) }
-          }).catch(function () {});
+          });
         }
         return res.json(out);
       }
 
       if (!extRes.ok) {
         if (isPreview && extRes.status !== 429) {
-          return res.json(previewPartialVinJson());
+          return res.status(503).json(previewPartialVinJson());
         }
         const msg =
           (data && (data.message || data.error)) ||
@@ -3519,7 +3374,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
       }
       const normFail = normalizeCarApiVinResponse(data);
       if (isPreview) {
-        return res.json(previewPartialVinJson());
+        return res.status(503).json(previewPartialVinJson());
       }
       return res.status(normFail.httpStatus).json({ status: 'error', message: normFail.message });
     }
@@ -3536,7 +3391,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     }
     if (!extRes.ok) {
       if (requireAccountForVin) {
-        await refundVinDecodeCredit(userId, vinMasked);
+        await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
       }
       const nhtsaVd = await decodeVinViaNhtsa(vin);
       if (nhtsaVd && nhtsaVd.status === 'success') {
@@ -3545,7 +3400,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         return res.json(out);
       }
       if (isPreview) {
-        return res.json(previewPartialVinJson());
+        return res.status(503).json(previewPartialVinJson());
       }
       return res.status(extRes.status).json({
         status: 'error',
@@ -3554,7 +3409,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     }
     if (data.status === 'error') {
       if (requireAccountForVin) {
-        await refundVinDecodeCredit(userId, vinMasked);
+        await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
       }
       const nhtsaErr = await decodeVinViaNhtsa(vin);
       if (nhtsaErr && nhtsaErr.status === 'success') {
@@ -3563,7 +3418,7 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
         return res.json(out);
       }
       if (isPreview) {
-        return res.json(previewPartialVinJson());
+        return res.status(503).json(previewPartialVinJson());
       }
       return res.status(400).json({
         status: 'error',
@@ -3575,19 +3430,19 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
     // Enrich creditTransaction with vehicle data for history (Vehicle Databases path)
     if (vinCtxId && prisma && outVd && outVd.data) {
       const d = outVd.data;
-      prisma.creditTransaction.update({
+      await prisma.creditTransaction.update({
         where: { id: vinCtxId },
         data: { meta: JSON.stringify({ vin, make: d.make || '', model: d.model || '', year: d.year || '', fuel_type: d.fuel_type || d.fuelType || '', engine: d.engine || '' }) }
-      }).catch(function () {});
+      });
     }
     res.json(outVd);
   } catch (e) {
     console.error('VIN decode:', e.message);
     if (requireAccountForVin) {
-      await refundVinDecodeCredit(userId, vinMasked);
+      await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
     }
     if (isPreview) {
-      return res.json(previewPartialVinJson());
+      return res.status(503).json(previewPartialVinJson());
     }
     res.status(500).json({ status: 'error', message: 'Erreur service VIN' });
   }
@@ -3626,25 +3481,7 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
   }
   let vinCtxId = null;
   try {
-    const charged = await prisma.$transaction(async (tx) => {
-      const updated = await tx.user.updateMany({
-        where: { id: userId, credits: { gte: 1 } },
-        data: { credits: { decrement: 1 } }
-      });
-      if (updated.count === 0) {
-        const u = await tx.user.findUnique({ where: { id: userId }, select: { credits: true } });
-        return { ok: false, credits: u ? u.credits : 0 };
-      }
-      const ct = await tx.creditTransaction.create({
-        data: {
-          userId,
-          delta: -1,
-          reason: 'vin_full_report',
-          meta: JSON.stringify({ vin })
-        }
-      });
-      return { ok: true, ctxId: ct.id };
-    });
+    const charged = await wallet.chargeCredit(prisma, userId, 'vin_full_report', {vin});
     if (!charged.ok) {
       return res.status(402).json({
         status: 'error',
@@ -3663,7 +3500,7 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
     const q = req.query || {};
     const bundle = await carapiClient.fetchCarApiFullEnrichment(provider.apiKey, {
       vin,
-      country: q.country,
+      country: req.market === 'MA' ? 'MA' : q.country,
       listingLimit: q.listingLimit,
       listingOffset: q.listingOffset,
       payment: {
@@ -3713,7 +3550,7 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
           }
           console.log('CarAPI NHTSA fallback for', vinMasked, 'year:', identity.year);
         } else {
-          await refundVinDecodeCredit(userId, vinMasked);
+          await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
           return res.status(502).json({
             status: 'error',
             code: 'VIN_DECODE_FAILED',
@@ -3721,7 +3558,7 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
           });
         }
       } else {
-        await refundVinDecodeCredit(userId, vinMasked);
+        await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
         let message = 'Decodage VIN indisponible. Votre credit a ete reattribue.';
         if (st === 401 || st === 403) {
           message = 'Cle CarAPI refusee (HTTP ' + st + '). Verifiez CARAPI_TOKEN sur Vercel.';
@@ -3751,20 +3588,18 @@ app.get('/api/vin-full-report/:vin', async (req, res) => {
         reportType: 'carapi_full'
       };
       const snap = slimCarApiBundleForMetaSnapshot(bundle);
-      if (snap) {
-        meta.fullReportJson = snap;
-      }
-      prisma.creditTransaction
+      if (!snap) throw new Error('Report snapshot unavailable');
+      meta.fullReportJson = snap;
+      await prisma.creditTransaction
         .update({
           where: { id: vinCtxId },
           data: { meta: JSON.stringify(meta) }
-        })
-        .catch(function () {});
+        });
     }
     return res.json({ status: 'success', data: bundle, transactionId: vinCtxId || null });
   } catch (e) {
     console.error('Rapport VIN complet CarAPI:', e.message);
-    await refundVinDecodeCredit(userId, vinMasked);
+    await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
     return res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
   }
 });
@@ -3801,25 +3636,7 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
   }
   let vinCtxId = null;
   try {
-    const charged = await prisma.$transaction(async (tx) => {
-      const updated = await tx.user.updateMany({
-        where: { id: userId, credits: { gte: 1 } },
-        data: { credits: { decrement: 1 } }
-      });
-      if (updated.count === 0) {
-        const u = await tx.user.findUnique({ where: { id: userId }, select: { credits: true } });
-        return { ok: false, credits: u ? u.credits : 0 };
-      }
-      const ct = await tx.creditTransaction.create({
-        data: {
-          userId,
-          delta: -1,
-          reason: 'vd_full_report',
-          meta: JSON.stringify({ vin })
-        }
-      });
-      return { ok: true, ctxId: ct.id };
-    });
+    const charged = await wallet.chargeCredit(prisma, userId, 'vd_full_report', {vin});
     if (!charged.ok) {
       return res.status(402).json({
         status: 'error',
@@ -3954,7 +3771,7 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
           };
           bundle.carapiAddon = await carapiClient.fetchCarApiFullEnrichment(carapiTok, {
             vin,
-            country: q.country,
+            country: req.market === 'MA' ? 'MA' : q.country,
             listingLimit: q.listingLimit,
             listingOffset: q.listingOffset,
             payment: {
@@ -3974,7 +3791,7 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
     }
 
     if (decodeFailed) {
-      await refundVinDecodeCredit(userId, vinMasked);
+      await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
       const st = vdDec && vdDec.status;
       const apiBody = vdDec && vdDec.data;
       const apiMsgRaw =
@@ -4006,20 +3823,18 @@ app.get('/api/vd/full-report/:vin', async (req, res) => {
           bundle.multiSource && bundle.multiSource.carapi === true ? 'vd_full_carapi_addon' : 'vd_full'
       };
       const snap = slimVdBundleForMetaSnapshot(bundle);
-      if (snap) {
-        meta.vdFullReportJson = snap;
-      }
-      prisma.creditTransaction
+      if (!snap) throw new Error('Report snapshot unavailable');
+      meta.vdFullReportJson = snap;
+      await prisma.creditTransaction
         .update({
           where: { id: vinCtxId },
           data: { meta: JSON.stringify(meta) }
-        })
-        .catch(function () {});
+        });
     }
     return res.json({ status: 'success', data: bundle, transactionId: vinCtxId || null });
   } catch (e) {
     console.error('Rapport VIN complet Vehicle Databases:', e.message);
-    await refundVinDecodeCredit(userId, vinMasked);
+    await refundVinDecodeCredit(userId, vinMasked, vinCtxId);
     return res.status(500).json({ status: 'error', message: 'Erreur service Vehicle Databases' });
   }
 });
@@ -4082,7 +3897,7 @@ app.get('/api/carapi/enrichment/:vin', async (req, res) => {
     const q = req.query || {};
     const bundle = await carapiClient.fetchCarApiFullEnrichment(provider.apiKey, {
       vin,
-      country: q.country,
+      country: req.market === 'MA' ? 'MA' : q.country,
       listingLimit: q.listingLimit,
       listingOffset: q.listingOffset,
       payment: {
@@ -4096,17 +3911,17 @@ app.get('/api/carapi/enrichment/:vin', async (req, res) => {
     const identity = (dec && dec.identity) || carapiClient.extractVinDecodeIdentity(dec && dec.data);
     const decodeFailed = !dec || !dec.ok || !identity;
     if (decodeFailed) {
-      await refundOneCredit(userId, 'carapi_enrichment_refund', { vin: vinMasked });
+      await wallet.refundCredit(prisma, userId, charged.ctxId);
       return res.status(502).json({
         status: 'error',
         message: 'Décodage VIN CarAPI indisponible. Votre crédit a été réattribué.',
-        detail: dec.data != null ? dec.data : null
+        detail: dec && dec.data != null ? dec.data : null
       });
     }
     res.json({ status: 'success', data: bundle });
   } catch (e) {
     console.error('CarAPI enrichment:', e.message);
-    await refundOneCredit(userId, 'carapi_enrichment_refund', { vin: vinMasked });
+    await wallet.refundCredit(prisma, userId, charged.ctxId);
     res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
   }
 });
@@ -4170,7 +3985,7 @@ app.get('/api/carapi/plate-to-vin/:plate', async (req, res) => {
       country
     });
     if (!r.ok) {
-      await refundOneCredit(userId, 'carapi_plate_refund', { plate: plateHint });
+      await wallet.refundCredit(prisma, userId, charged.ctxId);
       const msg =
         (r.body && (r.body.message || (typeof r.body.error === 'string' ? r.body.error : r.body.error?.message))) ||
         'Plaque introuvable ou service indisponible';
@@ -4184,7 +3999,7 @@ app.get('/api/carapi/plate-to-vin/:plate', async (req, res) => {
     res.json({ status: 'success', data: r.body });
   } catch (e) {
     console.error('CarAPI plate:', e.message);
-    await refundOneCredit(userId, 'carapi_plate_refund', { plate: plateHint });
+    await wallet.refundCredit(prisma, userId, charged.ctxId);
     res.status(500).json({ status: 'error', message: 'Erreur service CarAPI' });
   }
 });
@@ -4219,62 +4034,21 @@ app.get('/api/payment-links', (req, res) => {
   });
 });
 
-// API Création PaymentIntent Stripe
-app.post('/api/create-payment-intent', async (req, res) => {
-  if (!stripe) {
-    return res.status(500).json({ error: 'Stripe non configuré. Vérifiez STRIPE_SECRET_KEY dans .env' });
-  }
-  try {
-    const { amount, amountCents: bodyCents } = req.body || {};
-    const essentiel = parseInt(process.env.TIER_ESSENTIEL_CENTS || '1499', 10);
-    let amountCents;
-    if (bodyCents != null && Number.isFinite(Number(bodyCents))) {
-      amountCents = Math.round(Number(bodyCents));
-    } else if (amount != null && Number.isFinite(Number(amount))) {
-      amountCents = Math.round(Number(amount) * 100);
-    } else {
-      amountCents = essentiel;
-    }
-    if (amountCents < 50) {
-      return res.status(400).json({ error: 'Montant invalide' });
-    }
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountCents,
-      currency: 'eur',
-      automatic_payment_methods: { enabled: true }
-    });
-    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
-  } catch (e) {
-    console.error('Stripe create-payment-intent:', e);
-    res.status(500).json({ error: e.message || 'Erreur paiement' });
-  }
-});
-
-// API Mise à jour métadonnées PaymentIntent (avant confirmation)
-app.post('/api/update-payment-metadata', async (req, res) => {
-  if (!stripe) {
-    return res.status(500).json({ error: 'Stripe non configuré' });
-  }
-  try {
-    const { paymentIntentId, metadata } = req.body;
-    if (!paymentIntentId || !metadata) {
-      return res.status(400).json({ error: 'Données manquantes' });
-    }
-    await stripe.paymentIntents.update(paymentIntentId, {
-      metadata: Object.fromEntries(
-        Object.entries(metadata).map(([k, v]) => [k, String(v).slice(0, 500)])
-      )
-    });
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('update-payment-metadata:', e);
-    res.status(500).json({ error: e.message || 'Erreur' });
-  }
+// Ancien checkout embarqué retiré : la page tarifs utilise Checkout avec un
+// catalogue serveur. Ces routes permettaient de fixer prix ET métadonnées client.
+app.post(['/api/create-payment-intent', '/api/update-payment-metadata'], (req, res) => {
+  res.status(410).json({ error: 'Ce parcours de paiement a été remplacé. Ouvrez la page Tarifs.', checkoutUrl: '/checkout.html' });
 });
 
 // Page d'accueil
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.use((error,req,res,next)=>{
+  console.error('Unhandled request failure:',error && error.message);
+  if(res.headersSent)return next(error);
+  return res.status(500).json({error:'Le service est temporairement indisponible. Réessayez plus tard.'});
 });
 
 // Export pour Vercel (serverless) ; listen uniquement en local

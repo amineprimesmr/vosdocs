@@ -82,7 +82,7 @@
             <div class="contact-grid">
                 <div>
                     <div id="contactSuccess" class="contact-success">
-                        Merci pour votre message. Nous vous répondrons dans les plus brefs délais.
+                        Votre messagerie va s’ouvrir avec votre demande. Vérifiez le contenu puis envoyez l’email pour nous contacter.
                     </div>
                     <form class="contact-form" id="contactForm">
                         <div class="form-group">
@@ -110,7 +110,7 @@
                             <label>Message *</label>
                             <textarea name="message" required placeholder="Décrivez votre demande..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-lg">Envoyer</button>
+                        <button type="submit" class="btn btn-primary btn-lg">Préparer mon email</button>
                     </form>
                 </div>
                 <div class="contact-info">
@@ -162,7 +162,11 @@
         document.getElementById('contactForm').addEventListener('submit', function(e) {
             e.preventDefault();
             document.getElementById('contactSuccess').style.display = 'block';
-            this.reset();
+            var fields = new FormData(this);
+            var subject = 'Carvinguard — ' + fields.get('sujet');
+            var body = 'Nom : ' + fields.get('nom') + '\nEmail : ' + fields.get('email') +
+                '\nTéléphone : ' + (fields.get('phone') || 'Non renseigné') + '\n\n' + fields.get('message');
+            window.location.href = 'mailto:contact@carvinguard.fr?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
             document.getElementById('contactSuccess').scrollIntoView({ behavior: 'smooth' });
         });
     </script>

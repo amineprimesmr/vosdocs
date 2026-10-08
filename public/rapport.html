@@ -38,7 +38,7 @@
                     Aperçu gratuit
                 </span>
             </p>
-            <p class="rpt-intro">Aperçu basé sur votre <strong>VIN</strong> : la synthèse ci-dessous est lisible immédiatement ; les blocs grisés et le PDF complet sont débloqués après commande.</p>
+            <p class="rpt-intro">Aperçu basé sur votre <strong>VIN</strong> : l’identité décodée est présentée ci-dessous. La disponibilité des données historiques dépend des sources et du véhicule ; elle n’est pas garantie par cet aperçu.</p>
         </div>
 
         <div class="rpt-pdf-bar" id="rptPdfBar" style="display:none" role="region" aria-label="Téléchargement du rapport PDF">
@@ -99,30 +99,7 @@
             <section class="rpt-section" id="rpt-summary" data-reveal>
                 <div class="rpt-section-bar"><span class="rpt-bar-icon" aria-hidden="true">◆</span> Synthèse rapide</div>
                 <div class="rpt-quick-grid" id="rptQuickGrid" role="list">
-                    <div class="rpt-q rpt-q--ok" role="listitem">
-                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
-                        <span class="rpt-q-txt">Aucun antécédent de vol recensé</span>
-                    </div>
-                    <div class="rpt-q rpt-q--ok" role="listitem">
-                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
-                        <span class="rpt-q-txt">Titre non sali (indicatif)</span>
-                    </div>
-                    <div class="rpt-q rpt-q--ok" role="listitem">
-                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
-                        <span class="rpt-q-txt">Pas d’historique « épave » signalé</span>
-                    </div>
-                    <div class="rpt-q rpt-q--ok" role="listitem">
-                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
-                        <span class="rpt-q-txt">Cohérence kilométrique (sources)</span>
-                    </div>
-                    <div class="rpt-q rpt-q--ok" role="listitem">
-                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg></span>
-                        <span class="rpt-q-txt">Rappels constructeur : rien d’ouvert</span>
-                    </div>
-                    <div class="rpt-q rpt-q--warn" role="listitem">
-                        <span class="rpt-q-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg></span>
-                        <span class="rpt-q-txt">Élément à vérifier : sinistre (détail dans rapport complet)</span>
-                    </div>
+                    <p role="listitem">Vol, sinistres, kilométrage et rappels : non vérifiés dans cet aperçu. Aucune conclusion sur l’historique du véhicule ne peut être tirée du seul décodage VIN.</p>
                 </div>
             </section>
 
@@ -154,7 +131,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <p class="rpt-micro">Les relevés complets sont fournis dans le rapport débloqué.</p>
+                        <p class="rpt-micro">Les relevés sont inclus uniquement lorsque les sources en disposent.</p>
                     </section>
                 </div>
 
@@ -165,11 +142,11 @@
                         <ul class="rpt-owner-list" id="rptOwnerList">
                             <li class="rpt-owner-item">
                                 <span class="rpt-owner-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                                <div><strong>Titulaire 1</strong><span class="rpt-owner-sub">Période — détail dans le rapport complet</span></div>
+                                <div><strong>Historique des titulaires</strong><span class="rpt-owner-sub">Non vérifié dans cet aperçu</span></div>
                             </li>
                             <li class="rpt-owner-item">
                                 <span class="rpt-owner-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                                <div><strong>Titulaire 2</strong><span class="rpt-owner-sub">—</span></div>
+                                <div><strong>Disponibilité</strong><span class="rpt-owner-sub">—</span></div>
                             </li>
                         </ul>
                     </section>
@@ -177,8 +154,8 @@
                     <section class="rpt-section" data-reveal>
                         <div class="rpt-section-bar">Titre &amp; statut (indicateurs)</div>
                         <ul class="rpt-checklist">
-                            <li class="rpt-checkline rpt-checkline--ok"><span class="rpt-cl-ic">✓</span> Synthèse titre (sources agrégées)</li>
-                            <li class="rpt-checkline rpt-checkline--ok"><span class="rpt-cl-ic">✓</span> Alertes administratives recensées</li>
+                            <li class="rpt-checkline rpt-checkline--muted"><span class="rpt-cl-ic">○</span> Titre : non vérifié dans cet aperçu</li>
+                            <li class="rpt-checkline rpt-checkline--muted"><span class="rpt-cl-ic">○</span> Alertes : non vérifiées dans cet aperçu</li>
                             <li class="rpt-checkline rpt-checkline--muted"><span class="rpt-cl-ic">○</span> Détail réservé au rapport complet</li>
                         </ul>
                     </section>

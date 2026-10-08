@@ -31,7 +31,7 @@
     if (!tbody) return;
     tbody.innerHTML =
       '<tr><td>—</td><td>—</td></tr>' +
-      '<tr><td colspan="2" style="font-size:0.9em;color:#64748b;">Relevés complets dans le rapport après commande.</td></tr>';
+      '<tr><td colspan="2" style="font-size:0.9em;color:#64748b;">Disponibilité des relevés non vérifiée dans cet aperçu.</td></tr>';
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -50,10 +50,10 @@
 
     var heroTitle = document.getElementById('rptHeroTitle');
     var identityEl = document.getElementById('rpt-identity');
-    if (identityEl) identityEl.classList.toggle('rpt-identity--locked', !reportUnlocked);
+    if (identityEl) identityEl.classList.remove('rpt-identity--locked');
 
     if (heroTitle) {
-      heroTitle.textContent = reportUnlocked ? buildHeroTitle(vd) : 'RAPPORT HISTORIQUE VÉHICULE';
+      heroTitle.textContent = buildHeroTitle(vd);
     }
 
     var make = vd.make || '—';
@@ -64,15 +64,15 @@
     var elMake = document.getElementById('previewMake');
     var elModel = document.getElementById('previewModel');
     var elYear = document.getElementById('previewYear');
-    if (elMake) elMake.textContent = reportUnlocked ? make : '••••••';
-    if (elModel) elModel.textContent = reportUnlocked ? model : '••••••';
-    if (elYear) elYear.textContent = reportUnlocked ? year : '••••';
+    if (elMake) elMake.textContent = make;
+    if (elModel) elModel.textContent = model;
+    if (elYear) elYear.textContent = year;
 
     if (trim) {
       var trimRow = document.getElementById('previewTrimRow');
       var trimEl = document.getElementById('previewTrim');
       if (trimRow) trimRow.style.display = '';
-      if (trimEl) trimEl.textContent = reportUnlocked ? trim : '••••••';
+      if (trimEl) trimEl.textContent = trim;
     }
 
     var eng = vd.engine || vd.engineDescription || '';

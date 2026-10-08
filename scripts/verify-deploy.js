@@ -21,7 +21,18 @@ try {
 
 const libChecks = [
   'server.js',
+  'api/router.js',
+  'lib/wallet.js',
+  'lib/rate-limit.js',
+  'lib/subscription-create.js',
+  'lib/subscriptions.js',
+  'lib/email-delivery.js',
+  'public/js/subscriptions.js',
   'lib/site-identity.js',
+  'lib/public-origin.js',
+  'api/email-status.js',
+  'api/test-order-email.js',
+  'api/cron/generate-articles.js',
   'lib/blog-config.js',
   'lib/blog.js',
   'lib/fulfill-vin-order.js',

@@ -1,6 +1,14 @@
 # Carvinguard - Rapport historique véhicule (VIN)
 
-Site **100% fonctionnel** pour une agence prestataire proposant un **rapport historique véhicule** à partir du numéro VIN (à partir de 14,99 € — rapport unique ; packs et abonnement sur la page tarifs).
+Service de rapports véhicule par VIN. Les domaines `.ma` et `.fr` sont rattachés au projet Vercel `vosdocs`. Une publication de ce projet affecte les deux domaines. L'état de validation et les limites connues sont documentés dans `docs/AUDIT-2026-09-22.md` ; la présence d'une page ne prouve pas que le paiement ou la livraison fonctionnent.
+
+### Parcours actuel
+
+Les pages actives sont dans `public/`. Le visiteur consulte un aperçu VIN, achète des crédits via Stripe Checkout, active son compte depuis un lien reçu par email et consulte ses rapports dans `compte.html`. Les utilisateurs et crédits sont persistés dans PostgreSQL avec Prisma. Les fichiers HTML à la racine et les scripts de paiement embarqué sont historiques.
+
+Avant déploiement : `npm ci`, `npm test`, puis une préversion Vercel et des contrôles HTTP. Les tests de régression utilisent des services simulés : ils ne remplacent pas un achat de bout en bout en environnement Stripe de test. Les règles Vercel ne doivent pas réécrire les routes API vers `/server.js` : `api/router.js` reçoit les routes API via les règles explicites de `vercel.json`, avant le traitement filesystem, en conservant leur chemin grâce à `request.path`.
+
+Les sections historiques ci-dessous peuvent décrire l'ancien parcours invité ; se référer au code de `public/checkout.html` pour le parcours commercial actuel.
 
 ## Structure du site
 

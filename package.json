@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "serve": "cd public && python3 -m http.server 3000",
-    "build": "prisma generate",
+    "build": "node scripts/build-morocco.js && prisma generate",
     "postinstall": "prisma generate",
     "blog": "node scripts/generate-blog.js",
     "blog:publish": "node scripts/publish-next-blog.js",
@@ -20,7 +20,7 @@
     "stripe:setup": "node scripts/stripe-create-catalog.js",
     "stripe:tout": "node scripts/stripe-tout-en-un.js",
     "verify": "node scripts/verify-deploy.js",
-    "test": "VERIFY_WITH_GENERATE=1 node scripts/verify-deploy.js",
+    "test": "node --test tests/*.test.js && node scripts/verify-deploy.js",
     "verify:webhook": "node scripts/verify-stripe-webhook-url.js",
     "verify:carapi": "node scripts/verify-carapi.js",
     "verify:vehicledatabases": "node scripts/verify-vehicledatabases.js",
@@ -31,7 +31,9 @@
     "fulfill:pi": "node scripts/manual-fulfill-payment.js",
     "deploy:check": "node scripts/verify-deploy.js",
     "deploy:vercel": "vercel --prod",
-    "seo:pages": "git ls-files public/ | grep '\\.html$' | sort"
+    "seo:pages": "git ls-files public/ | grep '\\.html$' | sort",
+    "test:regression": "node --test tests/*.test.js",
+    "build:ma": "node scripts/build-morocco.js"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

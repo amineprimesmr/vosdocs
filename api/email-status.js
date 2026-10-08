@@ -5,6 +5,7 @@
 const { getTeamRecipients } = require('../lib/email-recipients');
 
 module.exports = (req, res) => {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return res.status(404).end();
   res.setHeader('Content-Type', 'application/json');
   const recipients = getTeamRecipients();
   res.status(200).json({

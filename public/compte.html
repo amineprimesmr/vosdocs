@@ -66,6 +66,8 @@
         <p class="auth-footer">
           Pas encore de compte ? <button class="auth-link" onclick="switchTab('signup')">Créer un compte</button>
         </p>
+        <p><button class="auth-link" id="accessLinkBtn" type="button" onclick="requestAccountAccess()">Mot de passe oublié ou lien d’activation expiré ?</button></p>
+        <p id="accessLinkStatus" role="status" style="font-size:.875rem;"></p>
       </div>
 
       <!-- Inscription -->
@@ -153,6 +155,7 @@
       <h2 style="font-size:1.15rem;font-weight:800;color:var(--text);margin-bottom:10px;">Activation</h2>
       <p id="activationFailText" style="font-size:.9rem;color:var(--text-muted);line-height:1.5;margin-bottom:16px;"></p>
       <p style="font-size:.8125rem;color:var(--text-muted);">Un email avec un lien peut aussi vous parvenir — vérifiez vos courriers indésirables.</p>
+      <a class="auth-btn" href="/compte.html">Se connecter ou recevoir un nouveau lien</a>
     </div>
   </div>
 

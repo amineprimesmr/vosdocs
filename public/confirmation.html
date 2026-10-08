@@ -53,13 +53,6 @@
         #confirmReportCta .btn-primary { font-weight: 600; padding: 14px 22px; }
     </style>
     <script src="js/analytics.js"></script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17972633421"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'AW-17972633421');
-    </script>
 </head>
 <body>
     <header class="header header-light">
@@ -76,7 +69,7 @@
         <div class="cg-confirm-wrap">
             <div class="cg-confirm-card">
                 <div class="cg-confirm-badge" aria-hidden="true">✓</div>
-                <h1>Paiement confirmé</h1>
+                <h1 id="confirmationTitle">Vérification de votre commande</h1>
                 <p class="cg-confirm-lead">
                     Bienvenue dans votre <strong>espace rapport</strong>. Vous pouvez ouvrir votre rapport dès qu’il est prêt
                     (généralement en moins d’une minute). Un email de confirmation avec le PDF vous est aussi envoyé.
@@ -135,10 +128,6 @@
             var sessionId = params.get('session_id');
 
             var data = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
-            if (data && typeof VehicleService !== 'undefined') {
-                VehicleService.saveCommandeData(Object.assign({}, data, { reportUnlocked: true }));
-                data = VehicleService.getCommandeData();
-            }
             if (data) {
                 var refEl = document.getElementById('ref');
                 var montant = document.getElementById('montant');
@@ -231,6 +220,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (j) {
                         if (j.status === 'ready' && j.reportUrl) {
+                            document.getElementById('confirmationTitle').textContent = 'Votre rapport est prêt';
                             showReport(j.reportUrl, j.token);
                             return;
                         }

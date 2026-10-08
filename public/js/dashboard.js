@@ -314,6 +314,19 @@
       });
   };
 
+  window.requestAccountAccess = function () {
+    var email = val('loginEmail');
+    var status = document.getElementById('accessLinkStatus');
+    var button = document.getElementById('accessLinkBtn');
+    if (!email) { status.textContent = 'Saisissez votre adresse email ci-dessus.'; return; }
+    button.disabled = true;
+    status.textContent = 'Demande en cours…';
+    api('/api/auth/request-access', { method: 'POST', body: { email: email } })
+      .then(function (r) { status.textContent = r.data.message || r.data.error || 'Réessayez dans un instant.'; })
+      .catch(function () { status.textContent = 'Connexion interrompue. Réessayez.'; })
+      .finally(function () { button.disabled = false; });
+  };
+
   /* SIGNUP */
   window.doSignup = function () {
     if (!registrationOpen) {
@@ -370,13 +383,13 @@
     var MAX_TRANSIENT_BEFORE_EMAIL_HINT = 90;
 
     function nextDelay() {
-      if (attempts < 25) return 80;
-      if (attempts < 80) return 300;
+      if (attempts < 10) return 1500;
       return Math.min(2500, 400 + Math.floor((attempts - 80) / 20) * 200);
     }
 
     function tryFetch() {
       if (guestActivationCancelled) return;
+      if (attempts >= 40) { showActivationFailure('Finalisation en attente. Consultez votre email ou contactez le support.'); return; }
       attempts++;
       fetch(
         window.location.origin +
@@ -401,6 +414,11 @@
             transientStrikes = 0;
             inviteToken = data.inviteToken;
             showInviteFormOverlay(data.email);
+            return;
+          }
+
+          if (data.reason === 'email_link_required') {
+            showActivationFailure('Pour sécuriser votre compte, ouvrez le lien d’activation reçu par email. Si vous avez déjà un compte, connectez-vous avec votre mot de passe habituel.');
             return;
           }
 
@@ -1334,7 +1352,8 @@
 
   function renderStolenData(data) {
     var d = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
-    var stolen = d.stolen === true;
+    if (![true,false,'true','false','yes','no'].includes(d.stolen)) return '<p class="report-lead">Statut vol indéterminé : aucune conclusion disponible dans cette source.</p>';
+    var stolen = d.stolen === true || d.stolen === 'true' || d.stolen === 'yes';
     var badge =
       stolen
         ? '<div class="report-hero report-hero--alert"><div class="report-hero__icon" aria-hidden="true">!</div><div>' +
@@ -1742,8 +1761,10 @@
     var statusHtml;
     if (salvage) {
       statusHtml = '<div class="stolen-status stolen-status--alert"><strong>TITRE ÉPAVE / SALVAGE</strong> — Véhicule déclaré épave ou perte totale après sinistre. Alerte majeure avant achat.</div>';
-    } else {
+    } else if (sv === false || sv === 'false' || sv === 'no') {
       statusHtml = '<div class="stolen-status stolen-status--ok"><strong>Titre sain</strong> — Aucun titre « salvage » (épave / perte totale) enregistré pour ce VIN.</div>';
+    } else {
+      statusHtml = '<div class="stolen-status">Statut du titre indéterminé dans cette source.</div>';
     }
     var details = Array.isArray(d.salvage_details) ? d.salvage_details : [];
     var html = statusHtml;
