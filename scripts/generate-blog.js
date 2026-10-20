@@ -12,7 +12,8 @@ const ROOT = path.join(__dirname, '..');
 const CONTENT_DIR = path.join(ROOT, 'content');
 const OUT_DIR = path.join(ROOT, 'public', 'blog');
 
-require('dotenv').config({ path: path.join(ROOT, '.env') });
+// dotenv est optionnel : absent en CI (pas de npm ci), utile seulement en local.
+try { require('dotenv').config({ path: path.join(ROOT, '.env') }); } catch (e) {}
 const { getBlogConfig } = require(path.join(ROOT, 'lib', 'blog-config'));
 const config = getBlogConfig();
 let articles = [];
