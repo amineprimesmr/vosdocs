@@ -1,5 +1,21 @@
 [
   {
+    "id": "5",
+    "slug": "difference-csa-carte-grise",
+    "title": "Carte grise et rapport VIN : quelles différences ?",
+    "description": "Le titre d'immatriculation et un rapport historique VIN ont des rôles différents pour préparer une vente ou un achat.",
+    "date": "2026-10-20",
+    "category": "documents",
+    "keywords": [
+      "carte grise",
+      "rapport VIN",
+      "titre immatriculation",
+      "documents"
+    ],
+    "readingTime": "4 min",
+    "bodyHtml": "<p><strong>La carte grise</strong> (titre d'immatriculation) prouve que le véhicule est immatriculé et identifie son titulaire. Un <strong>rapport VIN</strong> synthétise des informations à partir du numéro de châssis pour aider à décider en connaissance de cause.</p><h2>Deux outils complémentaires</h2><p>Pour la cession, les pièces officielles prévues par la réglementation restent indispensables (voir <a href=\"https://www.service-public.fr\" target=\"_blank\" rel=\"noopener\">service-public.fr</a>). Le rapport VIN apporte une couche d'information sur l'historique connu.</p><h2>Où les obtenir ?</h2><p>La carte grise se gère auprès de l'ANTS ou en préfecture. Un rapport VIN peut être commandé en quelques minutes sur <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p>"
+  },
+  {
     "id": "4",
     "slug": "fraicheur-donnees-rapport-vin",
     "title": "Pourquoi un rapport VIN doit être récent avant d'acheter ?",

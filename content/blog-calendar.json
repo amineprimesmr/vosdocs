@@ -1,19 +1,5 @@
 [
   {
-    "slug": "difference-csa-carte-grise",
-    "title": "Carte grise et rapport VIN : quelles différences ?",
-    "description": "Le titre d'immatriculation et un rapport historique VIN ont des rôles différents pour préparer une vente ou un achat.",
-    "category": "documents",
-    "keywords": [
-      "carte grise",
-      "rapport VIN",
-      "titre immatriculation",
-      "documents"
-    ],
-    "readingTime": "4 min",
-    "bodyHtml": "<p><strong>La carte grise</strong> (titre d'immatriculation) prouve que le véhicule est immatriculé et identifie son titulaire. Un <strong>rapport VIN</strong> synthétise des informations à partir du numéro de châssis pour aider à décider en connaissance de cause.</p><h2>Deux outils complémentaires</h2><p>Pour la cession, les pièces officielles prévues par la réglementation restent indispensables (voir <a href=\"https://www.service-public.fr\" target=\"_blank\" rel=\"noopener\">service-public.fr</a>). Le rapport VIN apporte une couche d'information sur l'historique connu.</p><h2>Où les obtenir ?</h2><p>La carte grise se gère auprès de l'ANTS ou en préfecture. Un rapport VIN peut être commandé en quelques minutes sur <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p>"
-  },
-  {
     "slug": "vendre-voiture-sans-carte-grise",
     "title": "Peut-on vendre sa voiture sans carte grise ?",
     "description": "Vente sans carte grise : dans quels cas c'est possible, quelles démarches et quels risques. Duplicata, véhicule d'occasion, régularisation.",
