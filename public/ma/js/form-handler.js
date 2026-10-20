@@ -1,0 +1,118 @@
+/**
+ * Carvinguard - Gestion du formulaire de recherche véhicule (VIN uniquement)
+ * Décodage VIN via /api/vin-decode (proxy serveur : CarAPI.dev ou Vehicle Databases)
+ */
+
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('heroForm');
+    var vinInput = document.getElementById('vinInput');
+    var submitBtn = document.getElementById('submitBtn');
+    var formError = document.getElementById('formError');
+
+    if (!form) return;
+
+    // Formatage VIN en temps réel : 17 caractères alphanumériques (sans I, O, Q)
+    if (vinInput) {
+      vinInput.addEventListener('input', function() {
+        var v = this.value.replace(/[^A-HJ-NPR-Za-hj-npr-z0-9]/g, '').toUpperCase();
+        if (v.length > 17) v = v.slice(0, 17);
+        this.value = v;
+      });
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var vin = vinInput ? vinInput.value.trim() : '';
+      if (!vin || vin.length !== 17) {
+        if (formError) {
+          formError.textContent = 'Veuillez saisir un numéro VIN valide (17 caractères, sur le véhicule ou son certificat d’immatriculation).';
+          formError.style.display = 'block';
+        }
+        return;
+      }
+      if (formError) formError.style.display = 'none';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Recherche...'; }
+
+      var apiBase = window.location.origin;
+      var vinUrl =
+        apiBase + '/api/ma/vin-decode/' + encodeURIComponent(vin.toUpperCase()) + '?preview=1';
+      var fetchOpts = { credentials: 'include' };
+      var tmo;
+      if (typeof AbortController !== 'undefined') {
+        var ac = new AbortController();
+        tmo = setTimeout(function() {
+          ac.abort();
+        }, 28000);
+        fetchOpts.signal = ac.signal;
+      }
+      // preview=1 : décodage API réel sans débit de crédit (déblocage complet du rapport après paiement)
+      fetch(vinUrl, fetchOpts)
+        .then(function(res) {
+          if (tmo) clearTimeout(tmo);
+          return res.json().then(function(data) {
+            return { res: res, data: data };
+          });
+        })
+        .then(function(out) {
+          var result = out.data;
+          var status = out.res.status;
+          if (result.status === 'success' && result.data) {
+            var d = result.data;
+            var vehicleData = {
+              make: d.make || '',
+              model: d.model || '',
+              year: d.year || '',
+              trim: d.trim || '',
+              summary: d.summary || '',
+              engine: d.engine || '',
+              transmission: d.transmission || '',
+              fuel_type: d.fuel_type || '',
+              drivetrain: d.drivetrain || d.drive_type || ''
+            };
+            vehicleData.vehicleDesc = [vehicleData.year, vehicleData.make, vehicleData.model]
+              .filter(Boolean)
+              .join(' · ');
+            if (typeof VehicleService !== 'undefined') {
+              VehicleService.saveCommandeData({
+                demarche: 'Rapport historique véhicule (VIN)',
+                vin: vin.toUpperCase(),
+                vehicleData: vehicleData,
+                prix: 14.99,
+                reportUnlocked: false,
+                partialDecode: !!result.partialDecode
+              });
+            }
+            window.location.href = 'rapport.html';
+          } else if (result.degraded) {
+            if (typeof VehicleService !== 'undefined') {
+              VehicleService.saveCommandeData({
+                demarche: 'Rapport historique véhicule (VIN)',
+                vin: vin.toUpperCase(),
+                prix: 14.99,
+                reportUnlocked: false
+              });
+            }
+            window.location.href = 'rapport.html';
+          } else {
+            if (formError) {
+              formError.textContent = result.message || result.error || 'Ce VIN n\'a pas été reconnu. Vérifiez le numéro (17 caractères sur la carte grise ou le véhicule).';
+              formError.style.display = 'block';
+            }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
+          }
+        })
+        .catch(function(err) {
+          if (tmo) clearTimeout(tmo);
+          if (formError) {
+            formError.textContent =
+              err && err.name === 'AbortError'
+                ? 'Délai dépassé. Réessayez dans un instant.'
+                : 'Erreur de connexion. Vérifiez votre connexion ou réessayez dans un instant.';
+            formError.style.display = 'block';
+          }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Rechercher'; }
+        });
+    });
+  });
+})();

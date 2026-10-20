@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="fr-MA">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarifs — Rapport historique VIN | CarvinGuard</title>
+  <meta name="description" content="Tarifs transparents pour vos rapports historique véhicule (VIN). Rapport unique, pack ou abonnement mensuel. Paiement sécurisé par Stripe.">
+  
+  <link rel="icon" type="image/png" href="/newlogo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg:        #F8FAFC;
+      --s1:        #FFFFFF;
+      --s2:        #F1F5F9;
+      --border:    #E2E8F0;
+      --border2:   #CBD5E1;
+      --accent:    #2563EB;
+      --accent-h:  #1D4ED8;
+      --text:      #0F172A;
+      --text-2:    #334155;
+      --muted:     #64748B;
+      --success:   #059669;
+      --r:         10px;
+      --r-lg:      14px;
+      --ease:      cubic-bezier(.4,0,.2,1);
+      --shadow-sm: 0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+      --shadow:    0 4px 12px rgba(15,23,42,.08),0 1px 3px rgba(15,23,42,.04);
+      --btn-corner-l: 11px;
+      --btn-corner-inset: 3px;
+      --btn-corner-w: 2px;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* HEADER */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 60px;
+      background: rgba(255,255,255,.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .header-logo img { height: 28px; }
+
+    .header-logo-name {
+      font-size: .9375rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-header {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: .875rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all .15s var(--ease);
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      position: relative;
+    }
+
+    .btn-header--ghost {
+      background: none;
+      color: var(--muted);
+    }
+    .btn-header--ghost::before,
+    .btn-header--ghost::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: 9px;
+      height: 9px;
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .btn-header--ghost::before {
+      bottom: 2px;
+      left: 2px;
+      border-left: var(--btn-corner-w) solid var(--border2);
+      border-bottom: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 0 0 2px;
+    }
+    .btn-header--ghost::after {
+      top: 2px;
+      right: 2px;
+      border-top: var(--btn-corner-w) solid var(--border2);
+      border-right: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 2px 0 0;
+    }
+    .btn-header--ghost:hover {
+      color: var(--text);
+      background: var(--s2);
+    }
+    .btn-header--ghost:hover::before,
+    .btn-header--ghost:hover::after {
+      border-color: var(--muted);
+    }
+
+    .btn-header--primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-header--primary::before,
+    .btn-header--primary::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: 9px;
+      height: 9px;
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .btn-header--primary::before {
+      bottom: 2px;
+      left: 2px;
+      border-left: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-bottom: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 0 0 2px;
+    }
+    .btn-header--primary::after {
+      top: 2px;
+      right: 2px;
+      border-top: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-right: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 2px 0 0;
+    }
+    .btn-header--primary:hover {
+      background: var(--accent-h);
+    }
+    .btn-header--primary:hover::before,
+    .btn-header--primary:hover::after {
+      border-color: rgba(255, 255, 255, 0.95);
+    }
+
+    /* MAIN */
+    main { max-width: 1000px; margin: 0 auto; padding: 72px 24px 96px; }
+
+    /* HERO */
+    .hero { text-align: center; margin-bottom: 64px; }
+
+    .hero-kicker {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      background: #DBEAFE;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      margin-bottom: 20px;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1.1;
+      margin: 0 0 16px;
+      color: var(--text);
+    }
+
+    .hero-title span { color: var(--accent); }
+
+    .hero-sub {
+      font-size: 1.0625rem;
+      color: var(--muted);
+      max-width: 48ch;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* PRICING GRID */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .plan-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 26px 22px;
+      position: relative;
+      transition: box-shadow .2s var(--ease), transform .2s, border-color .2s;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .plan-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+      border-color: var(--border2);
+    }
+
+    .plan-card--popular {
+      border-color: var(--accent);
+      background: linear-gradient(160deg, #EFF6FF 0%, var(--s1) 55%);
+    }
+    .plan-card--popular:hover { border-color: var(--accent-h); box-shadow: 0 6px 20px rgba(37,99,235,.15); }
+
+    .plan-badge {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: var(--accent);
+      color: white;
+      margin-bottom: 16px;
+    }
+
+    .plan-name {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .plan-desc {
+      font-size: .875rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+      flex: 1;
+    }
+
+    .plan-price {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.05em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .plan-unit {
+      font-size: .875rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .plan-unit strong { color: var(--text-2); }
+
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 24px;
+    }
+
+    .plan-features li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .875rem;
+      color: var(--text-2);
+      padding: 4px 0;
+    }
+
+    .plan-features li svg { color: var(--success); flex-shrink: 0; }
+
+    .plan-btn {
+      display: block;
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: var(--r);
+      font-size: .9375rem;
+      font-weight: 700;
+      font-family: inherit;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all .15s var(--ease);
+      margin-top: auto;
+      position: relative;
+    }
+
+    .plan-btn--primary {
+      background: var(--accent);
+      color: white;
+    }
+    .plan-btn--primary::before,
+    .plan-btn--primary::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: var(--btn-corner-l);
+      height: var(--btn-corner-l);
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .plan-btn--primary::before {
+      bottom: var(--btn-corner-inset);
+      left: var(--btn-corner-inset);
+      border-left: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-bottom: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 0 0 2px;
+    }
+    .plan-btn--primary::after {
+      top: var(--btn-corner-inset);
+      right: var(--btn-corner-inset);
+      border-top: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-right: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 2px 0 0;
+    }
+    .plan-btn--primary:hover {
+      background: var(--accent-h);
+      box-shadow: 0 4px 14px rgba(37,99,235,.3);
+    }
+    .plan-btn--primary:hover::before,
+    .plan-btn--primary:hover::after {
+      border-color: rgba(255, 255, 255, 0.95);
+    }
+
+    .plan-btn--outline {
+      background: transparent;
+      color: var(--text-2);
+      border: none;
+    }
+    .plan-btn--outline::before,
+    .plan-btn--outline::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: var(--btn-corner-l);
+      height: var(--btn-corner-l);
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .plan-btn--outline::before {
+      bottom: var(--btn-corner-inset);
+      left: var(--btn-corner-inset);
+      border-left: var(--btn-corner-w) solid var(--border2);
+      border-bottom: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 0 0 2px;
+    }
+    .plan-btn--outline::after {
+      top: var(--btn-corner-inset);
+      right: var(--btn-corner-inset);
+      border-top: var(--btn-corner-w) solid var(--border2);
+      border-right: var(--btn-corner-w) solid var(--border2);
+      border-radius: 0 2px 0 0;
+    }
+    .plan-btn--outline:hover {
+      background: var(--s2);
+      color: var(--text);
+    }
+    .plan-btn--outline:hover::before,
+    .plan-btn--outline:hover::after {
+      border-color: var(--muted);
+    }
+
+    .sub-row-cta {
+      flex-shrink: 0;
+      position: relative;
+      padding: 13px 28px;
+      background: var(--accent);
+      color: white;
+      border-radius: var(--r);
+      font-weight: 700;
+      font-size: .9375rem;
+      text-decoration: none;
+      transition: all .15s var(--ease);
+      white-space: nowrap;
+      border: none;
+    }
+    .sub-row-cta::before,
+    .sub-row-cta::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+      width: var(--btn-corner-l);
+      height: var(--btn-corner-l);
+      z-index: 1;
+      box-sizing: border-box;
+    }
+    .sub-row-cta::before {
+      bottom: var(--btn-corner-inset);
+      left: var(--btn-corner-inset);
+      border-left: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-bottom: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 0 0 2px;
+    }
+    .sub-row-cta::after {
+      top: var(--btn-corner-inset);
+      right: var(--btn-corner-inset);
+      border-top: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-right: var(--btn-corner-w) solid rgba(255, 255, 255, 0.5);
+      border-radius: 0 2px 0 0;
+    }
+    .sub-row-cta:hover {
+      background: var(--accent-h);
+      box-shadow: 0 4px 14px rgba(37,99,235,.25);
+    }
+    .sub-row-cta:hover::before,
+    .sub-row-cta:hover::after {
+      border-color: rgba(255, 255, 255, 0.95);
+    }
+
+    /* SUBSCRIPTION ROW */
+    .sub-row {
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 56px;
+    }
+
+    .sub-row-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: #FEF9C3;
+      color: #A16207;
+      border: 1px solid #FDE047;
+      margin-bottom: 8px;
+    }
+
+    .sub-row-price {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.03em;
+    }
+
+    .sub-row-price span {
+      font-size: .9375rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .sub-row-desc {
+      font-size: .875rem;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 380px;
+      margin-top: 4px;
+    }
+
+    .sub-row-desc a { color: var(--accent); text-decoration: none; }
+
+    /* FEATURES SECTION */
+    .features-section { margin-bottom: 56px; text-align: center; }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.03em;
+      margin-bottom: 8px;
+    }
+
+    .section-sub {
+      font-size: .9375rem;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 20px;
+      text-align: left;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: #DBEAFE;
+      border: 1px solid #BFDBFE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+
+    .feature-name {
+      font-size: .9375rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+
+    .feature-desc {
+      font-size: .8125rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* TRUST */
+    .trust-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      padding: 24px 0;
+      border-top: 1px solid var(--border);
+      font-size: .8125rem;
+      color: var(--muted);
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .trust-item svg { color: var(--success); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 32px;
+      text-align: center;
+      font-size: .8125rem;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text-2); }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      main { padding: 48px 16px 72px; }
+      .header { padding: 0 16px; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .sub-row { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+<meta name="robots" content="noindex, follow"><link rel="canonical" href="https://www.carvinguard.fr/ma/checkout.html"><style>.ma-context{padding:14px 24px;background:#edf6f2;color:#234b40;font:14px/1.6 system-ui;border-bottom:1px solid #cfdfd7}.ma-context span{display:block}.ma-payment-note{margin:20px auto;padding:16px;max-width:960px;background:#edf6f2;color:#234b40;border-radius:12px;font:14px/1.6 system-ui}</style></head>
+<body><aside class="ma-context" aria-label="Couverture Maroc"><strong>Carvinguard Maroc · Service en français</strong><span> Données selon le véhicule et les sources. <a href="/ma/aide.html">Voir la couverture au Maroc →</a></span></aside>
+
+  <header class="header">
+    <a href="/ma/index.html" class="header-logo">
+      <img src="/newlogo.png" alt="CarvinGuard">
+      <span class="header-logo-name">Maroc</span>
+    </a>
+    <div class="header-actions">
+      <a href="/ma/index.html" class="btn-header btn-header--ghost">Accueil</a>
+      <a href="/ma/compte.html" class="btn-header btn-header--primary">Mon compte →</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-kicker">Tarifs</div>
+      <h1 class="hero-title">Transparent et <span>sans surprise</span></h1>
+      <p class="hero-sub">
+        Choisissez la formule adaptée à vos besoins. Paiement sécurisé par Stripe — aucune donnée bancaire stockée chez nous.
+      </p>
+    </div>
+
+    <div class="ma-payment-note"><strong>Paiement en euros (EUR).</strong> Conversion en dirhams et frais éventuels selon votre banque. Les rapports ne garantissent pas un historique marocain. <a href="/ma/aide.html">Comprendre la couverture</a>.</div><!-- PRICING CARDS -->
+    <div class="pricing-grid" id="pricingGrid">
+      <!-- Essentiel -->
+      <a class="plan-card" href="/api/ma/billing/credit-checkout?plan=essentiel" id="link-essentiel" data-plan="essentiel">
+        <div class="plan-name">Rapport unique</div>
+        <div class="plan-desc">Un décodage VIN complet pour un véhicule. Idéal pour un achat ponctuel.</div>
+        <div class="plan-price">14,99&nbsp;€</div>
+        <div class="plan-unit">1 rapport</div>
+        <ul class="plan-features">
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Décodage VIN complet
+          </li>
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Marque, modèle, motorisation
+          </li>
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Accès permanent à votre espace
+          </li>
+        </ul>
+        <span class="plan-btn plan-btn--outline">Commencer →</span>
+      </a>
+
+      <!-- Confort -->
+      <a class="plan-card plan-card--popular" href="/api/ma/billing/credit-checkout?plan=confort" id="link-confort" data-plan="confort">
+        <span class="plan-badge">Le plus populaire</span>
+        <div class="plan-name">Pack 3 rapports</div>
+        <div class="plan-desc">Comparez plusieurs véhicules avant votre achat. Le meilleur rapport qualité-prix.</div>
+        <div class="plan-price">29,99&nbsp;€</div>
+        <div class="plan-unit"><strong>9,99&nbsp;€</strong> par rapport</div>
+        <ul class="plan-features">
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            3 décodages VIN complets
+          </li>
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Crédits sans expiration
+          </li>
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Économisez 33% vs rapport unique
+          </li>
+        </ul>
+        <span class="plan-btn plan-btn--primary">Commencer →</span>
+      </a>
+
+      <!-- Premium -->
+      <a class="plan-card" href="/api/ma/billing/credit-checkout?plan=premium" id="link-premium" data-plan="premium">
+        <div class="plan-name">Pack Pro — 10 rapports</div>
+        <div class="plan-desc">Pour les professionnels : garages, marchands, experts. Volume et économies maximales.</div>
+        <div class="plan-price">69,99&nbsp;€</div>
+        <div class="plan-unit"><strong>6,99&nbsp;€</strong> par rapport</div>
+        <ul class="plan-features">
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            10 décodages VIN complets
+          </li>
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Crédits sans expiration
+          </li>
+          <li>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Économisez 53% vs rapport unique
+          </li>
+        </ul>
+        <span class="plan-btn plan-btn--outline">Commencer →</span>
+      </a>
+    </div>
+
+    <!-- SUBSCRIPTION -->
+    <div class="sub-row">
+      <div>
+        <div class="sub-row-badge">Best deal</div>
+        <div class="sub-row-price">1&nbsp;€ <span>puis 49,99&nbsp;€/mois</span></div>
+        <p class="sub-row-desc">
+          1 € aujourd’hui, puis 49,99 €/mois après 24 heures — 7 rapports VIN par cycle.
+          Résiliable à tout moment en suivant les
+          <a href="/ma/resiliation-abonnement.html">instructions de résiliation</a>.
+        </p>
+      </div>
+      <a href="/api/ma/billing/subscribe-checkout" class="sub-row-cta" id="link-abonnement">
+        S'abonner →
+      </a>
+    </div>
+
+    <!-- WHAT'S INCLUDED -->
+    <div class="features-section">
+      <h2 class="section-title">Ce que contient chaque rapport</h2>
+      <p class="section-sub">Données techniques complètes extraites du numéro VIN (Vehicle Identification Number).</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+          </div>
+          <div class="feature-name">Identification complète</div>
+          <div class="feature-desc">Marque, modèle, année de fabrication, variante et version.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div class="feature-name">Motorisation &amp; transmission</div>
+          <div class="feature-desc">Type de moteur, cylindrée, carburant, boîte de vitesses, transmission.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+            </svg>
+          </div>
+          <div class="feature-name">Carrosserie &amp; options</div>
+          <div class="feature-desc">Type de carrosserie, pays de fabrication, données techniques constructeur.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRUST -->
+    <div class="trust-row">
+      <div class="trust-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Paiement 100% sécurisé par Stripe
+      </div>
+      <div class="trust-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Aucune donnée bancaire stockée
+      </div>
+      <div class="trust-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Crédits disponibles immédiatement
+      </div>
+      <div class="trust-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Assistance en français
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <a href="/ma/index.html">Accueil</a> ·
+    <a href="/ma/contact.html">Contact</a> ·
+    <a href="/ma/conditions-generales-vente.html">CGV</a> ·
+    <a href="/ma/politique-confidentialite.html">Confidentialité</a> ·
+    <a href="/ma/mentions-legales.html">Mentions légales</a>
+    <br><br>
+    © 2025 CarvinGuard — Service de décodage VIN
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr-MA">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement confirmé — Espace rapport | Carvinguard</title>
+    <meta name="description" content="Votre paiement est confirmé. Accédez à votre rapport VIN sécurisé.">
+    <meta name="robots" content="noindex, follow">
+    
+    <link rel="icon" type="image/png" href="/newlogo.png">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .cg-confirm-wrap { max-width: 560px; margin: 0 auto; padding: 48px 20px 80px; min-height: 65vh; }
+        .cg-confirm-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            padding: 40px 36px;
+            text-align: center;
+        }
+        .cg-confirm-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            color: #059669;
+            font-size: 1.75rem;
+            margin-bottom: 20px;
+        }
+        .cg-confirm-card h1 { font-size: 1.5rem; margin: 0 0 12px; color: var(--text); }
+        .cg-confirm-lead { color: var(--text-light); line-height: 1.6; margin: 0 0 28px; font-size: 1.02rem; }
+        .cg-confirm-details {
+            background: var(--bg-light);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            text-align: left;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+        .cg-confirm-details p { margin: 8px 0; color: var(--text-light); }
+        .cg-confirm-details strong { color: var(--text); font-weight: 600; }
+        .cg-confirm-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+        .cg-confirm-actions .btn { width: 100%; justify-content: center; }
+        .cg-confirm-secondary { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 20px; font-size: 0.9rem; }
+        .cg-confirm-secondary a { color: var(--text-light); text-decoration: underline; }
+        .cg-confirm-secondary a:hover { color: var(--text); }
+        #confirmPollStatus { font-size: 0.88rem; color: #64748b; margin-top: 12px; min-height: 1.25em; }
+        #confirmReportCta .btn-primary { font-weight: 600; padding: 14px 22px; }
+    </style>
+    
+<meta name="robots" content="noindex, follow"><link rel="canonical" href="https://www.carvinguard.fr/ma/confirmation.html"><style>.ma-context{padding:14px 24px;background:#edf6f2;color:#234b40;font:14px/1.6 system-ui;border-bottom:1px solid #cfdfd7}.ma-context span{display:block}.ma-payment-note{margin:20px auto;padding:16px;max-width:960px;background:#edf6f2;color:#234b40;border-radius:12px;font:14px/1.6 system-ui}</style></head>
+<body><aside class="ma-context" aria-label="Couverture Maroc"><strong>Carvinguard Maroc · Service en français</strong><span> Données selon le véhicule et les sources. <a href="/ma/aide.html">Voir la couverture au Maroc →</a></span></aside>
+    <header class="header header-light">
+        <div class="container header-inner">
+            <a href="index.html" class="logo"><img src="/newlogo.png" alt="CarVINGuard"></a>
+            <nav class="nav-main" style="display:flex;gap:16px;align-items:center;">
+                <a href="compte.html" class="nav-link" style="font-size:0.95rem;">Mon compte</a>
+                <a href="contact.html" class="btn btn-contact">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="cg-confirm-wrap">
+            <div class="cg-confirm-card">
+                <div class="cg-confirm-badge" aria-hidden="true">✓</div>
+                <h1 id="confirmationTitle">Vérification de votre commande</h1>
+                <p class="cg-confirm-lead">
+                    Bienvenue dans votre <strong>espace rapport</strong>. Vous pouvez ouvrir votre rapport dès qu’il est prêt
+                    (généralement en moins d’une minute). Un email de confirmation avec le PDF vous est aussi envoyé.
+                </p>
+                <div class="cg-confirm-details" id="confirmationDetails">
+                    <p id="confirmVinRow"><strong>Référence véhicule (VIN)</strong> <span id="ref">—</span></p>
+                    <p><strong>Montant payé</strong> <span id="montant">—</span></p>
+                    <p><strong>Délai indicatif</strong> sous 5 minutes</p>
+                </div>
+                <p id="confirmPurchaseTypeHint" style="display:none;font-size:0.9rem;color:var(--text-light);line-height:1.5;"></p>
+                <p id="confirmEmailHint" style="font-size: 0.9rem; color: var(--text-light); line-height: 1.5;">
+                    Pensez à vérifier vos <strong>courriers indésirables</strong> si vous ne voyez pas notre message.
+                </p>
+                <div id="confirmReportCta" style="display:none;margin-top:8px;">
+                    <a id="confirmReportLink" class="btn btn-primary" href="#">Ouvrir mon rapport sécurisé</a>
+                </div>
+                <p id="confirmPollStatus"></p>
+                <div class="cg-confirm-actions">
+                    <a href="compte.html" class="btn btn-outline">Mon compte &amp; crédits VIN</a>
+                </div>
+                <div class="cg-confirm-secondary">
+                    <a href="aide.html">Aide</a>
+                    <span aria-hidden="true">·</span>
+                    <a href="index.html">Accueil du site</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <div class="footer-copyright">
+                    <p>Copyright © Carvinguard Maroc 2026</p>
+                    <span class="ssl-badge">🔒</span>
+                </div>
+                <nav class="footer-links">
+                    <a href="aide.html">Aide</a>
+                    <span>•</span>
+                    <a href="contact.html">Contact</a>
+                    <span>•</span>
+                    <a href="mentions-legales.html">Mentions légales</a>
+                </nav>
+            </div>
+        </div>
+        <div class="footer-disclaimer">
+            <div class="container">Le Site et les Services sont proposés à titre privé et ne constituent en aucun cas une mission de service public déléguée par une administration ou une collectivité territoriale. Il est possible d'effectuer vos démarches gratuitement sur <a href="https://www.service-public.fr" target="_blank" rel="noopener">service-public.fr</a>.</div>
+        </div>
+    </footer>
+
+    <script src="/ma/js/vehicle-service.js"></script>
+    <script>
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var pi = params.get('payment_intent');
+            var sessionId = params.get('session_id');
+
+            var data = typeof VehicleService !== 'undefined' ? VehicleService.getCommandeData() : null;
+            if (data) {
+                var refEl = document.getElementById('ref');
+                var montant = document.getElementById('montant');
+                if (refEl && data.vin && !sessionId) refEl.textContent = data.vin;
+                if (montant && data.prix !== undefined && !sessionId) {
+                    montant.textContent = (Number(data.prix) || 14.99).toFixed(2).replace('.', ',') + ' €';
+                }
+            }
+
+            function applyStripeSummary(s) {
+                var montantEl = document.getElementById('montant');
+                var refSpan = document.getElementById('ref');
+                var vinRow = document.getElementById('confirmVinRow');
+                var typeHint = document.getElementById('confirmPurchaseTypeHint');
+                if (!s || !s.amountLabel) return;
+                if (montantEl) montantEl.textContent = s.amountLabel;
+                if (s.purchaseType === 'vin_report') {
+                    if (refSpan) {
+                        refSpan.textContent =
+                            (s.vinFromReference && s.vinFromReference.length === 17
+                                ? s.vinFromReference
+                                : null) ||
+                            (data && data.vin) ||
+                            '—';
+                    }
+                    if (vinRow) vinRow.style.display = '';
+                    if (typeHint) typeHint.style.display = 'none';
+                } else if (s.purchaseType === 'wallet_credits') {
+                    if (vinRow) vinRow.style.display = 'none';
+                    if (typeHint) {
+                        typeHint.style.display = 'block';
+                        typeHint.textContent =
+                            'Achat de crédits : ils sont associés à l’e-mail utilisé sur Stripe. Ouvrez Mon compte avec cet e-mail pour voir votre solde.';
+                    }
+                }
+            }
+
+            if (sessionId) {
+                fetch(
+                    window.location.origin +
+                        '/api/ma/checkout-session-summary?session_id=' +
+                        encodeURIComponent(sessionId)
+                )
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (s) {
+                        if (s && !s.error) applyStripeSummary(s);
+                    })
+                    .catch(function () {});
+            }
+
+            var pollEl = document.getElementById('confirmPollStatus');
+            var cta = document.getElementById('confirmReportCta');
+            var link = document.getElementById('confirmReportLink');
+
+            function showReport(url, accessToken) {
+                if (cta && link && url) {
+                    cta.style.display = 'block';
+                    link.href = url;
+                }
+                if (accessToken && typeof accessToken === 'string' && accessToken.length >= 16) {
+                    try {
+                        sessionStorage.setItem('carvinguard_report_token', accessToken);
+                    } catch (e) {}
+                    if (typeof VehicleService !== 'undefined') {
+                        var cur = VehicleService.getCommandeData() || {};
+                        VehicleService.saveCommandeData(
+                            Object.assign({}, cur, { accessToken: accessToken, reportUnlocked: true })
+                        );
+                    }
+                }
+                if (pollEl) pollEl.textContent = '';
+            }
+
+            var qs = '';
+            if (pi) qs = 'payment_intent=' + encodeURIComponent(pi);
+            else if (sessionId) qs = 'session_id=' + encodeURIComponent(sessionId);
+
+            if (!qs) {
+                if (pollEl) pollEl.textContent = '';
+                return;
+            }
+
+            var tries = 0;
+            var maxTries = 45;
+            function poll() {
+                tries++;
+                fetch(window.location.origin + '/api/ma/order-status?' + qs)
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.status === 'ready' && j.reportUrl) {
+                            document.getElementById('confirmationTitle').textContent = 'Votre rapport est prêt';
+                            showReport(j.reportUrl, j.token);
+                            return;
+                        }
+                        if (pollEl) {
+                            pollEl.textContent = j.message || (tries < maxTries ? 'Préparation de votre accès sécurisé…' : 'Si le bouton n’apparaît pas, utilisez le lien reçu par email ou contactez-nous.');
+                        }
+                        if (tries < maxTries) {
+                            setTimeout(poll, 2000);
+                        }
+                    })
+                    .catch(function () {
+                        if (tries < maxTries) setTimeout(poll, 3000);
+                    });
+            }
+
+            if (sessionId && !pi) {
+                fetch(
+                    window.location.origin +
+                        '/api/ma/checkout-session-kind?session_id=' +
+                        encodeURIComponent(sessionId)
+                )
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (k) {
+                        if (k && k.kind === 'account_credit') {
+                            window.location.replace(
+                                'compte.html?paid=1&credits=ok&session_id=' +
+                                    encodeURIComponent(sessionId)
+                            );
+                            return;
+                        }
+                        if (k && k.kind === 'subscription_initial') {
+                            window.location.replace(
+                                'compte.html?paid=1&credits=ok&sub=1&session_id=' +
+                                    encodeURIComponent(sessionId)
+                            );
+                            return;
+                        }
+                        poll();
+                    })
+                    .catch(function () {
+                        poll();
+                    });
+            } else {
+                poll();
+            }
+        })();
+    </script>
+</body>
+</html>

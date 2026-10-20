@@ -1,0 +1,12 @@
+Assu/
+tests/
+tmp/
+output/
+.git/
+.env
+.env.*
+ENV-VERCEL.txt
+STRIPE-COLLER-VERCEL.txt
+.stripe-setup-result.json
+data/commandes.json
+*.log
