@@ -1,5 +1,22 @@
 [
   {
+    "id": "6",
+    "slug": "vendre-voiture-sans-carte-grise",
+    "title": "Peut-on vendre sa voiture sans carte grise ?",
+    "description": "Vente sans carte grise : dans quels cas c'est possible, quelles démarches et quels risques. Duplicata, véhicule d'occasion, régularisation.",
+    "date": "2026-10-22",
+    "category": "vente-vehicule",
+    "keywords": [
+      "vente voiture",
+      "sans carte grise",
+      "duplicata",
+      "cession",
+      "documents"
+    ],
+    "readingTime": "4 min",
+    "bodyHtml": "<p>En principe, pour vendre un véhicule, vous devez être en possession de la <strong>carte grise</strong> (titre d'immatriculation) à votre nom. Sans elle, la cession est compliquée.</p><h2>Si vous avez perdu la carte grise</h2><p>Vous pouvez demander un <strong>duplicata</strong> auprès de l'ANTS. Une fois reçu, vous pourrez procéder à la vente en fournissant les autres pièces administratives requises. Pour une synthèse historique par VIN en complément, voir <a href=\"https://www.carvinguard.fr/\">Carvinguard</a>.</p><h2>Si la carte grise est au nom d'un précédent propriétaire</h2><p>La situation doit être régularisée avant toute vente : le titulaire actuel doit avoir fait la demande de carte grise à son nom. Vendre avec des documents incohérents expose à des litiges.</p>"
+  },
+  {
     "id": "5",
     "slug": "difference-csa-carte-grise",
     "title": "Carte grise et rapport VIN : quelles différences ?",
